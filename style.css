@@ -2019,7 +2019,7 @@ button {
 .archive-export-switch {
   width: fit-content;
   display: inline-grid;
-  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  grid-template-columns: repeat(3, minmax(110px, 1fr));
   gap: 6px;
   padding: 6px;
   border: 1px solid rgba(213, 194, 198, 0.55);
@@ -2041,6 +2041,13 @@ button {
   color: #fff;
   background: var(--primary);
   box-shadow: var(--soft-shadow);
+}
+
+.archive-export-hint {
+  margin: -6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .archive-export-preview {

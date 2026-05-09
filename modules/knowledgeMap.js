@@ -500,6 +500,65 @@
     return lines.join("\n").trim();
   }
 
+  function generateExportDetail(logs = window.MochiApp?.readStudyLogs?.() || []) {
+    const normalized = normalizedLogs(logs);
+    if (!normalized.length) return `【详细学习记录】${exportDate()}\n暂无学习记录`;
+
+    const lines = [
+      `【详细学习记录】${exportDate()}`,
+      `共 ${normalized.length} 条记录`,
+      "",
+    ];
+
+    Object.entries(SUBJECTS).forEach(([subject, info]) => {
+      let subjectHeaderAdded = false;
+
+      info.nodes.forEach((node) => {
+        const entries = logsForNode(normalized, subject, node.label);
+        if (!entries.length) return;
+
+        if (!subjectHeaderAdded) {
+          lines.push(`${"━".repeat(20)} ${info.label} ${"━".repeat(20)}`);
+          lines.push("");
+          subjectHeaderAdded = true;
+        }
+
+        lines.push(`【${node.label}】共 ${entries.length} 次`);
+
+        const chronological = [...entries].sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
+        chronological.forEach((log, index) => {
+          const starCount = Math.max(1, Math.min(3, Number(log.stars || 1)));
+          const starText = `${"★".repeat(starCount)}${"☆".repeat(3 - starCount)}`;
+          const questions = Number(log.questionsCompleted || 0);
+          lines.push(`  第${index + 1}次 | ${log.date || "未知日期"} | ${starText} | ${questions}题`);
+
+          const painPoint = String(log.painPoint || "").trim();
+          if (painPoint) lines.push(`  卡点：${painPoint}`);
+          else if (Number(log.stars) === 3) lines.push("  卡点：无（这次全部掌握）");
+
+          const routine = String(log.routine || "").trim();
+          if (routine) {
+            const routineLines = routine.split("\n").map((line) => line.trim()).filter(Boolean);
+            lines.push(`  套路：${routineLines[0] || ""}`);
+            routineLines.slice(1).forEach((line) => {
+              lines.push(`        ${line}`);
+            });
+          }
+
+          lines.push("");
+        });
+      });
+
+      if (!subjectHeaderAdded) {
+        lines.push(`${"━".repeat(20)} ${info.label} ${"━".repeat(20)}`);
+        lines.push("暂无学习记录");
+        lines.push("");
+      }
+    });
+
+    return lines.join("\n").trim();
+  }
+
   function generateExportJSON(logs = window.MochiApp?.readStudyLogs?.() || []) {
     const normalized = normalizedLogs(logs);
     const result = {
@@ -536,8 +595,16 @@
 
   function exportContent(format) {
     const logs = window.MochiApp?.readStudyLogs?.() || [];
-    return format === "json" ? generateExportJSON(logs) : generateExportText(logs);
+    if (format === "json") return generateExportJSON(logs);
+    if (format === "detail") return generateExportDetail(logs);
+    return generateExportText(logs);
   }
+
+  const EXPORT_FORMAT_HINTS = {
+    text: "适合粘贴给 AI 做整体学习分析",
+    detail: "适合粘贴给 AI 针对卡点出题或制定复习计划",
+    json: "适合开发或自动化处理",
+  };
 
   function showExportSheet() {
     document.getElementById("archive-export-root")?.remove();
@@ -553,9 +620,11 @@
           <button class="icon-btn" data-export-close aria-label="关闭"><span class="material-symbols-outlined">close</span></button>
         </div>
         <div class="archive-export-switch" role="tablist">
-          <button data-export-format="json">JSON 格式</button>
-          <button class="active" data-export-format="text">文字格式</button>
+          <button class="active" data-export-format="text">摘要</button>
+          <button data-export-format="detail">详细记录</button>
+          <button data-export-format="json">JSON</button>
         </div>
+        <p class="archive-export-hint" data-export-hint>${EXPORT_FORMAT_HINTS.text}</p>
         <textarea class="archive-export-preview" readonly></textarea>
         <div class="archive-export-actions">
           <button class="btn btn-primary" data-export-copy><span class="material-symbols-outlined">content_copy</span><span data-copy-label>复制到剪贴板</span></button>
@@ -601,6 +670,8 @@
   function updateExportPreview(root, format) {
     const preview = root.querySelector(".archive-export-preview");
     if (preview) preview.value = exportContent(format);
+    const hint = root.querySelector("[data-export-hint]");
+    if (hint) hint.textContent = EXPORT_FORMAT_HINTS[format] || EXPORT_FORMAT_HINTS.text;
   }
 
   async function copyToClipboard(text) {
@@ -647,6 +718,7 @@
     normalizeNodeLabel,
     calcNodeStatus,
     generateExportText,
+    generateExportDetail,
     generateExportJSON,
     render,
     refresh,
