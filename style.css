@@ -372,6 +372,13 @@ button {
   border: 1px solid var(--primary-container);
 }
 
+.btn-danger {
+  color: #fff;
+  background: #9f314f;
+  border-bottom: 4px solid #762239;
+  box-shadow: 0 12px 24px rgba(159, 49, 79, 0.18);
+}
+
 .btn:disabled {
   cursor: not-allowed;
   opacity: 0.48;

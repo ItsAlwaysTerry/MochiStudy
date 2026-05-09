@@ -514,6 +514,22 @@
             <label class="btn btn-outline" style="cursor:pointer"><span class="material-symbols-outlined">upload</span>导入恢复<input id="backup-import" type="file" accept="application/json" hidden /></label>
           </div>
         </section>
+        <section class="card">
+          <h3>数据管理</h3>
+          <p class="muted">清理测试数据或重新开始前，建议先导出备份。</p>
+          <div class="settings-list" style="margin-top:18px">
+            <button class="btn btn-outline" data-action="clear-progress">
+              <span class="material-symbols-outlined">restart_alt</span>
+              清空学习进度
+            </button>
+            <p class="field-hint">删除学习记录、专注记录、农场进度和学习状态；保留 API、假期、提醒音、游戏参数等设置。</p>
+            <button class="btn btn-danger" data-action="factory-reset">
+              <span class="material-symbols-outlined">delete_forever</span>
+              恢复出厂设置
+            </button>
+            <p class="field-hint">删除当前浏览器里 MochiStudy 的全部已知数据和设置，适合彻底重来。</p>
+          </div>
+        </section>
         <section class="card" style="grid-column:1 / -1">
           <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
             <div>
@@ -1302,11 +1318,25 @@ ${record.painPoint || "暂无明显卡点，继续保持稳定练习。"}
     reader.readAsText(file);
   }
 
-  function clearData() {
-    if (!confirm("确定清空 MochiStudy 的全部本地数据吗？此操作不可撤销。")) return;
+  function progressDataKeys() {
+    const fixed = [STUDY_LOG_KEY, "focus_log", "farm_state", "mochi_state", "mochi_study_points", "mochi_hearts", "daily_task_settings"];
+    const dynamic = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
+      .filter((key) => key && key.startsWith("daily_tasks_"));
+    return [...new Set([...fixed, ...dynamic])];
+  }
+
+  function clearProgressData() {
+    if (!confirm("清空前建议先导出备份。此操作会删除学习记录、专注记录、农场进度和学习状态，无法撤销。确认继续吗？")) return;
+    progressDataKeys().forEach((key) => localStorage.removeItem(key));
+    toast("学习进度已清空，正在刷新页面");
+    location.reload();
+  }
+
+  function factoryResetData() {
+    if (!confirm("这会删除 MochiStudy 在当前浏览器里的全部数据和设置。请先导出备份。确认恢复出厂设置吗？")) return;
     allDataKeys().forEach((key) => localStorage.removeItem(key));
-    toast("本地数据已清空");
-    route();
+    toast("本地数据和设置已清空，正在刷新页面");
+    location.reload();
   }
 
   function allDataKeys() {
@@ -1556,7 +1586,8 @@ ${record.painPoint || "暂无明显卡点，继续保持稳定练习。"}
         toast(`打开 AI 家教开始学习：${node.subjectLabel} · ${node.label}`);
       }
       if (name === "export-data") exportData();
-      if (name === "clear-data") clearData();
+      if (name === "clear-progress") clearProgressData();
+      if (name === "factory-reset" || name === "clear-data") factoryResetData();
       if (name === "open-holiday-form") openHolidayForm();
       if (name === "delete-holiday") deleteHoliday(action.dataset.holidayId);
       if (name === "set-holiday-mode") setHolidayMode(action.dataset.mode || "auto");
