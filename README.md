@@ -1,47 +1,165 @@
 # MochiStudy
 
-MochiStudy is a local-first study tracker for high-school learning. It helps students record practice, keep focus sessions, review learning archives, unlock achievements, and grow a small subject-based farm.
+一个给高中生假期学习用的本地优先学习记录网站。它把“今天做了什么题、卡在哪里、有没有复习、专注了多久”这些很容易散掉的信息，整理成可以看见的学习档案、日历、勋章和一座会慢慢长大的小农场。
 
-## Features
+> 目标不是做一个复杂的学习系统，而是让基础薄弱、容易没信心的学生每天愿意多记录一点、多坚持一会儿。
 
-- Study record import with subject, knowledge point, question count, stars, pain point, and routine
-- Focus timer with free focus and timed focus modes
-- Rest reminder overlay with selectable Web Audio reminder sounds
-- Learning archive organized by subject and knowledge point
-- Achievement system based on study records, focus logs, and farm progress
-- Three-subject farm driven by imported study records
-- Local data backup and restore
-- Debug/config panel available with `index.html?debug=1`
+## 画面预览
 
-## Tech Stack
+### 首页：专注计时 + 三科农场 + 今日记录
 
-- Native HTML, CSS, and JavaScript
-- Browser `localStorage` for all data
-- No backend service required
+![MochiStudy 首页](assets/screenshots/home.png)
 
-## Run Locally
+### 学习档案：每条学习记录都会沉淀成卡片
 
-Open `index.html` directly in a browser.
+![MochiStudy 学习档案](assets/screenshots/archive.png)
 
-For the debug panel, open:
+### 学习日历：把题量、专注和复盘放回日期里
+
+![MochiStudy 学习日历](assets/screenshots/calendar.png)
+
+### 设置页：本地备份、提醒音和 AI 导入配置
+
+![MochiStudy 设置页](assets/screenshots/settings.png)
+
+## 它解决什么问题
+
+很多学生不是完全不学，而是学完之后没有留下清晰痕迹：
+
+- 今天做了题，但过两天忘了自己卡在哪里
+- 错题很多，但不知道哪些知识点反复出现
+- 学习很容易变成“熬时间”，缺少及时反馈
+- 放假期间节奏容易断，一断就觉得自己又失败了
+
+MochiStudy 的设计思路是：把学习记录做得足够轻，把反馈做得足够具体。学生只要导入一条记录，就能看到学习档案更新、农场地块成长、日历留下痕迹，慢慢形成“我确实在推进”的感觉。
+
+## 主要功能
+
+### 1. 学习记录导入
+
+每条记录包含：
+
+- 科目：数学 / 物理 / 化学
+- 知识点：来自固定预设列表
+- 完成题数
+- 星级评价
+- 卡点一句话
+- 今日套路，记录解题步骤
+- 日期
+
+这些记录会写入 `localStorage["study_log"]`，是整个网站最核心的数据。
+
+### 2. 学习档案
+
+旧的“知识地图”被改成了更适合复盘的“学习档案”：
+
+- 按科目分 Tab
+- 每个知识点是一组
+- 每条学习记录变成一张卡片
+- 卡片正面突出“卡点”
+- 展开后能看到“今日套路”
+- 支持导出档案，方便以后复盘或给 AI 分析
+
+### 3. 动态专注计时
+
+首页左侧是专注主区：
+
+- 支持自由专注
+- 支持设定时间
+- 专注开始后进入沉浸模式
+- 中途可以选择“我累了，现在休息”
+- 专注结束后会根据时长给出鼓励语
+- 休息结束可以显示遮罩和提醒音
+
+提醒音不是固定死的，设置页可以选择：
+
+- 专注结束提示音：不响 / 轻柔双音 / 小风铃 / 清脆短音
+- 休息结束铃声：温柔旋律 / 小风铃 / 低柔三音 / 清亮提示
+
+### 4. 三科农场
+
+农场不是手动种地游戏，而是跟学习记录绑定：
+
+- 数学、物理、化学固定三块地
+- 每导入一条对应科目的学习记录，该科地块成长一次
+- 15 条记录后作物成熟，可以收获
+- 收获次数推动农场升级
+- 没有金币、种子、水桶、肥料等复杂资源
+
+这样农场不会抢走学习本身的注意力，只作为可视化奖励存在。
+
+### 5. 勋章和学习日历
+
+勋章会根据真实学习数据计算，例如：
+
+- 累计刷题数
+- 点亮知识点数
+- 精通知识点数
+- 专注总时长
+- 连续学习天数
+- 三科均衡学习
+- 农场收获进度
+
+学习日历则把每日题量、专注记录和当天学习内容放在一起，方便回看一段时间内的节奏。
+
+### 6. 数据备份与恢复
+
+所有数据都保存在浏览器本地，没有后端服务。
+
+设置页提供：
+
+- 导出备份
+- 导入恢复
+
+备份文件是 JSON，包含学习记录、农场状态、专注记录、假期设置、提醒设置等数据。导入前会确认，避免误覆盖当前数据。
+
+## 技术栈
+
+- 原生 HTML
+- 原生 CSS
+- 原生 JavaScript
+- 浏览器 `localStorage`
+- 无框架
+- 无后端
+
+直接打开 `index.html` 就能使用。
+
+## 调试模式
+
+访问：
 
 ```text
 index.html?debug=1
 ```
 
-## Data
+右下角会出现调试面板，可以快速调整：
 
-All user data is stored locally in the browser. Important keys include:
+- 三科地块成长阶段
+- 农场收获次数
+- 游戏参数配置
+- 番茄钟默认时长
+- 卡片判定参数
+- 日历热力图阈值
 
-- `study_log`
-- `farm_state`
-- `mochi_state`
-- `focus_log`
-- `school_holidays`
-- `holiday_mode_override`
-- `game_config`
-- `sound_reminder_enabled`
-- `focus_end_sound`
-- `rest_reminder_sound`
+## 数据说明
 
-Use the settings page to export or restore a backup JSON file.
+主要 localStorage key：
+
+```text
+study_log
+farm_state
+mochi_state
+focus_log
+school_holidays
+holiday_mode_override
+game_config
+sound_reminder_enabled
+focus_end_sound
+rest_reminder_sound
+```
+
+项目是 local-first 设计。除非用户自己配置 AI API 并主动使用导入解析，否则数据不会离开浏览器。
+
+## 当前状态
+
+这个项目目前是一个可直接打开使用的静态网页应用，适合继续打磨为个人学习工具、假期学习展示项目，或者作为“本地优先 + 游戏化反馈”的小型前端作品。
