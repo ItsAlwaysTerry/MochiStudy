@@ -2609,6 +2609,37 @@
           ${renderBadgeItem("small", "harvests", "丰收季节", `每收获 ${cfg.small.harvests} 次农场`, earned.small.harvests, state.recentNew?.small?.harvests || 0, "psychiatry")}
         </div>
       </section>
+
+      ${renderLotteryHistory()}
+    `;
+  }
+
+  function renderLotteryHistory() {
+    const history = JSON.parse(localStorage.getItem("lottery_history") || "[]");
+    if (history.length === 0) {
+      return `
+        <section class="card">
+          <h3 style="margin-bottom:12px">抽奖历史</h3>
+          <p class="muted" style="text-align:center;padding:16px 0">暂无抽奖记录</p>
+        </section>
+      `;
+    }
+    const rows = history.map((entry) => {
+      const typeMap = { bigReward: ["大奖", "#e07020"], reward: ["奖励", "#4caf50"], punish: ["任务", "#9c27b0"] };
+      const [typeLabel, typeColor] = typeMap[entry.type] || ["奖励", "#4caf50"];
+      return `
+        <div class="lottery-history-item">
+          <span class="lottery-history-date">${escapeHtml(entry.date || "")}</span>
+          <span class="lottery-history-label" style="color:${typeColor}">${escapeHtml(entry.label || "")}</span>
+          <span class="lottery-history-type" style="background:${typeColor}22;color:${typeColor}">${typeLabel}</span>
+        </div>
+      `;
+    }).join("");
+    return `
+      <section class="card">
+        <h3 style="margin-bottom:12px">抽奖历史</h3>
+        <div class="lottery-history-list">${rows}</div>
+      </section>
     `;
   }
 
@@ -3247,7 +3278,10 @@ ${record.originalQuestion || "暂无原题描述。"}
   function validateBackupPayload(payload) {
     if (!payload || typeof payload !== "object") return "备份文件格式不正确";
     if (!payload.version) return "备份文件缺少 version 字段";
-    if (payload.version !== BACKUP_VERSION) return `备份版本 ${payload.version} 暂不兼容，当前支持 ${BACKUP_VERSION}`;
+    // Accept any 1.x backup — the raw localStorage snapshot makes them fully compatible.
+    // Only reject major version changes (2.0+) which indicate a truly breaking format.
+    const majorVersion = String(payload.version).split(".")[0];
+    if (majorVersion !== "1") return `备份版本 ${payload.version} 不兼容，当前支持版本 1.x`;
     if (!payload.data || typeof payload.data !== "object") return "备份文件缺少 data 字段";
     return "";
   }
@@ -3280,6 +3314,22 @@ ${record.originalQuestion || "暂无原题描述。"}
     }
     if (data.game_config && typeof data.game_config === "object") {
       localStorage.setItem("game_config", JSON.stringify(data.game_config));
+    }
+    // Settings that were added after the initial backup format but before data.localStorage was introduced.
+    if (data.api_config && typeof data.api_config === "object") {
+      localStorage.setItem("api_config", JSON.stringify(data.api_config));
+    }
+    if (typeof data.admin_password === "string") {
+      localStorage.setItem("admin_password", data.admin_password);
+    }
+    if (typeof data.sound_reminder_enabled === "string") {
+      localStorage.setItem("sound_reminder_enabled", data.sound_reminder_enabled);
+    }
+    if (typeof data.focus_end_sound === "string") {
+      localStorage.setItem("focus_end_sound", data.focus_end_sound);
+    }
+    if (typeof data.rest_reminder_sound === "string") {
+      localStorage.setItem("rest_reminder_sound", data.rest_reminder_sound);
     }
   }
 

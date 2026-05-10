@@ -1702,6 +1702,41 @@ button {
   font-size: 12px;
 }
 
+.lottery-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lottery-history-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--surface2, rgba(255,255,255,0.04));
+}
+
+.lottery-history-date {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+  min-width: 72px;
+}
+
+.lottery-history-label {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.lottery-history-type {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
 .badge-summary {
   display: flex;
   align-items: center;
