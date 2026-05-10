@@ -15,6 +15,9 @@ build/
 .env.*
 *.pem
 *.key
+.claude/
+claude-code.bat
+Instruction/
 
 # Local data exports and backups
 mochistudy-backup-*.json

@@ -2,7 +2,7 @@
   const STATE = {
     activeSubject: "math",
     expandedNode: "",
-    expandedCards: new Set(),
+    expandedCards: new Map(),
     container: null,
   };
   const DEFAULT_CARDS_CONFIG = { masteredMinRecent: 2, dormantDays: 30 };
@@ -324,31 +324,55 @@
             ${summary.latestStars ? `<span class="node-stars">${stars(summary.latestStars)}</span>` : ""}
           </span>
         </button>
-        ${expanded ? `<div class="study-card-list">${summary.entries.map((log, index) => renderStudyCard(log, subjectKey, index)).join("")}</div>` : ""}
+        ${expanded ? `<div class="study-card-list">${summary.entries.map((log, index) => renderStudyCard(log, subjectKey, index, summary.node.label)).join("")}</div>` : ""}
       </article>
     `;
   }
 
-  function renderStudyCard(log, subjectKey, index) {
+  function renderStudyCard(log, subjectKey, index, nodeLabel = log.nodeLabel || "") {
     const id = cardId(log, index);
-    const expanded = STATE.expandedCards.has(id);
+    const expandState = STATE.expandedCards.get(id) || null;
     const subject = SUBJECTS[subjectKey];
     const starCount = Math.max(1, Math.min(3, Number(log.stars || 1)));
     const starClass = starCount === 3 ? "stars-gold" : starCount === 2 ? "stars-orange" : "stars-gray";
+    const hasRoutine = Boolean(String(log.routine || "").trim());
+    const hasOriginalQuestion = Boolean(originalQuestionText(log));
     return `
-      <article class="study-card ${expanded ? "expanded" : ""}" data-card-id="${id}" style="--subject-color:${subject.color}">
-        <div class="card-header">
-          <div class="card-meta">
-            <span>${escapeHtml(String(log.date || ""))}</span>
-            <span>${Number(log.questionsCompleted || 0)}道题</span>
+      <article class="study-card expand-${expandState || "none"}"
+        data-card-id="${escapeHtml(id)}"
+        data-card-subject="${escapeHtml(subjectKey)}"
+        data-card-node-label="${escapeHtml(nodeLabel)}"
+        data-log-index="${index}"
+        style="--subject-color:${subject.color}">
+        <div class="card-front" data-card-action="toggle-routine">
+          <div class="card-header">
+            <div class="card-meta">
+              <span>${escapeHtml(String(log.date || ""))}</span>
+              <span>${Number(log.questionsCompleted || 1)}道题</span>
+            </div>
+            <div class="card-stars-badge ${starClass}">${stars(starCount)}</div>
           </div>
-          <div class="card-stars-badge ${starClass}">${stars(starCount)}</div>
+          ${painPointHtml(log)}
         </div>
-        ${painPointHtml(log)}
-        <div class="card-routine">
+
+        ${hasRoutine ? `
+        <div class="card-routine ${expandState === "routine" ? "visible" : ""}">
           <strong>今日套路：</strong>
           <div>${formatRoutine(log.routine)}</div>
         </div>
+        ` : ""}
+
+        ${hasOriginalQuestion ? `
+        <div class="card-question-area">
+          <button class="card-question-toggle" data-card-action="toggle-question" type="button">
+            <span class="material-symbols-outlined">quiz</span>
+            ${expandState === "question" ? "收起原题" : "看原题"}
+          </button>
+          <div class="card-question ${expandState === "question" ? "visible" : ""}">
+            <p>${escapeHtml(originalQuestionText(log))}</p>
+          </div>
+        </div>
+        ` : ""}
       </article>
     `;
   }
@@ -374,6 +398,10 @@
       return `<div class="card-painpoint card-painpoint--perfect">✓ 这次全部掌握，没有明显卡点</div>`;
     }
     return `<div class="card-painpoint card-painpoint--empty">这次还没有填写卡点。</div>`;
+  }
+
+  function originalQuestionText(log) {
+    return String(log.originalQuestion || "").trim();
   }
 
   function formatRoutine(value) {
@@ -405,7 +433,7 @@
         showExportSheet();
         return;
       }
-      const subjectButton = event.target.closest("[data-card-subject]");
+      const subjectButton = event.target.closest("button[data-card-subject]");
       if (subjectButton) {
         STATE.activeSubject = subjectButton.dataset.cardSubject || "math";
         STATE.expandedNode = "";
@@ -422,11 +450,37 @@
       const card = event.target.closest("[data-card-id]");
       if (card) {
         const id = card.dataset.cardId;
-        if (STATE.expandedCards.has(id)) STATE.expandedCards.delete(id);
-        else STATE.expandedCards.add(id);
-        render(container);
+        const action = event.target.closest("[data-card-action]")?.dataset.cardAction;
+        if (action === "toggle-routine" || (!action && event.target.closest(".card-front"))) {
+          if (event.target.closest(".card-question-area")) return;
+          const current = STATE.expandedCards.get(id);
+          if (current === "routine") STATE.expandedCards.delete(id);
+          else STATE.expandedCards.set(id, "routine");
+          rerenderCard(card);
+          return;
+        }
+        if (action === "toggle-question") {
+          event.stopPropagation();
+          const current = STATE.expandedCards.get(id);
+          if (current === "question") STATE.expandedCards.delete(id);
+          else STATE.expandedCards.set(id, "question");
+          rerenderCard(card);
+          return;
+        }
       }
     });
+  }
+
+  function rerenderCard(cardEl) {
+    if (!cardEl) return;
+    const subjectKey = cardEl.dataset.cardSubject || STATE.activeSubject || "math";
+    const nodeLabel = cardEl.dataset.cardNodeLabel || "";
+    const index = Number(cardEl.dataset.logIndex || 0);
+    const logs = window.MochiApp?.readStudyLogs?.() || [];
+    const entries = logsForNode(logs, subjectKey, nodeLabel);
+    const log = entries[index];
+    if (!log) return;
+    cardEl.outerHTML = renderStudyCard(log, subjectKey, index, nodeLabel);
   }
 
   function refresh() {
@@ -441,7 +495,7 @@
     return logs.map((log) => {
       const nodeLabel = normalizeNodeLabel(log.subject, log.nodeLabel, log.nodeId);
       const node = allNodes().find((item) => item.subject === log.subject && item.label === nodeLabel);
-      return { ...log, nodeId: node?.id || log.nodeId, nodeLabel };
+      return { ...log, nodeId: node?.id || log.nodeId, nodeLabel, originalQuestion: originalQuestionText(log) };
     });
   }
 
@@ -536,6 +590,9 @@
           if (painPoint) lines.push(`  卡点：${painPoint}`);
           else if (Number(log.stars) === 3) lines.push("  卡点：无（这次全部掌握）");
 
+          const originalQuestion = originalQuestionText(log);
+          lines.push(`  原题：${originalQuestion || "暂无原题描述"}`);
+
           const routine = String(log.routine || "").trim();
           if (routine) {
             const routineLines = routine.split("\n").map((line) => line.trim()).filter(Boolean);
@@ -579,6 +636,7 @@
           status: summary.status,
           stars: entries.map((log) => Number(log.stars || 1)),
           painPoints: summary.painPoints,
+          originalQuestions: entries.map((log) => originalQuestionText(log)).filter(Boolean),
           routines: entries.map((log) => log.routine).filter(Boolean),
           lastStudied: summary.lastStudied,
         };

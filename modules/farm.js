@@ -177,6 +177,7 @@
     state.plots[subject].harvestCount += 1;
     state.plots[subject].recordCount = 0;
     const saved = saveState(state);
+    window.MochiApp?.checkAndGrantAchievements?.();
     const nextLevel = getFarmLevel(saved.totalHarvests);
     const levelText = nextLevel.level > beforeLevel.level ? ` 农场升级！Lv.${nextLevel.level} ${nextLevel.name}，地块焕然一新 ✨` : "";
     return {
@@ -258,7 +259,25 @@
     const harvestPct = calcHarvestPercent(state.totalHarvests, nextLv);
     const holiday = window.MochiApp?.isHolidayToday?.() ?? true;
 
+    const currentSeason = window.MochiApp?.loadCurrentSeason?.();
+    const seasonBanner = (currentSeason?.status === "active") ? (() => {
+      const today = new Date();
+      const end = new Date(`${currentSeason.endDate}T12:00:00`);
+      const daysLeft = Math.max(0, Math.ceil((end - today) / (1000 * 60 * 60 * 24)));
+      const isEndingSoon = daysLeft <= 3 && daysLeft > 0;
+      return `
+        <div class="season-banner${isEndingSoon ? " ending-soon" : ""}">
+          <span class="season-banner-icon">${isEndingSoon ? "⚠️" : "🏆"}</span>
+          <span class="season-banner-name">${escapeAttr(currentSeason.name)}</span>
+          <span class="season-banner-sep">·</span>
+          <span class="season-banner-dates">${currentSeason.startDate} — ${currentSeason.endDate}</span>
+          <span class="season-banner-countdown">${isEndingSoon ? `还剩 ${daysLeft} 天，即将结束` : `${daysLeft} 天后结束`}</span>
+        </div>
+      `;
+    })() : "";
+
     container.innerHTML = `
+      ${seasonBanner}
       <div class="farm-layout-v2">
         <div class="farm-focus-area">
           ${window.MochiPet?.renderTimer?.(holiday) || ""}
@@ -343,6 +362,7 @@
     readState,
     saveState,
     getFarmLevel,
+    getCurrentLevel: () => getFarmLevel(readState().totalHarvests),
     getCropDef,
     addResources,
     addSubjectRecord,

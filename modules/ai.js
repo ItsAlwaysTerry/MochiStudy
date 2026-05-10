@@ -26,6 +26,9 @@
 ## 今日总结
 ${log.content || log.routine || "今天完成了一段稳定的学习记录。"}
 
+## 原题
+${log.originalQuestion || "暂无原题描述。"}
+
 ## 解题套路
 - 第一步：先识别题目给出的核心条件。
 - 第二步：把条件对应到 ${log.nodeLabel} 的常用模型或公式。
@@ -85,8 +88,8 @@ ${log.content || log.routine || "今天完成了一段稳定的学习记录。"}
     return data.choices?.[0]?.message?.content || null;
   }
 
-  async function generateObsidianNote(log) {
-    const systemPrompt = "你是一个学习笔记助手。根据学习记录生成适合存入 Obsidian 的 Markdown 笔记。包含标题、#高考 标签、今日总结、解题套路、卡点记录和相关知识点链接。语气鼓励。";
+  async function generateStudyNote(log) {
+    const systemPrompt = "你是一个学习笔记助手。根据学习记录生成 Markdown 学习小结。包含标题、#高考 标签、今日总结、原题、解题套路、卡点记录和相关知识点链接。语气鼓励。";
     const userMessage = JSON.stringify(log, null, 2);
     try {
       const aiText = await callAI(systemPrompt, userMessage);
@@ -101,7 +104,7 @@ ${log.content || log.routine || "今天完成了一段稳定的学习记录。"}
     readConfig,
     saveConfig,
     callAI,
-    generateObsidianNote,
+    generateStudyNote,
     buildFallbackNote,
   };
 })();
