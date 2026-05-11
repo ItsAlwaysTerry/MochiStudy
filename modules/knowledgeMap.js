@@ -3,9 +3,11 @@
     activeSubject: "math",
     expandedNode: "",
     expandedCards: new Map(),
+    draggingCardId: "",
     container: null,
   };
   const DEFAULT_CARDS_CONFIG = { masteredMinRecent: 2, dormantDays: 30 };
+  const CARD_ORDER_KEY = "card_order";
 
   const NODE_DEFS = {
     math: {
@@ -212,6 +214,17 @@
       .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
   }
 
+  function displayLogsForNode(logs, subject, nodeLabel) {
+    const entries = logsForNode(logs, subject, nodeLabel);
+    const saved = readCardOrder()[cardOrderKey(subject, nodeLabel)] || [];
+    if (!saved.length) return entries;
+    const savedIds = new Set(saved);
+    const byId = new Map(entries.map((log) => [cardId(log), log]));
+    const ordered = saved.map((id) => byId.get(id)).filter(Boolean);
+    const rest = entries.filter((log) => !savedIds.has(cardId(log)));
+    return [...ordered, ...rest];
+  }
+
   function calcNodeStatus(logs, subject, nodeLabel) {
     const nodeLogs = logsForNode(logs, subject, nodeLabel);
     if (nodeLogs.length === 0) return "untouched";
@@ -228,8 +241,9 @@
   }
 
   function nodeSummary(logs, subject, node) {
-    const entries = logsForNode(logs, subject, node.label);
-    const latest = entries[0];
+    const dateEntries = logsForNode(logs, subject, node.label);
+    const entries = displayLogsForNode(logs, subject, node.label);
+    const latest = dateEntries[0];
     return {
       node,
       entries,
@@ -330,7 +344,7 @@
   }
 
   function renderStudyCard(log, subjectKey, index, nodeLabel = log.nodeLabel || "") {
-    const id = cardId(log, index);
+    const id = cardId(log);
     const expandState = STATE.expandedCards.get(id) || null;
     const subject = SUBJECTS[subjectKey];
     const starCount = Math.max(1, Math.min(3, Number(log.stars || 1)));
@@ -350,7 +364,18 @@
               <span>${escapeHtml(String(log.date || ""))}</span>
               <span>${Number(log.questionsCompleted || 1)}道题</span>
             </div>
-            <div class="card-stars-badge ${starClass}">${stars(starCount)}</div>
+            <div class="card-head-actions">
+              <div class="card-stars-badge ${starClass}">${stars(starCount)}</div>
+              <button class="card-action-btn card-drag-handle" data-card-action="drag-handle" draggable="true" type="button" title="拖拽排序" aria-label="拖拽排序">
+                <span class="material-symbols-outlined">drag_indicator</span>
+              </button>
+              <button class="card-action-btn" data-card-action="edit-card" type="button" title="编辑卡片" aria-label="编辑卡片">
+                <span class="material-symbols-outlined">edit</span>
+              </button>
+              <button class="card-action-btn danger" data-card-action="delete-card" type="button" title="删除卡片" aria-label="删除卡片">
+                <span class="material-symbols-outlined">delete</span>
+              </button>
+            </div>
           </div>
           ${painPointHtml(log)}
         </div>
@@ -420,8 +445,56 @@
     return escapeHtml(text).replace(/\n/g, "<br>");
   }
 
-  function cardId(log, index) {
-    return log.id || `${log.date || "no-date"}_${log.subject || ""}_${log.nodeLabel || ""}_${index}`;
+  function cardId(log) {
+    if (log.id) return String(log.id);
+    return `legacy_${hashText(JSON.stringify([
+      log.date || "",
+      log.subject || "",
+      log.nodeLabel || "",
+      log.stars || "",
+      log.painPoint || "",
+      originalQuestionText(log),
+      log.routine || "",
+    ]))}`;
+  }
+
+  function hashText(text) {
+    let hash = 0;
+    for (let i = 0; i < text.length; i += 1) {
+      hash = ((hash << 5) - hash) + text.charCodeAt(i);
+      hash |= 0;
+    }
+    return Math.abs(hash).toString(36);
+  }
+
+  function cardOrderKey(subject, nodeLabel) {
+    return `${subject}::${nodeLabel}`;
+  }
+
+  function readCardOrder() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(CARD_ORDER_KEY) || "{}");
+      return saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function saveCardOrder(order) {
+    localStorage.setItem(CARD_ORDER_KEY, JSON.stringify(order || {}));
+  }
+
+  function removeFromAllOrders(cardIdValue) {
+    const order = readCardOrder();
+    let changed = false;
+    Object.keys(order).forEach((key) => {
+      const next = (order[key] || []).filter((id) => id !== cardIdValue);
+      if (next.length !== (order[key] || []).length) {
+        order[key] = next;
+        changed = true;
+      }
+    });
+    if (changed) saveCardOrder(order);
   }
 
   function bindContainer(container) {
@@ -451,8 +524,22 @@
       if (card) {
         const id = card.dataset.cardId;
         const action = event.target.closest("[data-card-action]")?.dataset.cardAction;
+        if (action === "edit-card") {
+          event.stopPropagation();
+          showEditCard(card);
+          return;
+        }
+        if (action === "delete-card") {
+          event.stopPropagation();
+          deleteCard(card);
+          return;
+        }
+        if (action === "drag-handle") {
+          event.stopPropagation();
+          return;
+        }
         if (action === "toggle-routine" || (!action && event.target.closest(".card-front"))) {
-          if (event.target.closest(".card-question-area")) return;
+          if (event.target.closest(".card-question-area") || event.target.closest(".card-head-actions")) return;
           const current = STATE.expandedCards.get(id);
           if (current === "routine") STATE.expandedCards.delete(id);
           else STATE.expandedCards.set(id, "routine");
@@ -469,6 +556,75 @@
         }
       }
     });
+    container.addEventListener("dragstart", (event) => {
+      const handle = event.target.closest("[data-card-action='drag-handle']");
+      const card = handle?.closest("[data-card-id]");
+      if (!card) return;
+      STATE.draggingCardId = card.dataset.cardId || "";
+      card.classList.add("dragging");
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", STATE.draggingCardId);
+    });
+    container.addEventListener("dragover", (event) => {
+      const card = event.target.closest("[data-card-id]");
+      if (!card || !STATE.draggingCardId || card.dataset.cardId === STATE.draggingCardId) return;
+      event.preventDefault();
+      markDragTarget(card, event);
+      event.dataTransfer.dropEffect = "move";
+    });
+    container.addEventListener("dragleave", (event) => {
+      const card = event.target.closest("[data-card-id]");
+      if (card && !card.contains(event.relatedTarget)) clearDragMarks(card);
+    });
+    container.addEventListener("drop", (event) => {
+      const target = event.target.closest("[data-card-id]");
+      if (!target || !STATE.draggingCardId || target.dataset.cardId === STATE.draggingCardId) return;
+      event.preventDefault();
+      reorderCards(STATE.draggingCardId, target, event);
+    });
+    container.addEventListener("dragend", () => {
+      STATE.draggingCardId = "";
+      clearAllDragMarks();
+    });
+  }
+
+  function markDragTarget(card, event) {
+    const rect = card.getBoundingClientRect();
+    const before = event.clientY < rect.top + rect.height / 2;
+    clearAllDragMarks();
+    card.classList.add(before ? "drop-before" : "drop-after");
+  }
+
+  function clearDragMarks(card) {
+    card.classList.remove("dragging", "drop-before", "drop-after");
+  }
+
+  function clearAllDragMarks() {
+    STATE.container?.querySelectorAll(".study-card").forEach(clearDragMarks);
+  }
+
+  function reorderCards(sourceId, targetCard, event) {
+    const subjectKey = targetCard.dataset.cardSubject || STATE.activeSubject || "math";
+    const nodeLabel = targetCard.dataset.cardNodeLabel || "";
+    const logs = window.MochiApp?.readStudyLogs?.() || [];
+    const entries = displayLogsForNode(logs, subjectKey, nodeLabel);
+    const ids = entries.map((log) => cardId(log));
+    const sourceIndex = ids.indexOf(sourceId);
+    const targetIndex = ids.indexOf(targetCard.dataset.cardId || "");
+    if (sourceIndex < 0 || targetIndex < 0) return;
+
+    const [moved] = ids.splice(sourceIndex, 1);
+    const rect = targetCard.getBoundingClientRect();
+    const insertAfter = event.clientY >= rect.top + rect.height / 2;
+    let nextIndex = ids.indexOf(targetCard.dataset.cardId || "");
+    if (insertAfter) nextIndex += 1;
+    ids.splice(nextIndex, 0, moved);
+
+    const order = readCardOrder();
+    order[cardOrderKey(subjectKey, nodeLabel)] = ids;
+    saveCardOrder(order);
+    clearAllDragMarks();
+    render(STATE.container);
   }
 
   function rerenderCard(cardEl) {
@@ -477,10 +633,150 @@
     const nodeLabel = cardEl.dataset.cardNodeLabel || "";
     const index = Number(cardEl.dataset.logIndex || 0);
     const logs = window.MochiApp?.readStudyLogs?.() || [];
-    const entries = logsForNode(logs, subjectKey, nodeLabel);
+    const entries = displayLogsForNode(logs, subjectKey, nodeLabel);
     const log = entries[index];
     if (!log) return;
     cardEl.outerHTML = renderStudyCard(log, subjectKey, index, nodeLabel);
+  }
+
+  function findLogByCardEl(cardEl, logs = window.MochiApp?.readStudyLogs?.() || []) {
+    const subjectKey = cardEl.dataset.cardSubject || STATE.activeSubject || "math";
+    const nodeLabel = cardEl.dataset.cardNodeLabel || "";
+    const targetId = cardEl.dataset.cardId || "";
+    const entries = displayLogsForNode(logs, subjectKey, nodeLabel);
+    const log = entries.find((item) => cardId(item) === targetId);
+    const index = log ? logs.indexOf(log) : -1;
+    return { log, index, subjectKey, nodeLabel, targetId };
+  }
+
+  function deleteCard(cardEl) {
+    const logs = window.MochiApp?.readStudyLogs?.() || [];
+    const found = findLogByCardEl(cardEl, logs);
+    if (!found.log || found.index < 0) return;
+    if (!confirm("确定删除这张学习卡片吗？学习记录会一起删除，已获得的奖励不会倒扣。")) return;
+    logs.splice(found.index, 1);
+    window.MochiApp?.writeStudyLogs?.(logs);
+    removeFromAllOrders(found.targetId);
+    STATE.expandedCards.delete(found.targetId);
+    window.MochiApp?.toast?.("学习卡片已删除");
+    refresh();
+  }
+
+  function showEditCard(cardEl) {
+    const logs = window.MochiApp?.readStudyLogs?.() || [];
+    const found = findLogByCardEl(cardEl, logs);
+    if (!found.log) return;
+    const log = found.log;
+    window.MochiApp?.modal?.(`
+      <div class="modal-head">
+        <div>
+          <h2>编辑学习卡片</h2>
+          <p class="muted">修改导入时保存的字段，题数仍固定为 1。</p>
+        </div>
+        <button class="icon-btn" data-action="close-modal" type="button" aria-label="关闭"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <form id="card-edit-form" class="form-grid" data-card-id="${escapeHtml(found.targetId)}" data-card-subject="${escapeHtml(found.subjectKey)}" data-card-node-label="${escapeHtml(found.nodeLabel)}">
+        <div class="card-edit-grid">
+          <div class="field">
+            <label>科目</label>
+            <select name="subject">${subjectOptions(log.subject)}</select>
+          </div>
+          <div class="field">
+            <label>知识点</label>
+            <select name="nodeLabel">${nodeOptions(log.subject, normalizeNodeLabel(log.subject, log.nodeLabel, log.nodeId))}</select>
+          </div>
+          <div class="field">
+            <label>学习日期</label>
+            <input name="date" type="date" required value="${escapeHtml(String(log.date || ""))}" />
+          </div>
+          <div class="field">
+            <label>掌握星级</label>
+            <select name="stars">${[1, 2, 3].map((value) => `<option value="${value}" ${Number(log.stars || 1) === value ? "selected" : ""}>${stars(value)}</option>`).join("")}</select>
+          </div>
+        </div>
+        <div class="field">
+          <label>卡点记录</label>
+          <textarea name="painPoint">${escapeHtml(log.painPoint || "")}</textarea>
+        </div>
+        <div class="field">
+          <label>原题</label>
+          <textarea name="originalQuestion">${escapeHtml(originalQuestionText(log))}</textarea>
+        </div>
+        <div class="field">
+          <label>今日套路</label>
+          <textarea name="routine">${escapeHtml(log.routine || "")}</textarea>
+        </div>
+        <div class="card-edit-actions">
+          <button class="btn btn-primary" type="submit"><span class="material-symbols-outlined">save</span>保存修改</button>
+          <button class="btn btn-outline" data-action="close-modal" type="button">取消</button>
+        </div>
+      </form>
+    `);
+    bindEditForm();
+  }
+
+  function subjectOptions(activeSubject) {
+    return Object.entries(SUBJECTS).map(([key, item]) => (
+      `<option value="${key}" ${key === activeSubject ? "selected" : ""}>${escapeHtml(item.label)}</option>`
+    )).join("");
+  }
+
+  function nodeOptions(subject, activeLabel) {
+    return (SUBJECTS[subject]?.nodes || SUBJECTS.math.nodes).map((node) => (
+      `<option value="${escapeHtml(node.label)}" ${node.label === activeLabel ? "selected" : ""}>${escapeHtml(node.label)}</option>`
+    )).join("");
+  }
+
+  function bindEditForm() {
+    const form = document.getElementById("card-edit-form");
+    if (!form) return;
+    const subjectSelect = form.querySelector("[name='subject']");
+    const nodeSelect = form.querySelector("[name='nodeLabel']");
+    subjectSelect?.addEventListener("change", () => {
+      if (nodeSelect) nodeSelect.innerHTML = nodeOptions(subjectSelect.value, "");
+    });
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      saveEditedCard(form);
+    });
+  }
+
+  function saveEditedCard(form) {
+    const logs = window.MochiApp?.readStudyLogs?.() || [];
+    const fakeCard = {
+      dataset: {
+        cardId: form.dataset.cardId || "",
+        cardSubject: form.dataset.cardSubject || STATE.activeSubject || "math",
+        cardNodeLabel: form.dataset.cardNodeLabel || "",
+      },
+    };
+    const found = findLogByCardEl(fakeCard, logs);
+    if (!found.log || found.index < 0) return;
+    const data = new FormData(form);
+    const subject = data.get("subject") || "math";
+    const nodeLabel = data.get("nodeLabel") || SUBJECTS[subject]?.nodes?.[0]?.label || "";
+    const node = (SUBJECTS[subject]?.nodes || []).find((item) => item.label === nodeLabel) || SUBJECTS[subject]?.nodes?.[0];
+    logs[found.index] = {
+      ...found.log,
+      date: data.get("date") || found.log.date || "",
+      subject,
+      nodeId: node?.id || found.log.nodeId,
+      nodeLabel: node?.label || nodeLabel,
+      questionsCompleted: 1,
+      stars: Math.max(1, Math.min(3, Number(data.get("stars") || found.log.stars || 1))),
+      painPoint: String(data.get("painPoint") || "").trim(),
+      originalQuestion: String(data.get("originalQuestion") || "").trim(),
+      routine: String(data.get("routine") || "").trim(),
+    };
+    window.MochiApp?.writeStudyLogs?.(logs);
+    removeFromAllOrders(found.targetId);
+    STATE.activeSubject = subject;
+    STATE.expandedNode = node?.id || STATE.expandedNode;
+    STATE.expandedCards.delete(found.targetId);
+    window.MochiApp?.closeModal?.();
+    window.MochiApp?.checkAndGrantAchievements?.();
+    window.MochiApp?.toast?.("学习卡片已更新");
+    refresh();
   }
 
   function refresh() {

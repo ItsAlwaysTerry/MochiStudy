@@ -2189,6 +2189,36 @@ button {
   box-shadow: 0 6px 18px rgba(134, 77, 97, 0.08);
 }
 
+.study-card.dragging {
+  opacity: 0.58;
+  transform: scale(0.98);
+}
+
+.study-card.drop-before,
+.study-card.drop-after {
+  position: relative;
+}
+
+.study-card.drop-before::before,
+.study-card.drop-after::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--subject-color);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.72);
+}
+
+.study-card.drop-before::before {
+  top: -7px;
+}
+
+.study-card.drop-after::after {
+  bottom: -7px;
+}
+
 .study-card:active {
   transform: scale(0.98);
 }
@@ -2202,6 +2232,49 @@ button {
   justify-content: space-between;
   align-items: flex-start;
   gap: 8px;
+}
+
+.card-head-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.card-action-btn {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.68);
+  box-shadow: none;
+}
+
+.card-action-btn:hover {
+  color: var(--primary);
+  background: var(--surface);
+}
+
+.card-action-btn.danger:hover {
+  color: #9f314f;
+}
+
+.card-action-btn .material-symbols-outlined {
+  font-size: 17px;
+}
+
+.card-drag-handle {
+  cursor: grab;
+  touch-action: none;
+}
+
+.card-drag-handle:active {
+  cursor: grabbing;
 }
 
 .study-card .card-front {
@@ -2331,6 +2404,19 @@ button {
 .routine-empty {
   color: var(--muted);
   font-style: italic;
+}
+
+.card-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.card-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .archive-empty {
@@ -3839,6 +3925,19 @@ body.focus-mode #view {
 
   .study-card-list {
     padding-left: 0;
+  }
+
+  .study-card .card-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .card-head-actions {
+    max-width: 100%;
+  }
+
+  .card-edit-grid {
+    grid-template-columns: 1fr;
   }
 
   .archive-export-root {
