@@ -105,7 +105,27 @@
   const CURRENT_SEASON_KEY = "current_season";
   const SEASON_ARCHIVES_KEY = "season_archives";
   const CARD_ORDER_KEY = "card_order";
+  const CARD_META_KEY = "study_card_meta";
   const BACKUP_VERSION = "1.0";
+  const MOCHI_RECORD_FIELDS = [
+    "科目",
+    "知识点",
+    "完成题数",
+    "掌握星级",
+    "卡点记录",
+    "原题",
+    "今日套路",
+    "学习日期",
+    "学习来源",
+    "复习结果",
+    "错误类型",
+    "卡住步骤",
+    "关键突破",
+    "题型标签",
+    "信心分",
+    "耗时分钟",
+    "关联记录",
+  ];
   const SEASON_TITLES = [
     { level: 1, label: "癞蛤蟆" },
     { level: 2, label: "咸鱼王" },
@@ -241,6 +261,46 @@
 
   function writeStudyLogs(logs) {
     writeJson(STUDY_LOG_KEY, logs);
+  }
+
+  function readStudyCardMeta() {
+    const meta = readJson(CARD_META_KEY, {});
+    return meta && typeof meta === "object" && !Array.isArray(meta) ? meta : {};
+  }
+
+  function writeStudyCardMeta(meta) {
+    writeJson(CARD_META_KEY, meta && typeof meta === "object" && !Array.isArray(meta) ? meta : {});
+  }
+
+  function hasMeaningfulCardMeta(meta) {
+    if (!meta || typeof meta !== "object") return false;
+    return Boolean(
+      (meta.source && meta.source !== "lesson") ||
+      meta.reviewResult ||
+      meta.errorType ||
+      meta.stuckStep ||
+      meta.keyInsight ||
+      (Array.isArray(meta.tags) && meta.tags.length) ||
+      meta.confidence ||
+      meta.timeSpentMinutes ||
+      (Array.isArray(meta.sourceRecordIds) && meta.sourceRecordIds.length)
+    );
+  }
+
+  function setStudyCardMeta(logId, meta) {
+    if (!logId) return;
+    const allMeta = readStudyCardMeta();
+    const next = normalizeCardMeta(meta || {});
+    if (hasMeaningfulCardMeta(next)) allMeta[logId] = next;
+    else delete allMeta[logId];
+    writeStudyCardMeta(allMeta);
+  }
+
+  function removeStudyCardMeta(logId) {
+    if (!logId) return;
+    const allMeta = readStudyCardMeta();
+    delete allMeta[logId];
+    writeStudyCardMeta(allMeta);
   }
 
   function taskSettings() {
@@ -2889,13 +2949,8 @@
     const match = text.match(/---MOCHI-RECORD-START---([\s\S]*?)---MOCHI-RECORD-END---/);
     if (!match) return null;
     const block = match[1].trim();
-    function extract(key) {
-      const line = block.split(/\r?\n/).find((item) => {
-        const trimmed = item.trim();
-        return trimmed.startsWith(`${key}:`) || trimmed.startsWith(`${key}：`);
-      });
-      return line ? line.replace(new RegExp(`^\\s*${key}[:：]`), "").trim() : "";
-    }
+    const fields = parseRecordFields(block);
+    const extract = (key) => fields[key] || "";
     const nodeLabel = extract("知识点");
     const subject = subjectKeyFromLabel(extract("科目"));
     const originalQuestion = extract("原题") || "";
@@ -2909,6 +2964,68 @@
       originalQuestion,
       routine: extract("今日套路"),
       date: normalizeRecordDate(extract("学习日期")),
+      meta: normalizeCardMeta({
+        source: extract("学习来源"),
+        reviewResult: extract("复习结果"),
+        errorType: extract("错误类型"),
+        stuckStep: extract("卡住步骤"),
+        keyInsight: extract("关键突破"),
+        tags: parseTags(extract("题型标签")),
+        confidence: extract("信心分"),
+        timeSpentMinutes: extract("耗时分钟"),
+        sourceRecordIds: parseTags(extract("关联记录")),
+      }),
+    };
+  }
+
+  function parseRecordFields(block) {
+    const fields = {};
+    let activeKey = "";
+    block.split(/\r?\n/).forEach((line) => {
+      const trimmed = line.trim();
+      const matchedKey = MOCHI_RECORD_FIELDS.find((key) => trimmed.startsWith(`${key}:`) || trimmed.startsWith(`${key}：`));
+      if (matchedKey) {
+        activeKey = matchedKey;
+        fields[activeKey] = trimmed.replace(new RegExp(`^${matchedKey}[:：]`), "").trim();
+        return;
+      }
+      if (activeKey && trimmed) {
+        fields[activeKey] = `${fields[activeKey] ? `${fields[activeKey]}\n` : ""}${trimmed}`;
+      }
+    });
+    return fields;
+  }
+
+  function parseTags(value) {
+    return String(value || "")
+      .split(/[,，、\n]/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  function normalizeSource(value) {
+    const text = String(value || "").trim().toLowerCase();
+    if (!text) return "lesson";
+    if (["lesson", "new", "新题", "新题讲解"].some((item) => text.includes(item))) return "lesson";
+    if (["复习", "复习测验", "复习卡", "review"].some((item) => text.includes(item))) return "review";
+    if (["测验", "小测", "quiz", "test"].some((item) => text.includes(item))) return "quiz";
+    if (["复盘", "阶段复盘", "summary", "archive", "reflection"].some((item) => text.includes(item))) return "reflection";
+    return "lesson";
+  }
+
+  function normalizeCardMeta(meta) {
+    const confidence = Number(meta?.confidence || 0);
+    const timeSpentMinutes = Number(meta?.timeSpentMinutes || 0);
+    return {
+      source: normalizeSource(meta?.source),
+      reviewResult: String(meta?.reviewResult || "").trim(),
+      errorType: String(meta?.errorType || "").trim(),
+      stuckStep: String(meta?.stuckStep || "").trim(),
+      keyInsight: String(meta?.keyInsight || "").trim(),
+      tags: Array.isArray(meta?.tags) ? meta.tags.map((tag) => String(tag).trim()).filter(Boolean) : parseTags(meta?.tags),
+      confidence: confidence > 0 ? Math.max(1, Math.min(5, confidence)) : 0,
+      timeSpentMinutes: timeSpentMinutes > 0 ? Math.round(timeSpentMinutes) : 0,
+      sourceRecordIds: Array.isArray(meta?.sourceRecordIds) ? meta.sourceRecordIds.map((id) => String(id).trim()).filter(Boolean) : parseTags(meta?.sourceRecordIds),
     };
   }
 
@@ -2970,6 +3087,7 @@ ${record.originalQuestion || "暂无原题描述。"}
     };
     logs.unshift(logEntry);
     writeStudyLogs(logs);
+    setStudyCardMeta(logEntry.id, record.meta);
     const pet = window.MochiPet.addReward({
       xp: GAME_CONFIG.rewards.petXPPerQuestion,
       studyEnergy: 0,
@@ -3259,6 +3377,7 @@ ${record.originalQuestion || "暂无原题描述。"}
         current_season: readStorageJson(CURRENT_SEASON_KEY, null),
         season_archives: readStorageJson(SEASON_ARCHIVES_KEY, []),
         card_order: readStorageJson(CARD_ORDER_KEY, {}),
+        study_card_meta: readStorageJson(CARD_META_KEY, {}),
         game_config: readStorageJson("game_config", {}),
         localStorage: raw,
       },
@@ -3317,6 +3436,9 @@ ${record.originalQuestion || "暂无原题描述。"}
     if (data.card_order && typeof data.card_order === "object" && !Array.isArray(data.card_order)) {
       localStorage.setItem(CARD_ORDER_KEY, JSON.stringify(data.card_order));
     }
+    if (data.study_card_meta && typeof data.study_card_meta === "object" && !Array.isArray(data.study_card_meta)) {
+      localStorage.setItem(CARD_META_KEY, JSON.stringify(data.study_card_meta));
+    }
     if (data.game_config && typeof data.game_config === "object") {
       localStorage.setItem("game_config", JSON.stringify(data.game_config));
     }
@@ -3373,7 +3495,7 @@ ${record.originalQuestion || "暂无原题描述。"}
   }
 
   function progressDataKeys() {
-    const fixed = [STUDY_LOG_KEY, "focus_log", "farm_state", "mochi_state", "achievement_state", CURRENT_SEASON_KEY, CARD_ORDER_KEY, "mochi_study_points", "mochi_hearts", "daily_task_settings"];
+    const fixed = [STUDY_LOG_KEY, "focus_log", "farm_state", "mochi_state", "achievement_state", CURRENT_SEASON_KEY, CARD_ORDER_KEY, CARD_META_KEY, "mochi_study_points", "mochi_hearts", "daily_task_settings"];
     const dynamic = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
       .filter((key) => key && key.startsWith("daily_tasks_"));
     return [...new Set([...fixed, ...dynamic])];
@@ -3394,7 +3516,7 @@ ${record.originalQuestion || "暂无原题描述。"}
   }
 
   function allDataKeys() {
-    const fixed = ["mochi_state", "farm_state", STUDY_LOG_KEY, "focus_log", "achievement_state", "achievement_config", "lottery_config", "lottery_history", CURRENT_SEASON_KEY, SEASON_ARCHIVES_KEY, CARD_ORDER_KEY, "admin_password", "api_config", HOLIDAYS_KEY, HOLIDAY_MODE_KEY, "mochi_debug_panel_open", "mochi_debug_float_collapsed", "mochi_debug_tab", "game_config", "sound_reminder_enabled", "focus_end_sound", "rest_reminder_sound"];
+    const fixed = ["mochi_state", "farm_state", STUDY_LOG_KEY, "focus_log", "achievement_state", "achievement_config", "lottery_config", "lottery_history", CURRENT_SEASON_KEY, SEASON_ARCHIVES_KEY, CARD_ORDER_KEY, CARD_META_KEY, "admin_password", "api_config", HOLIDAYS_KEY, HOLIDAY_MODE_KEY, "mochi_debug_panel_open", "mochi_debug_float_collapsed", "mochi_debug_tab", "game_config", "sound_reminder_enabled", "focus_end_sound", "rest_reminder_sound"];
     const dynamic = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
       .filter((key) => key && isRetiredStorageKey(key));
     return [...new Set([...fixed, ...dynamic])];
@@ -3969,6 +4091,11 @@ ${record.originalQuestion || "暂无原题描述。"}
     parseMochiRecord,
     readJson,
     writeJson,
+    readStudyCardMeta,
+    writeStudyCardMeta,
+    setStudyCardMeta,
+    removeStudyCardMeta,
+    normalizeCardMeta,
     getHolidays,
     isHolidayToday,
     nextHoliday,

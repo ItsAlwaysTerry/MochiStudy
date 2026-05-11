@@ -6,6 +6,17 @@
 
 核心用户画像：基础差、缺乏自信、习惯做题但不会主动复习、喜欢收集和陈列东西。
 
+核心设计原则：降低记录阻力，把学习痕迹沉淀成 AI 可继续使用的材料。网站负责收集、整理、提醒和导出；外部 skill 负责讲题和复习；复习结果再以 MOCHI-RECORD 回写网站形成闭环。
+
+完整工作流：
+
+```text
+高考 AI 私教讲新题 → 输出 MOCHI-RECORD → MochiStudy 导入成新题讲解卡
+MochiStudy 导出某科/全部 AI复习包 → 高考复习 AI 私教做复习测验 → 输出增强版 MOCHI-RECORD → MochiStudy 导入成复习卡
+```
+
+后续做“复习”页面时，要围绕“不主动复习的学生”设计：自动列出最该复习的知识点，显示低星/久未碰/复习结果，不要做复杂题库或管理后台；每个知识点应能导出定向 AI复习包。
+
 ## 技术栈
 
 - 纯原生 HTML + CSS + JS，无任何框架
@@ -50,6 +61,7 @@ lottery_history               — 最近 50 条抽奖结果历史
 current_season                — 当前赛季，包含 id/name/startDate/endDate/status
 season_archives               — 历史赛季数组，每条包含赛季信息和结束时 snapshot
 card_order                    — 学习档案卡片自定义排序，按 subject::nodeLabel 保存卡片 id 顺序；不改 study_log 字段
+study_card_meta               — 学习卡片复习元信息，按 logId 保存来源、复习结果、错误类型、卡住步骤、标签、信心和耗时；不改 study_log 字段
 admin_password                — 管理后台密码，默认未设置时使用 mochi2025
 sound_reminder_enabled        — 休息结束提醒音开关（用户主动开启）
 focus_end_sound               — 专注结束提示音选择：off / soft / bell / ding
@@ -98,6 +110,7 @@ mochi_debug_tab               — 调试浮窗当前 Tab
       holiday_mode_override: {...}
     },
     card_order: {...},
+    study_card_meta: {...},
     localStorage: {
       // 所有当前 localStorage key 的原始字符串快照，用于完整恢复
     }
@@ -129,10 +142,14 @@ mochi_debug_tab               — 调试浮窗当前 Tab
 - 三层结构：科目Tab → 知识点分组 → 卡片列表
 - 每个知识点有四种状态：untouched / learning / mastered / dormant
 - 卡片正面显示：日期、题数、星级（★☆符号）、卡点文字（字号最大）
+- 复习记录仍归入原科目和知识点下，通过 `study_card_meta.source` 显示为新题讲解 / 复习测验 / 小测验 / 阶段复盘
+- `study_card_meta` 可选保存复习结果、错误类型、卡住步骤、关键突破、题型标签、信心分和耗时；核心 `study_log` 字段不扩展
 - 学习卡片有三种互斥状态：正面 / 今日套路 / 原题；`originalQuestion` 字段在“看原题”第三面显示
 - 卡片展开状态用 `Map` 存储，值为 `"routine"` / `"question"` / `null`
-- 顶部有“导出档案”按钮，支持摘要、详细记录、JSON 三种格式
+- 学习档案可按来源标签筛选：全部 / 新题讲解 / 复习测验 / 小测验 / 阶段复盘
+- 顶部有“导出档案”按钮，支持摘要、详细记录、AI复习包、JSON 四种格式，并可选择全部科目或单科导出
 - 详细记录由 `knowledgeMap.js` 的 `generateExportDetail()` 生成，按科目 → 知识点 → 时间正序逐张卡片输出日期、星级、题数、卡点、原题、套路
+- 卡片文本支持轻量 `$...$` 行内公式显示，优先处理下标/上标，不引入外部公式库
 
 ## 有效学习日规则
 
@@ -257,9 +274,11 @@ v34 之后的改动：
 - renderCurrentSeason 改为从 study_log 实时计算，不依赖 snapshot
 - loadCurrentSeason 和 readFocusLogs 已暴露到 window.MochiApp
 - 管理后台新增"数据调整"section：可直接修改各科 recordCount、totalHarvests、farm xp、achievement_state 四项勋章/抽奖字段，并可补录手动专注记录
-- 备份导出补全缺漏 key：createBackupPayload 新增 achievement_state / achievement_config / lottery_config / lottery_history / current_season / season_archives / game_config / card_order；restoreKnownBackupData 同步写回这些 key
+- 备份导出补全缺漏 key：createBackupPayload 新增 achievement_state / achievement_config / lottery_config / lottery_history / current_season / season_archives / game_config / card_order / study_card_meta；restoreKnownBackupData 同步写回这些 key
 - 赛季自动续期：赛季结束后下次打开网站自动存档并开启下一个同等时长的赛季
 - 首页赛季横幅结束前3天变橙色提醒
 - 赛季报告新增亮点标签：最努力的一天、最长专注、进步最快知识点、开拓知识点数、均衡周数、最长连续学习
 - 赛季页面补上热力图和每周趋势图的实际渲染（renderSeasonWeeklyChart）
 - 学习档案卡片新增编辑、删除和同一知识点内拖拽排序；排序写入 `card_order`，不新增 `study_log` 字段
+- 学习档案导入新增复习扩展字段：学习来源、复习结果、错误类型、卡住步骤、关键突破、题型标签、信心分、耗时分钟；写入 `study_card_meta`
+- 学习档案导出新增“AI复习包”，给 `skill/gaokao复习私教.md` 使用；复习记录仍回写为 MOCHI-RECORD 并归入原知识点

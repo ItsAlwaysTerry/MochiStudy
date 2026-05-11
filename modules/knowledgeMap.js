@@ -1,6 +1,8 @@
 (function () {
   const STATE = {
     activeSubject: "math",
+    sourceFilter: "all",
+    exportSubject: "all",
     expandedNode: "",
     expandedCards: new Map(),
     draggingCardId: "",
@@ -8,6 +10,13 @@
   };
   const DEFAULT_CARDS_CONFIG = { masteredMinRecent: 2, dormantDays: 30 };
   const CARD_ORDER_KEY = "card_order";
+  const SOURCE_FILTERS = [
+    ["all", "全部"],
+    ["lesson", "新题讲解"],
+    ["review", "复习测验"],
+    ["quiz", "小测验"],
+    ["reflection", "阶段复盘"],
+  ];
 
   const NODE_DEFS = {
     math: {
@@ -240,18 +249,31 @@
     return "learning";
   }
 
-  function nodeSummary(logs, subject, node) {
+  function nodeSummary(logs, subject, node, sourceFilter = STATE.sourceFilter) {
     const dateEntries = logsForNode(logs, subject, node.label);
-    const entries = displayLogsForNode(logs, subject, node.label);
-    const latest = dateEntries[0];
+    const allEntries = displayLogsForNode(logs, subject, node.label);
+    const entries = filterEntriesBySource(allEntries, sourceFilter);
+    const visibleDateEntries = filterEntriesBySource(dateEntries, sourceFilter);
+    const latest = visibleDateEntries[0] || dateEntries[0];
+    const reviewCount = allEntries.filter((log) => {
+      const source = metaForLog(log).source || "lesson";
+      return source !== "lesson";
+    }).length;
     return {
       node,
       entries,
       count: entries.length,
+      totalCount: allEntries.length,
+      reviewCount,
       latestDate: latest?.date || "",
       latestStars: Number(latest?.stars || 0),
       status: calcNodeStatus(logs, subject, node.label),
     };
+  }
+
+  function filterEntriesBySource(entries, sourceFilter = STATE.sourceFilter) {
+    if (!sourceFilter || sourceFilter === "all") return entries;
+    return entries.filter((log) => (metaForLog(log).source || "lesson") === sourceFilter);
   }
 
   function readState() {
@@ -278,15 +300,17 @@
     const logs = window.MochiApp?.readStudyLogs?.() || [];
     const subject = SUBJECTS[STATE.activeSubject] || SUBJECTS.math;
     const subjectKey = STATE.activeSubject;
-    const summaries = subject.nodes
-      .map((node) => nodeSummary(logs, subjectKey, node))
+    let summaries = subject.nodes
+      .map((node) => nodeSummary(logs, subjectKey, node, STATE.sourceFilter))
       .sort((a, b) => {
         if (a.count && !b.count) return -1;
         if (!a.count && b.count) return 1;
         if (a.count && b.count) return String(b.latestDate).localeCompare(String(a.latestDate));
         return subject.nodes.indexOf(a.node) - subject.nodes.indexOf(b.node);
       });
+    if (STATE.sourceFilter !== "all") summaries = summaries.filter((summary) => summary.count > 0);
     const hasSubjectLogs = subjectLogs(logs, subjectKey).length > 0;
+    const hasVisibleLogs = summaries.some((summary) => summary.count > 0);
     container.innerHTML = `
       <div class="page-head">
         <div>
@@ -304,11 +328,30 @@
           return `<button class="subject-tab ${active}" data-card-subject="${key}" style="--subject-color:${item.color}">${item.label} (${count})</button>`;
         }).join("")}
       </div>
-      ${hasSubjectLogs ? `
+      ${hasSubjectLogs ? renderSourceFilters(logs, subjectKey) : ""}
+      ${hasSubjectLogs && hasVisibleLogs ? `
         <section class="archive-list">
           ${summaries.map((summary) => renderNodeRow(summary, subjectKey, subject.color)).join("")}
         </section>
-      ` : renderEmpty(subject.label)}
+      ` : hasSubjectLogs ? renderFilteredEmpty(subject.label) : renderEmpty(subject.label)}
+    `;
+  }
+
+  function renderSourceFilters(logs, subjectKey) {
+    const subjectEntries = subjectLogs(logs, subjectKey);
+    const counts = subjectEntries.reduce((acc, log) => {
+      const source = metaForLog(log).source || "lesson";
+      acc[source] = (acc[source] || 0) + 1;
+      return acc;
+    }, { all: subjectEntries.length });
+    return `
+      <div class="archive-source-filters" aria-label="按卡片类型筛选">
+        ${SOURCE_FILTERS.map(([value, label]) => {
+          const active = STATE.sourceFilter === value ? "active" : "";
+          const count = counts[value] || 0;
+          return `<button class="${active}" data-card-source="${value}" type="button">${label}<span>${count}</span></button>`;
+        }).join("")}
+      </div>
     `;
   }
 
@@ -318,6 +361,17 @@
         <span class="material-symbols-outlined">collections_bookmark</span>
         <h3>${label}还没有学习记录</h3>
         <p class="muted">导入第一条记录后，这里会出现你的第一张卡片 🌱</p>
+      </section>
+    `;
+  }
+
+  function renderFilteredEmpty(label) {
+    const filterLabel = sourceInfo(STATE.sourceFilter).label;
+    return `
+      <section class="card archive-empty">
+        <span class="material-symbols-outlined">filter_alt</span>
+        <h3>${label}暂无“${escapeHtml(filterLabel)}”卡片</h3>
+        <p class="muted">切回“全部”可以查看这个科目的所有学习记录。</p>
       </section>
     `;
   }
@@ -335,6 +389,7 @@
           </span>
           <span class="node-meta">
             <span class="node-count">${summary.count ? `${summary.count}张` : "0张"}</span>
+            ${summary.reviewCount ? `<span class="node-review-count">复习${summary.reviewCount}次</span>` : ""}
             ${summary.latestStars ? `<span class="node-stars">${stars(summary.latestStars)}</span>` : ""}
           </span>
         </button>
@@ -345,6 +400,8 @@
 
   function renderStudyCard(log, subjectKey, index, nodeLabel = log.nodeLabel || "") {
     const id = cardId(log);
+    const meta = metaForLog(log);
+    const source = sourceInfo(meta.source);
     const expandState = STATE.expandedCards.get(id) || null;
     const subject = SUBJECTS[subjectKey];
     const starCount = Math.max(1, Math.min(3, Number(log.stars || 1)));
@@ -362,6 +419,7 @@
           <div class="card-header">
             <div class="card-meta">
               <span>${escapeHtml(String(log.date || ""))}</span>
+              <span class="card-source-pill ${source.className}">${source.label}</span>
               <span>${Number(log.questionsCompleted || 1)}道题</span>
             </div>
             <div class="card-head-actions">
@@ -378,6 +436,7 @@
             </div>
           </div>
           ${painPointHtml(log)}
+          ${metaSummaryHtml(meta)}
         </div>
 
         ${hasRoutine ? `
@@ -394,11 +453,47 @@
             ${expandState === "question" ? "收起原题" : "看原题"}
           </button>
           <div class="card-question ${expandState === "question" ? "visible" : ""}">
-            <p>${escapeHtml(originalQuestionText(log))}</p>
+            <p>${formatRichText(originalQuestionText(log))}</p>
           </div>
         </div>
         ` : ""}
       </article>
+    `;
+  }
+
+  function readAllCardMeta() {
+    return window.MochiApp?.readStudyCardMeta?.() || {};
+  }
+
+  function metaForLog(log) {
+    return readAllCardMeta()[cardId(log)] || {};
+  }
+
+  function sourceInfo(source) {
+    return {
+      lesson: { label: "新题讲解", className: "source-lesson" },
+      review: { label: "复习测验", className: "source-review" },
+      quiz: { label: "小测验", className: "source-quiz" },
+      reflection: { label: "阶段复盘", className: "source-reflection" },
+    }[source || "lesson"] || { label: "新题讲解", className: "source-lesson" };
+  }
+
+  function metaSummaryHtml(meta) {
+    const rows = [];
+    if (meta.reviewResult) rows.push(["复习结果", meta.reviewResult]);
+    if (meta.errorType) rows.push(["错误类型", meta.errorType]);
+    if (meta.stuckStep) rows.push(["卡住步骤", meta.stuckStep]);
+    if (meta.keyInsight) rows.push(["关键突破", meta.keyInsight]);
+    if (meta.timeSpentMinutes) rows.push(["耗时", `${meta.timeSpentMinutes}分钟`]);
+    if (meta.confidence) rows.push(["信心", `${meta.confidence}/5`]);
+    if (Array.isArray(meta.tags) && meta.tags.length) rows.push(["题型标签", meta.tags.join("、")]);
+    if (!rows.length) return "";
+    return `
+      <div class="card-meta-summary">
+        ${rows.map(([label, value]) => `
+          <span><strong>${escapeHtml(label)}：</strong>${escapeHtml(value)}</span>
+        `).join("")}
+      </div>
     `;
   }
 
@@ -418,7 +513,7 @@
 
   function painPointHtml(log) {
     const painPoint = String(log.painPoint || "").trim();
-    if (painPoint) return `<div class="card-painpoint">${escapeHtml(painPoint)}</div>`;
+    if (painPoint) return `<div class="card-painpoint">${formatRichText(painPoint)}</div>`;
     if (Number(log.stars) === 3) {
       return `<div class="card-painpoint card-painpoint--perfect">✓ 这次全部掌握，没有明显卡点</div>`;
     }
@@ -439,10 +534,10 @@
         .split(/(?=第[一二三四五六七八九十\d]+步[：:、.．]?)/)
         .map((step) => step.trim())
         .filter(Boolean);
-      return `<ol class="routine-steps">${steps.map((step) => `<li>${escapeHtml(step)}</li>`).join("")}</ol>`;
+      return `<ol class="routine-steps">${steps.map((step) => `<li>${formatRichText(step)}</li>`).join("")}</ol>`;
     }
 
-    return escapeHtml(text).replace(/\n/g, "<br>");
+    return formatRichText(text).replace(/\n/g, "<br>");
   }
 
   function cardId(log) {
@@ -509,6 +604,13 @@
       const subjectButton = event.target.closest("button[data-card-subject]");
       if (subjectButton) {
         STATE.activeSubject = subjectButton.dataset.cardSubject || "math";
+        STATE.expandedNode = "";
+        render(container);
+        return;
+      }
+      const sourceButton = event.target.closest("button[data-card-source]");
+      if (sourceButton) {
+        STATE.sourceFilter = sourceButton.dataset.cardSource || "all";
         STATE.expandedNode = "";
         render(container);
         return;
@@ -656,6 +758,7 @@
     if (!confirm("确定删除这张学习卡片吗？学习记录会一起删除，已获得的奖励不会倒扣。")) return;
     logs.splice(found.index, 1);
     window.MochiApp?.writeStudyLogs?.(logs);
+    window.MochiApp?.removeStudyCardMeta?.(found.targetId);
     removeFromAllOrders(found.targetId);
     STATE.expandedCards.delete(found.targetId);
     window.MochiApp?.toast?.("学习卡片已删除");
@@ -667,6 +770,7 @@
     const found = findLogByCardEl(cardEl, logs);
     if (!found.log) return;
     const log = found.log;
+    const meta = metaForLog(log);
     window.MochiApp?.modal?.(`
       <div class="modal-head">
         <div>
@@ -706,6 +810,43 @@
           <label>今日套路</label>
           <textarea name="routine">${escapeHtml(log.routine || "")}</textarea>
         </div>
+        <div class="card-edit-meta">
+          <h3>复习素材</h3>
+          <div class="card-edit-grid">
+            <div class="field">
+              <label>学习来源</label>
+              <select name="source">${sourceOptions(meta.source || "lesson")}</select>
+            </div>
+            <div class="field">
+              <label>复习结果</label>
+              <input name="reviewResult" value="${escapeHtml(meta.reviewResult || "")}" placeholder="独立做对 / 看提示做对 / 仍需讲解" />
+            </div>
+            <div class="field">
+              <label>错误类型</label>
+              <input name="errorType" value="${escapeHtml(meta.errorType || "")}" placeholder="审题漏条件 / 概念不清 / 计算错误" />
+            </div>
+            <div class="field">
+              <label>题型标签</label>
+              <input name="tags" value="${escapeHtml(Array.isArray(meta.tags) ? meta.tags.join("、") : "")}" placeholder="复合函数、换元、单调区间" />
+            </div>
+            <div class="field">
+              <label>信心分</label>
+              <input name="confidence" type="number" min="1" max="5" value="${meta.confidence || ""}" placeholder="1-5" />
+            </div>
+            <div class="field">
+              <label>耗时分钟</label>
+              <input name="timeSpentMinutes" type="number" min="1" value="${meta.timeSpentMinutes || ""}" placeholder="例如 12" />
+            </div>
+          </div>
+          <div class="field">
+            <label>卡住步骤</label>
+            <textarea name="stuckStep">${escapeHtml(meta.stuckStep || "")}</textarea>
+          </div>
+          <div class="field">
+            <label>关键突破</label>
+            <textarea name="keyInsight">${escapeHtml(meta.keyInsight || "")}</textarea>
+          </div>
+        </div>
         <div class="card-edit-actions">
           <button class="btn btn-primary" type="submit"><span class="material-symbols-outlined">save</span>保存修改</button>
           <button class="btn btn-outline" data-action="close-modal" type="button">取消</button>
@@ -724,6 +865,17 @@
   function nodeOptions(subject, activeLabel) {
     return (SUBJECTS[subject]?.nodes || SUBJECTS.math.nodes).map((node) => (
       `<option value="${escapeHtml(node.label)}" ${node.label === activeLabel ? "selected" : ""}>${escapeHtml(node.label)}</option>`
+    )).join("");
+  }
+
+  function sourceOptions(activeSource) {
+    return [
+      ["lesson", "新题讲解"],
+      ["review", "复习测验"],
+      ["quiz", "小测验"],
+      ["reflection", "阶段复盘"],
+    ].map(([value, label]) => (
+      `<option value="${value}" ${value === activeSource ? "selected" : ""}>${label}</option>`
     )).join("");
   }
 
@@ -769,6 +921,16 @@
       routine: String(data.get("routine") || "").trim(),
     };
     window.MochiApp?.writeStudyLogs?.(logs);
+    window.MochiApp?.setStudyCardMeta?.(found.targetId, {
+      source: data.get("source") || "lesson",
+      reviewResult: String(data.get("reviewResult") || "").trim(),
+      errorType: String(data.get("errorType") || "").trim(),
+      stuckStep: String(data.get("stuckStep") || "").trim(),
+      keyInsight: String(data.get("keyInsight") || "").trim(),
+      tags: splitInputTags(data.get("tags")),
+      confidence: Number(data.get("confidence") || 0),
+      timeSpentMinutes: Number(data.get("timeSpentMinutes") || 0),
+    });
     removeFromAllOrders(found.targetId);
     STATE.activeSubject = subject;
     STATE.expandedNode = node?.id || STATE.expandedNode;
@@ -777,6 +939,13 @@
     window.MochiApp?.checkAndGrantAchievements?.();
     window.MochiApp?.toast?.("学习卡片已更新");
     refresh();
+  }
+
+  function splitInputTags(value) {
+    return String(value || "")
+      .split(/[,，、\n]/)
+      .map((item) => item.trim())
+      .filter(Boolean);
   }
 
   function refresh() {
@@ -815,16 +984,32 @@
     return [...new Set(items.map((item) => String(item).trim()).filter(Boolean))];
   }
 
-  function generateExportText(logs = window.MochiApp?.readStudyLogs?.() || []) {
-    const normalized = normalizedLogs(logs);
+  function scopedSubjects(subjectScope = "all") {
+    return subjectScope && subjectScope !== "all" && SUBJECTS[subjectScope]
+      ? [[subjectScope, SUBJECTS[subjectScope]]]
+      : Object.entries(SUBJECTS);
+  }
+
+  function subjectScopedLogs(logs, subjectScope = "all") {
+    if (!subjectScope || subjectScope === "all") return logs;
+    return logs.filter((log) => log.subject === subjectScope);
+  }
+
+  function scopeLabel(subjectScope = "all") {
+    return subjectScope === "all" ? "全部科目" : SUBJECTS[subjectScope]?.label || "全部科目";
+  }
+
+  function generateExportText(logs = window.MochiApp?.readStudyLogs?.() || [], subjectScope = "all") {
+    const normalized = subjectScopedLogs(normalizedLogs(logs), subjectScope);
     if (!normalized.length) return `【学习档案导出】${exportDate()}\n暂无学习记录`;
     const coveredCount = allNodes().filter((node) => logsForNode(normalized, node.subject, node.label).length > 0).length;
     const lines = [
       `【学习档案导出】${exportDate()}`,
+      `范围：${scopeLabel(subjectScope)}`,
       `共学习 ${normalized.length} 次，覆盖 ${coveredCount} 个知识点`,
       "",
     ];
-    Object.entries(SUBJECTS).forEach(([subject, info]) => {
+    scopedSubjects(subjectScope).forEach(([subject, info]) => {
       const summaries = info.nodes.map((node) => nodeExportSummary(normalized, subject, node));
       const touched = summaries.filter((item) => item.count > 0);
       const untouched = summaries.filter((item) => item.count === 0).map((item) => item.label);
@@ -850,17 +1035,18 @@
     return lines.join("\n").trim();
   }
 
-  function generateExportDetail(logs = window.MochiApp?.readStudyLogs?.() || []) {
-    const normalized = normalizedLogs(logs);
+  function generateExportDetail(logs = window.MochiApp?.readStudyLogs?.() || [], subjectScope = "all") {
+    const normalized = subjectScopedLogs(normalizedLogs(logs), subjectScope);
     if (!normalized.length) return `【详细学习记录】${exportDate()}\n暂无学习记录`;
 
     const lines = [
       `【详细学习记录】${exportDate()}`,
+      `范围：${scopeLabel(subjectScope)}`,
       `共 ${normalized.length} 条记录`,
       "",
     ];
 
-    Object.entries(SUBJECTS).forEach(([subject, info]) => {
+    scopedSubjects(subjectScope).forEach(([subject, info]) => {
       let subjectHeaderAdded = false;
 
       info.nodes.forEach((node) => {
@@ -877,10 +1063,13 @@
 
         const chronological = [...entries].sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
         chronological.forEach((log, index) => {
+          const meta = metaForLog(log);
+          const source = sourceInfo(meta.source);
           const starCount = Math.max(1, Math.min(3, Number(log.stars || 1)));
           const starText = `${"★".repeat(starCount)}${"☆".repeat(3 - starCount)}`;
           const questions = Number(log.questionsCompleted || 0);
           lines.push(`  第${index + 1}次 | ${log.date || "未知日期"} | ${starText} | ${questions}题`);
+          if (source.label !== "新题讲解") lines.push(`  来源：${source.label}`);
 
           const painPoint = String(log.painPoint || "").trim();
           if (painPoint) lines.push(`  卡点：${painPoint}`);
@@ -897,6 +1086,7 @@
               lines.push(`        ${line}`);
             });
           }
+          appendMetaExportLines(lines, meta, "  ");
 
           lines.push("");
         });
@@ -912,15 +1102,28 @@
     return lines.join("\n").trim();
   }
 
-  function generateExportJSON(logs = window.MochiApp?.readStudyLogs?.() || []) {
-    const normalized = normalizedLogs(logs);
+  function appendMetaExportLines(lines, meta, prefix = "") {
+    if (!meta || typeof meta !== "object") return;
+    if (meta.reviewResult) lines.push(`${prefix}复习结果：${meta.reviewResult}`);
+    if (meta.errorType) lines.push(`${prefix}错误类型：${meta.errorType}`);
+    if (meta.stuckStep) lines.push(`${prefix}卡住步骤：${meta.stuckStep}`);
+    if (meta.keyInsight) lines.push(`${prefix}关键突破：${meta.keyInsight}`);
+    if (Array.isArray(meta.tags) && meta.tags.length) lines.push(`${prefix}题型标签：${meta.tags.join("、")}`);
+    if (meta.confidence) lines.push(`${prefix}信心分：${meta.confidence}/5`);
+    if (meta.timeSpentMinutes) lines.push(`${prefix}耗时：${meta.timeSpentMinutes}分钟`);
+  }
+
+  function generateExportJSON(logs = window.MochiApp?.readStudyLogs?.() || [], subjectScope = "all") {
+    const normalized = subjectScopedLogs(normalizedLogs(logs), subjectScope);
     const result = {
       exportDate: exportDate(),
+      scope: subjectScope,
+      scopeLabel: scopeLabel(subjectScope),
       totalRecords: normalized.length,
       message: normalized.length ? "" : "暂无学习记录",
       subjects: {},
     };
-    Object.entries(SUBJECTS).forEach(([subject, info]) => {
+    scopedSubjects(subjectScope).forEach(([subject, info]) => {
       const subjectLogs = normalized.filter((log) => log.subject === subject);
       const nodes = {};
       info.nodes.forEach((node) => {
@@ -935,6 +1138,7 @@
           originalQuestions: entries.map((log) => originalQuestionText(log)).filter(Boolean),
           routines: entries.map((log) => log.routine).filter(Boolean),
           lastStudied: summary.lastStudied,
+          entries: [...entries].sort((a, b) => String(a.date || "").localeCompare(String(b.date || ""))).map(recordForExport),
         };
       });
       result.subjects[subject] = {
@@ -947,16 +1151,163 @@
     return JSON.stringify(result, null, 2);
   }
 
-  function exportContent(format) {
+  function recordForExport(log) {
+    const meta = metaForLog(log);
+    const source = sourceInfo(meta.source);
+    return {
+      id: cardId(log),
+      date: log.date || "",
+      subject: log.subject || "",
+      subjectLabel: SUBJECTS[log.subject]?.label || "",
+      nodeLabel: log.nodeLabel || "",
+      questionsCompleted: Number(log.questionsCompleted || 1),
+      stars: Number(log.stars || 1),
+      source: meta.source || "lesson",
+      sourceLabel: source.label,
+      painPoint: String(log.painPoint || ""),
+      originalQuestion: originalQuestionText(log),
+      routine: String(log.routine || ""),
+      meta: {
+        reviewResult: meta.reviewResult || "",
+        errorType: meta.errorType || "",
+        stuckStep: meta.stuckStep || "",
+        keyInsight: meta.keyInsight || "",
+        tags: Array.isArray(meta.tags) ? meta.tags : [],
+        confidence: Number(meta.confidence || 0),
+        timeSpentMinutes: Number(meta.timeSpentMinutes || 0),
+        sourceRecordIds: Array.isArray(meta.sourceRecordIds) ? meta.sourceRecordIds : [],
+      },
+    };
+  }
+
+  function generateReviewPack(logs = window.MochiApp?.readStudyLogs?.() || [], subjectScope = "all") {
+    const normalized = subjectScopedLogs(normalizedLogs(logs), subjectScope);
+    if (!normalized.length) return `【MochiStudy AI复习素材包】${exportDate()}\n暂无学习记录`;
+
+    const lines = [
+      `【MochiStudy AI复习素材包】${exportDate()}`,
+      `范围：${scopeLabel(subjectScope)}`,
+      "",
+      "用途：复制给“高考复习 AI 私教”。请它基于真实学习记录选择旧卡点，生成一题一题的复习测验，并在结束时输出新的 MOCHI-RECORD。",
+      "",
+      "学生画像：基础薄弱，容易受挫；需要小步提示、具体鼓励、少量高命中题，不适合一次给太多题。",
+      "",
+      "复习 AI 规则：",
+      "1. 只基于下面的记录判断，不要编造学生没有学过的知识点。",
+      "2. 优先复习 1 星、反复卡住、很久没碰、复习结果不是“独立做对”的内容。",
+      "3. 一次只出 1 道题；先让学生尝试，再给提示，不要直接给完整答案。",
+      "4. 题目要贴近原题和卡点，难度不要突然升高。",
+      "5. 复习结束必须输出 MochiStudy 可导入的 MOCHI-RECORD。",
+      "",
+    ];
+
+    const priorities = reviewPriorities(normalized).slice(0, 8);
+    lines.push("━━ 待复习优先级 ━━");
+    if (priorities.length) {
+      priorities.forEach((item, index) => {
+        lines.push(`${index + 1}. ${item.subjectLabel} · ${item.nodeLabel}｜建议：${item.reason}`);
+      });
+    } else {
+      lines.push("暂无明显薄弱项，可选择最近学习的知识点做轻量回顾。");
+    }
+    lines.push("");
+
+    scopedSubjects(subjectScope).forEach(([subject, info]) => {
+      const subjectEntries = normalized.filter((log) => log.subject === subject);
+      if (!subjectEntries.length) return;
+      lines.push(`${"━".repeat(18)} ${info.label} ${"━".repeat(18)}`);
+      info.nodes.forEach((node) => {
+        const entries = logsForNode(normalized, subject, node.label);
+        if (!entries.length) return;
+        const chronological = [...entries].sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
+        const lowStars = chronological.filter((log) => Number(log.stars || 1) <= 2).length;
+        const reviewCount = chronological.filter((log) => {
+          const source = metaForLog(log).source || "lesson";
+          return source !== "lesson";
+        }).length;
+        lines.push("");
+        lines.push(`【${node.label}】共 ${entries.length} 次｜低星 ${lowStars} 次｜复习/测验 ${reviewCount} 次｜状态：${statusInfo(calcNodeStatus(normalized, subject, node.label)).label}`);
+        chronological.forEach((log, index) => {
+          const meta = metaForLog(log);
+          const source = sourceInfo(meta.source);
+          lines.push(`- 记录${index + 1}｜id:${cardId(log)}｜${log.date || "未知日期"}｜${source.label}｜${stars(log.stars)}`);
+          lines.push(`  卡点：${String(log.painPoint || "").trim() || "暂无卡点记录"}`);
+          lines.push(`  原题：${originalQuestionText(log) || "暂无原题描述"}`);
+          lines.push(`  套路：${String(log.routine || "").trim() || "暂无套路记录"}`);
+          appendMetaExportLines(lines, meta, "  ");
+        });
+      });
+      lines.push("");
+    });
+
+    lines.push("━━ 复习结束输出格式 ━━");
+    lines.push("---MOCHI-RECORD-START---");
+    lines.push("科目：[数学/物理/化学]");
+    lines.push("知识点：[必须从 MochiStudy 预设知识点中选择]");
+    lines.push("学习来源：复习测验");
+    lines.push("掌握星级：[1-3]");
+    lines.push("卡点记录：[复习后仍卡住或已经修正的地方，一句话]");
+    lines.push("原题：[本次复习题/测验题的核心描述]");
+    lines.push("今日套路：[本次复习真正带走的3步套路]");
+    lines.push("复习结果：[独立做对/看提示做对/仍需讲解]");
+    lines.push("错误类型：[概念不清/审题漏条件/公式选择/计算错误/步骤混乱/时间不够/其他]");
+    lines.push("卡住步骤：[具体卡在第几步或哪个判断]");
+    lines.push("关键突破：[这次最重要的修正]");
+    lines.push("题型标签：[用顿号分隔，例如 复合函数、换元、单调区间]");
+    lines.push("信心分：[1-5]");
+    lines.push("耗时分钟：[整数]");
+    lines.push("学习日期：[YYYY-MM-DD]");
+    lines.push("---MOCHI-RECORD-END---");
+
+    return lines.join("\n").trim();
+  }
+
+  function reviewPriorities(logs) {
+    const items = [];
+    Object.entries(SUBJECTS).forEach(([subject, info]) => {
+      info.nodes.forEach((node) => {
+        const entries = logsForNode(logs, subject, node.label);
+        if (!entries.length) return;
+        const recent = entries[0];
+        const lowStarCount = entries.filter((log) => Number(log.stars || 1) <= 2).length;
+        const repeatedPainCount = unique(entries.map((log) => log.painPoint).filter(Boolean)).length;
+        const unresolvedReviews = entries.filter((log) => {
+          const meta = metaForLog(log);
+          return (meta.source && meta.source !== "lesson") && meta.reviewResult && !meta.reviewResult.includes("独立做对");
+        }).length;
+        const latestDate = new Date(`${String(recent.date || "").slice(0, 10)}T00:00:00`);
+        const dormantDays = Number.isNaN(latestDate.getTime()) ? 0 : Math.floor((new Date() - latestDate) / 86400000);
+        const score = lowStarCount * 3 + repeatedPainCount + unresolvedReviews * 3 + (dormantDays > 14 ? 2 : 0) + (dormantDays > 30 ? 2 : 0);
+        if (score <= 0) return;
+        const reasons = [];
+        if (lowStarCount) reasons.push(`${lowStarCount}次低星`);
+        if (unresolvedReviews) reasons.push(`${unresolvedReviews}次复习未独立做对`);
+        if (dormantDays > 14) reasons.push(`${dormantDays}天没碰`);
+        if (repeatedPainCount) reasons.push("有明确卡点");
+        items.push({
+          subject,
+          subjectLabel: info.label,
+          nodeLabel: node.label,
+          score,
+          reason: reasons.join("、") || "最近需要回顾",
+        });
+      });
+    });
+    return items.sort((a, b) => b.score - a.score);
+  }
+
+  function exportContent(format, subjectScope = STATE.exportSubject || "all") {
     const logs = window.MochiApp?.readStudyLogs?.() || [];
-    if (format === "json") return generateExportJSON(logs);
-    if (format === "detail") return generateExportDetail(logs);
-    return generateExportText(logs);
+    if (format === "json") return generateExportJSON(logs, subjectScope);
+    if (format === "review") return generateReviewPack(logs, subjectScope);
+    if (format === "detail") return generateExportDetail(logs, subjectScope);
+    return generateExportText(logs, subjectScope);
   }
 
   const EXPORT_FORMAT_HINTS = {
     text: "适合粘贴给 AI 做整体学习分析",
     detail: "适合粘贴给 AI 针对卡点出题或制定复习计划",
+    review: "适合粘贴给复习 AI 私教，生成复习测验并回写记录",
     json: "适合开发或自动化处理",
   };
 
@@ -976,7 +1327,11 @@
         <div class="archive-export-switch" role="tablist">
           <button class="active" data-export-format="text">摘要</button>
           <button data-export-format="detail">详细记录</button>
+          <button data-export-format="review">AI复习包</button>
           <button data-export-format="json">JSON</button>
+        </div>
+        <div class="archive-export-scope" aria-label="导出科目范围">
+          ${renderExportScopeButtons()}
         </div>
         <p class="archive-export-hint" data-export-hint>${EXPORT_FORMAT_HINTS.text}</p>
         <textarea class="archive-export-preview" readonly></textarea>
@@ -989,6 +1344,13 @@
     document.body.appendChild(root);
     bindExportSheet(root);
     updateExportPreview(root, "text");
+  }
+
+  function renderExportScopeButtons() {
+    const options = [["all", "全部"], ...Object.entries(SUBJECTS).map(([key, item]) => [key, item.label])];
+    return options.map(([value, label]) => (
+      `<button class="${STATE.exportSubject === value ? "active" : ""}" data-export-scope="${value}" type="button">${label}</button>`
+    )).join("");
   }
 
   function bindExportSheet(root) {
@@ -1004,6 +1366,16 @@
           button.classList.toggle("active", button === formatButton);
         });
         updateExportPreview(root, format);
+        return;
+      }
+      const scopeButton = event.target.closest("[data-export-scope]");
+      if (scopeButton) {
+        STATE.exportSubject = scopeButton.dataset.exportScope || "all";
+        root.querySelectorAll("[data-export-scope]").forEach((button) => {
+          button.classList.toggle("active", button === scopeButton);
+        });
+        const activeFormat = root.querySelector("[data-export-format].active")?.dataset.exportFormat || "text";
+        updateExportPreview(root, activeFormat);
         return;
       }
       const copyButton = event.target.closest("[data-export-copy]");
@@ -1023,7 +1395,7 @@
 
   function updateExportPreview(root, format) {
     const preview = root.querySelector(".archive-export-preview");
-    if (preview) preview.value = exportContent(format);
+    if (preview) preview.value = exportContent(format, STATE.exportSubject || "all");
     const hint = root.querySelector("[data-export-hint]");
     if (hint) hint.textContent = EXPORT_FORMAT_HINTS[format] || EXPORT_FORMAT_HINTS.text;
   }
@@ -1065,6 +1437,21 @@
     return String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
   }
 
+  function formatRichText(value) {
+    const escaped = escapeHtml(value);
+    return escaped.replace(/\$([^$\n]+)\$/g, (_, formula) => `<span class="math-inline">${formatInlineMath(formula)}</span>`);
+  }
+
+  function formatInlineMath(value) {
+    let text = String(value || "");
+    text = text.replace(/\\cdot/g, "·").replace(/\\times/g, "×").replace(/\\leq/g, "≤").replace(/\\geq/g, "≥").replace(/\\neq/g, "≠");
+    text = text.replace(/([A-Za-z0-9)]+)_\{([^{}]+)\}/g, "$1<sub>$2</sub>");
+    text = text.replace(/([A-Za-z0-9)]+)_([A-Za-z0-9]+)/g, "$1<sub>$2</sub>");
+    text = text.replace(/([A-Za-z0-9)]+)\^\{([^{}]+)\}/g, "$1<sup>$2</sup>");
+    text = text.replace(/([A-Za-z0-9)]+)\^([A-Za-z0-9]+)/g, "$1<sup>$2</sup>");
+    return text;
+  }
+
   window.MochiCards = {
     SUBJECTS,
     allNodes,
@@ -1074,6 +1461,7 @@
     generateExportText,
     generateExportDetail,
     generateExportJSON,
+    generateReviewPack,
     render,
     refresh,
     showExportSheet,
