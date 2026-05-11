@@ -3,28 +3,18 @@
 
   const STATE = {
     subjectFilter: "all",
-    statusFilter: "all",
     activeKey: "",
     activeOrigin: "",
     message: "",
-    summaryPrompt: null,
     pendingExpanded: false,
     container: null,
   };
-
-  const STATUS_OPTIONS = [
-    ["all", "全部"],
-    ["low", "低星"],
-    ["stale", "很久没碰"],
-    ["unresolved", "复习未稳"],
-    ["cooldown", "待巩固"],
-  ];
 
   function render(container) {
     if (!container) return;
     STATE.container = container;
     bindContainer(container);
-    const reviewState = window.MochiReviewEngine?.buildReviewState?.() || { items: [], todaySuggestions: [], recentReviews: [] };
+    const reviewState = window.MochiReviewEngine?.buildReviewState?.() || { items: [], todaySuggestions: [] };
     const filteredItems = filterItems(reviewState.items);
     const cooldownItems = filterCooldownItems(reviewState.items);
     container.innerHTML = `
@@ -36,7 +26,6 @@
       </div>
 
       ${STATE.message ? `<div class="review-toast-inline">${escapeHtml(STATE.message)}</div>` : ""}
-      ${STATE.summaryPrompt ? renderSummaryPrompt(STATE.summaryPrompt) : ""}
 
       <section class="review-section">
         <div class="section-title-row">
@@ -77,16 +66,6 @@
       </details>
       ` : ""}
 
-      <section class="review-section review-recent-section">
-        <div class="section-title-row">
-          <div>
-            <h3>最近复习</h3>
-            <p class="muted">只有成功导入复习 AI 输出的 MOCHI-RECORD，才会出现在这里。</p>
-          </div>
-        </div>
-        ${renderRecentReviews(reviewState.recentReviews)}
-      </section>
-
       <section class="review-help">
         <span class="material-symbols-outlined">sync_alt</span>
         <p>开始复习会复制材料；只有把复习 AI 输出粘回并成功导入，才算完成。</p>
@@ -111,22 +90,8 @@
       const button = event.target.closest("[data-review-action]");
       if (!button) return;
       const action = button.dataset.reviewAction;
-      if (action === "summary") {
-        openSummaryEditor({
-          subject: button.dataset.subject || "",
-          nodeId: button.dataset.nodeId || "",
-          nodeLabel: button.dataset.nodeLabel || "",
-        });
-        return;
-      }
       if (action === "filter-subject") {
         STATE.subjectFilter = button.dataset.value || "all";
-        STATE.pendingExpanded = false;
-        render(container);
-        return;
-      }
-      if (action === "filter-status") {
-        STATE.statusFilter = button.dataset.value || "all";
         STATE.pendingExpanded = false;
         render(container);
         return;
@@ -204,12 +169,6 @@
     }
 
     textarea.value = "";
-    STATE.summaryPrompt = {
-      subject: item.subject,
-      nodeId: item.nodeId,
-      nodeLabel: item.nodeLabel,
-      subjectLabel: item.subjectLabel,
-    };
     STATE.activeKey = "";
     STATE.activeOrigin = "";
     STATE.message = `已导入“${item.subjectLabel} · ${item.nodeLabel}”的复习结果。`;
@@ -220,28 +179,10 @@
     render(container);
   }
 
-  function renderSummaryPrompt(prompt) {
-    return `
-      <div class="review-summary-prompt">
-        <span class="material-symbols-outlined">edit_note</span>
-        <p>这次复习有新的精华吗？可以把一句关键突破沉淀进核心摘要。</p>
-        <button class="btn btn-soft btn-sm" data-review-action="summary" data-subject="${escapeHtml(prompt.subject)}" data-node-id="${escapeHtml(prompt.nodeId)}" data-node-label="${escapeHtml(prompt.nodeLabel)}" type="button">去更新核心摘要</button>
-      </div>
-    `;
-  }
-
   function openRelatedCards(item) {
     window.MochiKnowledge?.setActiveSubject?.(item.subject);
     window.MochiApp?.navigate?.("map");
     setTimeout(() => window.MochiKnowledge?.renderDetail?.(item.nodeId), 0);
-  }
-
-  function openSummaryEditor(prompt) {
-    if (!prompt.nodeId) return;
-    STATE.summaryPrompt = null;
-    window.MochiKnowledge?.setActiveSubject?.(prompt.subject);
-    window.MochiApp?.navigate?.("map");
-    setTimeout(() => window.MochiKnowledge?.renderDetail?.(prompt.nodeId, { editSummary: true }), 0);
   }
 
   async function startItem(key, origin = "suggestion") {
@@ -251,7 +192,6 @@
     const copied = await copyToClipboard(pack);
     STATE.activeKey = item.key;
     STATE.activeOrigin = origin;
-    STATE.summaryPrompt = null;
     STATE.message = copied
       ? `已复制“${item.subjectLabel} · ${item.nodeLabel}”的复习材料。`
       : "复制失败，可以展开后手动复制复习材料。";
@@ -267,19 +207,14 @@
   function filterItems(items) {
     return items.filter((item) => {
       if (STATE.subjectFilter !== "all" && item.subject !== STATE.subjectFilter) return false;
-      if (STATE.statusFilter === "low" && item.lowStarCount <= 0) return false;
-      if (STATE.statusFilter === "stale" && item.daysSinceLastStudy < item.settings?.staleAfterDays) return false;
-      if (STATE.statusFilter === "unresolved" && item.unresolvedReviews <= 0 && !["needs-work", "review-soon"].includes(item.status)) return false;
-      if (STATE.statusFilter === "cooldown" && !["consolidating", "stable"].includes(item.status)) return false;
-      if (STATE.statusFilter === "all") return !["stable", "consolidating"].includes(item.status) && item.score > 0;
-      return item.score > 0 || STATE.statusFilter === "cooldown";
+      return !["stable", "consolidating"].includes(item.status) && item.score > 0;
     });
   }
 
   function filterCooldownItems(items) {
     return items.filter((item) => {
       if (STATE.subjectFilter !== "all" && item.subject !== STATE.subjectFilter) return false;
-      return ["stable", "consolidating"].includes(item.status);
+      return ["stable", "consolidating"].includes(item.status) && item.score >= 0;
     });
   }
 
@@ -307,11 +242,6 @@
         <div class="review-filter-group">
           ${subjects.map(([value, label]) => `
             <button class="${STATE.subjectFilter === value ? "active" : ""}" data-review-action="filter-subject" data-value="${escapeHtml(value)}" type="button">${escapeHtml(label)}</button>
-          `).join("")}
-        </div>
-        <div class="review-filter-group">
-          ${STATUS_OPTIONS.map(([value, label]) => `
-            <button class="${STATE.statusFilter === value ? "active" : ""}" data-review-action="filter-status" data-value="${escapeHtml(value)}" type="button">${escapeHtml(label)}</button>
           `).join("")}
         </div>
       </div>
@@ -343,32 +273,6 @@
               <p>${escapeHtml(item.summaryLine)}</p>
             </div>
           </div>
-        </div>
-        <div class="review-actions">
-          <button class="btn btn-primary btn-sm" data-review-action="start" data-review-origin="suggestion" data-review-key="${escapeHtml(item.key)}" type="button">
-            <span class="material-symbols-outlined">play_arrow</span>开始复习
-          </button>
-          <button class="btn btn-outline btn-sm" data-review-action="cards" data-review-key="${escapeHtml(item.key)}" type="button">
-            <span class="material-symbols-outlined">collections_bookmark</span>看卡片
-          </button>
-        </div>
-        ${expanded ? renderImportPanel(item) : ""}
-      </article>
-    `;
-  }
-
-  function renderReviewItem(item, featured = false) {
-    const expanded = STATE.activeKey === item.key && STATE.activeOrigin === "suggestion";
-    return `
-      <article class="review-card ${featured ? "featured" : ""} ${expanded ? "active" : ""}" data-review-card data-review-key="${escapeHtml(item.key)}" style="--subject-color:${escapeHtml(item.subjectColor || "#864d61")}">
-        <div class="review-card-main">
-          <div class="review-card-title">
-            <span class="review-subject">${escapeHtml(item.subjectLabel)}</span>
-            <h4>${escapeHtml(item.nodeLabel)}</h4>
-          </div>
-          <p class="review-painpoint">${escapeHtml(item.mainPainPoint || "这组记录还没有明确卡点，适合做一次轻量回顾。")}</p>
-          <div class="review-meta-line">${escapeHtml(item.summaryLine)}</div>
-          <p class="review-reason">原因：${escapeHtml(item.reasons.join("，") || "最近需要回顾")}</p>
         </div>
         <div class="review-actions">
           <button class="btn btn-primary btn-sm" data-review-action="start" data-review-origin="suggestion" data-review-key="${escapeHtml(item.key)}" type="button">
@@ -421,22 +325,6 @@
           <textarea readonly>${escapeHtml(pack)}</textarea>
         </details>
         <div class="review-import-result" data-review-result hidden></div>
-      </div>
-    `;
-  }
-
-  function renderRecentReviews(reviews) {
-    if (!reviews.length) return renderEmpty("还没有导入过复习结果。");
-    return `
-      <div class="recent-review-list">
-        ${reviews.map(({ log, meta }) => `
-          <div class="recent-review-row">
-            <span>${escapeHtml(log.date || "")}</span>
-            <strong>${escapeHtml(subjectLabel(log.subject))} · ${escapeHtml(log.nodeLabel || "")}</strong>
-            <span>${stars(log.stars)}</span>
-            <span>${escapeHtml(meta.reviewResult || "暂无结果")}</span>
-          </div>
-        `).join("")}
       </div>
     `;
   }

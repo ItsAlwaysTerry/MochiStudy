@@ -145,8 +145,13 @@
           ...reviewEntries.map((log) => metaFor(log, allMeta).stuckStep),
           ...entries.map((log) => log.painPoint),
         ]);
-        const repeatedPainCount = new Set(entries.map((log) => String(log.painPoint || "").trim()).filter(Boolean)).size;
-        const nextReviewDate = calcNextReviewDate(entries, latestReview, reviewClass, settings);
+        const painCounts = new Map();
+        entries.forEach((log) => {
+          const p = String(log.painPoint || "").trim();
+          if (p) painCounts.set(p, (painCounts.get(p) || 0) + 1);
+        });
+        const repeatedPainCount = Math.max(0, ...[...painCounts.values()]);
+        const nextReviewDate = calcNextReviewDate(entries, latestReview, reviewClass, settings, reviewEntries, allMeta);
         const due = !nextReviewDate || nextReviewDate <= todayKey();
         const recencyDays = daysSince(lastStudyDate);
         const reviewDays = lastReviewDate ? daysSince(lastReviewDate) : null;
@@ -221,18 +226,25 @@
     const todaySuggestions = sorted
       .filter((item) => item.due && ["not-reviewed", "review-soon", "needs-work"].includes(item.status) && item.score > 0)
       .slice(0, settings.maxTodaySuggestions);
-    const recentReviews = logs
-      .filter((log) => isReviewLike(metaFor(log, allMeta)))
-      .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
-      .slice(0, 5)
-      .map((log) => ({ log, meta: metaFor(log, allMeta), id: cardId(log) }));
-
-    return { settings, items: sorted, todaySuggestions, recentReviews };
+    return { settings, items: sorted, todaySuggestions };
   }
 
-  function calcNextReviewDate(entries, latestReview, reviewClass, settings) {
+  function calcNextReviewDate(entries, latestReview, reviewClass, settings, reviewEntries, allMeta) {
     if (latestReview) {
-      const cooldown = reviewClass === "mastered" ? settings.masteredCooldownDays : settings.weakCooldownDays;
+      let cooldown;
+      if (reviewClass === "mastered") {
+        let consecutiveMastered = 0;
+        for (const log of (reviewEntries || [])) {
+          if (classifyReviewResult(metaFor(log, allMeta || {}).reviewResult) === "mastered") {
+            consecutiveMastered += 1;
+          } else {
+            break;
+          }
+        }
+        cooldown = Math.min(settings.masteredCooldownDays * Math.pow(2, consecutiveMastered - 1), 60);
+      } else {
+        cooldown = settings.weakCooldownDays;
+      }
       return addDays(latestReview.date, cooldown);
     }
     const latest = entries[0];
