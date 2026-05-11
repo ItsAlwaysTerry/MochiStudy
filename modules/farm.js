@@ -223,13 +223,20 @@
 
   function renderDailyGoalDots() {
     const state = window.MochiApp?.getDailyTaskState?.() || {};
+    const today = new Date().toISOString().slice(0, 10);
+    const todayLogs = (window.MochiApp?.readStudyLogs?.() || []).filter((log) => String(log.date || "").slice(0, 10) === today);
     const labels = { math: "数学", physics: "物理", chemistry: "化学" };
     return SUBJECTS.map((subject) => {
       const done = state[subject]?.completed;
+      const todayLog = done ? todayLogs.find((log) => log.subject === subject) : null;
+      const nodeLabel = todayLog?.nodeLabel || "";
       return `
         <span class="goal-dot ${done ? "done" : ""}">
           <span class="material-symbols-outlined">${done ? "check_circle" : "radio_button_unchecked"}</span>
-          <span>${labels[subject] || subject}</span>
+          <span class="goal-dot-label">
+            <strong>${labels[subject] || subject}</strong>
+            ${nodeLabel ? `<em>${escapeAttr(nodeLabel)}</em>` : ""}
+          </span>
         </span>
       `;
     }).join("");
@@ -239,13 +246,17 @@
     const reviewState = window.MochiReviewEngine?.buildReviewState?.();
     const item = reviewState?.todaySuggestions?.[0];
     if (!item) {
+      const hasAnyReview = (reviewState?.items || []).some((i) => i.reviewCount > 0);
+      const calmText = hasAnyReview
+        ? "近期复习过的知识点都在巩固中，今天可以专心做新题。"
+        : "还没有复习过任何知识点，先从学习档案里找一个开始。";
       return `
         <section class="card home-review-card calm">
           <div class="home-review-head">
             <span class="material-symbols-outlined">rate_review</span>
             <div>
               <h3>今日复习</h3>
-              <p>今天没有特别紧急的薄弱点。</p>
+              <p>${calmText}</p>
             </div>
           </div>
           <button class="btn btn-soft btn-sm" data-route="review" type="button">看复习页</button>

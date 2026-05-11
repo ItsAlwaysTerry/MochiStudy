@@ -37,7 +37,7 @@
         <div class="review-suggestion-list">
           ${reviewState.todaySuggestions.length
             ? reviewState.todaySuggestions.map((item, index) => renderTodayTask(item, index)).join("")
-            : renderEmpty("今天没有特别紧急的薄弱点，可以从待处理里挑一个轻量回顾。")}
+            : renderTodayEmpty(filteredItems.length)}
         </div>
       </section>
 
@@ -99,6 +99,11 @@
       if (action === "expand-pending") {
         STATE.pendingExpanded = !STATE.pendingExpanded;
         render(container);
+        return;
+      }
+      if (action === "scroll-pending") {
+        const pendingSection = container.querySelector(".review-section:nth-of-type(2)");
+        pendingSection?.scrollIntoView?.({ behavior: "smooth", block: "start" });
         return;
       }
       const key = button.dataset.reviewKey || "";
@@ -309,24 +314,51 @@
     const pack = window.MochiReviewEngine.generateNodeReviewPack(item);
     return `
       <div class="review-import-panel">
-        <div class="review-import-brief">
-          <span class="material-symbols-outlined">content_copy</span>
-          <p>材料已复制。复习完成后把 AI 输出粘到右边。</p>
-        </div>
+        <ol class="review-steps">
+          <li class="review-step done">
+            <span class="review-step-num">1</span>
+            <span>复习材料已复制到剪贴板</span>
+          </li>
+          <li class="review-step">
+            <span class="review-step-num">2</span>
+            <span>打开「高考复习 AI 私教」→ 粘贴材料，让它出一道题</span>
+          </li>
+          <li class="review-step">
+            <span class="review-step-num">3</span>
+            <span>复习完成后，把 AI 最后输出的内容（含 MOCHI-RECORD）整段粘到下方</span>
+          </li>
+        </ol>
         <div class="review-import-inline">
-          <label for="review-input-${escapeHtml(item.key)}">复习结果</label>
-          <textarea id="review-input-${escapeHtml(item.key)}" data-review-input rows="1" placeholder="粘贴 MOCHI-RECORD"></textarea>
+          <textarea id="review-input-${escapeHtml(item.key)}" data-review-input rows="2" placeholder="粘贴 AI 输出（只要包含 ---MOCHI-RECORD-START--- 那段即可）"></textarea>
           <button class="btn btn-primary" data-review-action="import" data-review-key="${escapeHtml(item.key)}" type="button">
             <span class="material-symbols-outlined">download_done</span>导入复习结果
           </button>
         </div>
         <details class="review-pack-preview">
-          <summary>查看材料</summary>
+          <summary>查看复习材料</summary>
           <textarea readonly>${escapeHtml(pack)}</textarea>
         </details>
         <div class="review-import-result" data-review-result hidden></div>
       </div>
     `;
+  }
+
+  function renderTodayEmpty(pendingCount) {
+    if (pendingCount > 0) {
+      return `
+        <div class="review-empty review-today-empty">
+          <span class="material-symbols-outlined">task_alt</span>
+          <div>
+            <p>今天没有特别紧急的薄弱点，这是好事。</p>
+            <button class="btn btn-soft btn-sm" data-review-action="scroll-pending" type="button">
+              下面有 ${pendingCount} 项可以轻量回顾
+              <span class="material-symbols-outlined">arrow_downward</span>
+            </button>
+          </div>
+        </div>
+      `;
+    }
+    return `<div class="review-empty"><span class="material-symbols-outlined">task_alt</span><p>目前没有需要处理的薄弱点，继续导入新记录吧。</p></div>`;
   }
 
   function renderEmpty(text) {

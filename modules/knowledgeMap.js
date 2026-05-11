@@ -434,6 +434,17 @@
     const expanded = STATE.expandedNode === summary.node.id && summary.count > 0;
     const status = statusInfo(summary.status);
     const highlighted = STATE.highlightNodeId === summary.node.id;
+    const today = new Date().toISOString().slice(0, 10);
+    const reviewDue = summary.count > 0 && summary.nextReviewDate && !["stable"].includes(summary.status);
+    const reviewOverdue = reviewDue && summary.nextReviewDate <= today;
+    const reviewSoonDays = reviewDue && !reviewOverdue
+      ? Math.ceil((new Date(`${summary.nextReviewDate}T12:00:00`) - new Date()) / 86400000)
+      : 0;
+    const reviewBadge = reviewOverdue
+      ? `<span class="node-review-badge urgent">今天复习</span>`
+      : (reviewSoonDays > 0 && reviewSoonDays <= 3)
+        ? `<span class="node-review-badge soon">${reviewSoonDays}天后复习</span>`
+        : "";
     return `
       <article class="archive-node ${expanded ? "expanded" : ""} ${highlighted ? "highlighted" : ""}" data-archive-node-id="${escapeHtml(summary.node.id)}">
         <button class="node-row ${summary.status}" data-card-node="${summary.node.id}" style="--subject-color:${color}">
@@ -443,6 +454,7 @@
             <small>${status.label}</small>
           </span>
           <span class="node-meta">
+            ${reviewBadge}
             <span class="node-count">${summary.count ? `${summary.count}张` : "0张"}</span>
             ${summary.reviewCount ? `<span class="node-review-count">复习${summary.reviewCount}次</span>` : ""}
             ${summary.latestStars ? `<span class="node-stars">${stars(summary.latestStars)}</span>` : ""}
@@ -484,6 +496,9 @@
           <div>
             <small>下一步</small>
             <p>${formatRichText(summary.nextAction || (summary.lowStarCount ? `${summary.lowStarCount}次低星，适合继续压缩成一条稳定套路。` : "最近记录比较稳定，先保留精华即可。"))}</p>
+            ${(summary.nextReviewDate && summary.nextReviewDate <= new Date().toISOString().slice(0, 10) && summary.count > 0)
+              ? `<button class="btn btn-soft btn-sm" style="margin-top:8px" data-archive-action="go-review" data-review-key="${escapeHtml(summary.subject + "::" + summary.node.label)}" type="button"><span class="material-symbols-outlined">rate_review</span>去复习页</button>`
+              : ""}
           </div>
         </div>
         ${summary.reviewNote ? `
@@ -826,6 +841,18 @@
       }
     }, true);
     container.addEventListener("click", (event) => {
+      const archiveActionButton = event.target.closest("[data-archive-action]");
+      if (archiveActionButton) {
+        event.stopPropagation();
+        if (archiveActionButton.dataset.archiveAction === "go-review") {
+          const key = archiveActionButton.dataset.reviewKey || "";
+          window.MochiApp?.navigate?.("review");
+          if (key) {
+            setTimeout(() => window.MochiReviewPage?.startItem?.(key, "suggestion"), 80);
+          }
+        }
+        return;
+      }
       const summaryButton = event.target.closest("[data-summary-action]");
       if (summaryButton) {
         event.stopPropagation();

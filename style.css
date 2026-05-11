@@ -1346,6 +1346,19 @@ button {
   color: #50b070;
 }
 
+.goal-dot-label {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.goal-dot-label em {
+  font-style: normal;
+  font-size: 11px;
+  opacity: 0.72;
+  font-weight: 700;
+}
+
 .debug-card {
   padding: 16px 20px;
   border-style: dashed;
@@ -2375,6 +2388,27 @@ button {
   color: #f5c518;
   font-size: 13px;
   font-weight: 800;
+}
+
+.node-review-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.3;
+}
+
+.node-review-badge.urgent {
+  background: rgba(134, 77, 97, 0.14);
+  color: var(--primary);
+  border: 1px solid rgba(134, 77, 97, 0.3);
+}
+
+.node-review-badge.soon {
+  background: rgba(245, 197, 24, 0.15);
+  color: #9a7a00;
+  border: 1px solid rgba(245, 197, 24, 0.4);
 }
 
 .study-card-list {
@@ -4458,22 +4492,44 @@ body.focus-mode #view {
   background: rgba(255, 249, 240, 0.68);
 }
 
-.review-import-brief {
+.review-steps {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.review-step {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
-  color: var(--muted);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
+  color: var(--muted);
 }
 
-.review-import-brief p {
-  margin: 0;
+.review-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--surface-high);
+  font-size: 11px;
+  font-weight: 900;
+  flex-shrink: 0;
 }
 
-.review-import-brief .material-symbols-outlined {
-  font-size: 18px;
+.review-step.done {
+  color: #50b070;
+}
+
+.review-step.done .review-step-num {
+  background: #50b070;
+  color: #fff;
 }
 
 .review-import-panel details {
@@ -4502,21 +4558,15 @@ body.focus-mode #view {
 
 .review-import-inline {
   display: grid;
-  grid-template-columns: auto minmax(160px, 320px) auto;
-  align-items: center;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   gap: 8px;
-}
-
-.review-import-inline label {
-  color: var(--muted);
-  font-size: 14px;
-  font-weight: 900;
 }
 
 .review-import-inline textarea {
   width: 100%;
-  height: 36px;
-  min-height: 36px;
+  height: 48px;
+  min-height: 48px;
   max-height: 36px;
   border: 1px solid rgba(213, 194, 198, 0.8);
   border-radius: 8px;
@@ -4562,6 +4612,14 @@ body.focus-mode #view {
   background: rgba(255, 255, 255, 0.58);
   color: var(--muted);
   font-weight: 800;
+}
+
+.review-today-empty {
+  align-items: flex-start;
+}
+
+.review-today-empty p {
+  margin: 0 0 8px;
 }
 
 .review-help {
