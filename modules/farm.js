@@ -235,6 +235,43 @@
     }).join("");
   }
 
+  function renderTodayReviewCard() {
+    const reviewState = window.MochiReviewEngine?.buildReviewState?.();
+    const item = reviewState?.todaySuggestions?.[0];
+    if (!item) {
+      return `
+        <section class="card home-review-card calm">
+          <div class="home-review-head">
+            <span class="material-symbols-outlined">rate_review</span>
+            <div>
+              <h3>今日复习</h3>
+              <p>今天没有特别紧急的薄弱点。</p>
+            </div>
+          </div>
+          <button class="btn btn-soft btn-sm" data-route="review" type="button">看复习页</button>
+        </section>
+      `;
+    }
+    return `
+      <section class="card home-review-card" style="--subject-color:${escapeAttr(item.subjectColor || "#864d61")}">
+        <div class="home-review-head">
+          <span class="material-symbols-outlined">rate_review</span>
+          <div>
+            <h3>今日复习</h3>
+            <p>${escapeAttr(item.subjectLabel)} · ${escapeAttr(item.nodeLabel)}</p>
+          </div>
+        </div>
+        <p class="home-review-reason">${escapeAttr(item.primaryReason || item.summaryLine || "适合做一次轻量回顾。")}</p>
+        <div class="home-review-actions">
+          <button class="btn btn-primary btn-sm" data-home-review-action="start" data-review-key="${escapeAttr(item.key)}" type="button">
+            <span class="material-symbols-outlined">play_arrow</span>开始复习
+          </button>
+          <button class="btn btn-outline btn-sm" data-route="review" type="button">看全部</button>
+        </div>
+      </section>
+    `;
+  }
+
   function renderMiniPlot(subject, state) {
     const subjectDef = SUBJECT_CROP_DEFS[subject];
     const stage = calcPlotStage(subject);
@@ -252,12 +289,30 @@
     `;
   }
 
+  function renderGuideCard() {
+    return `
+      <section class="card home-guide-card">
+        <div class="home-guide-head">
+          <span class="material-symbols-outlined">school</span>
+          <h3>怎么开始？</h3>
+        </div>
+        <ol class="home-guide-steps">
+          <li>打开 <strong>AI 私教</strong>，做一道题</li>
+          <li>AI 输出 MOCHI-RECORD → <strong>复制</strong></li>
+          <li>粘贴到下面的导入框 → <strong>导入</strong></li>
+        </ol>
+        <p class="muted home-guide-note">导入第一条记录后，学习档案和农场就会动起来。</p>
+      </section>
+    `;
+  }
+
   function renderFarm(container) {
     const state = readState();
     const farmLv = getFarmLevel(state.totalHarvests);
     const nextLv = farmLevels().find((item) => item.minHarvests > state.totalHarvests);
     const harvestPct = calcHarvestPercent(state.totalHarvests, nextLv);
     const holiday = window.MochiApp?.isHolidayToday?.() ?? true;
+    const hasRecords = (window.MochiApp?.readStudyLogs?.() || []).length > 0;
 
     const currentSeason = window.MochiApp?.loadCurrentSeason?.();
     const seasonBanner = (currentSeason?.status === "active") ? (() => {
@@ -296,22 +351,17 @@
               <div class="mini-farm-xp-fill" style="width:${harvestPct}%"></div>
             </div>
           </section>
-          ${holiday ? `
-            <section class="card daily-goal-compact">
-              <div class="daily-goal-row">
-                <span class="daily-goal-label">今日</span>
-                ${renderDailyGoalDots()}
-              </div>
-            </section>
-          ` : ""}
           ${holiday
             ? `
               <section class="card import-card">
                 <div class="import-header">
                   <span class="material-symbols-outlined">upload_file</span>
-                  <h3>导入学习记录</h3>
+                  <div>
+                    <h3>导入学习记录</h3>
+                    <p class="import-header-hint">把 AI 家教输出的 MOCHI-RECORD 粘贴进来</p>
+                  </div>
                 </div>
-                <textarea id="record-paste" rows="2" placeholder="粘贴 MOCHI-RECORD-START 到 MOCHI-RECORD-END 之间的内容"></textarea>
+                <textarea id="record-paste" rows="2" placeholder="粘贴 ---MOCHI-RECORD-START--- 到 ---MOCHI-RECORD-END--- 之间的完整内容"></textarea>
                 <button class="btn btn-primary" data-action="parse-record" style="width:100%;margin-top:8px">
                   <span class="material-symbols-outlined">auto_awesome</span>确认导入
                 </button>
@@ -327,6 +377,15 @@
               </section>
             `
           }
+          ${holiday && hasRecords ? `
+            <section class="card daily-goal-compact">
+              <div class="daily-goal-row">
+                <span class="daily-goal-label">今日</span>
+                ${renderDailyGoalDots()}
+              </div>
+            </section>
+          ` : ""}
+          ${hasRecords ? renderTodayReviewCard() : (holiday ? renderGuideCard() : "")}
         </div>
       </div>
     `;
@@ -334,7 +393,16 @@
     container.querySelectorAll("[data-farm-action]").forEach((button) => {
       button.addEventListener("click", handleFarmAction);
     });
+    container.querySelectorAll("[data-home-review-action='start']").forEach((button) => {
+      button.addEventListener("click", handleHomeReviewStart);
+    });
     window.MochiPet?.renderMiniState?.();
+  }
+
+  async function handleHomeReviewStart(event) {
+    const key = event.currentTarget.dataset.reviewKey || "";
+    const copied = await window.MochiReviewPage?.startItem?.(key, "suggestion");
+    if (!copied) window.MochiApp?.navigate?.("review");
   }
 
   function handleFarmAction(event) {

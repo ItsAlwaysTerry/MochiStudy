@@ -4,18 +4,21 @@
     sourceFilter: "all",
     exportSubject: "all",
     expandedNode: "",
+    highlightNodeId: "",
+    editingSummaryKey: "",
+    organizing: false,
+    historyExpanded: false,
     expandedCards: new Map(),
     draggingCardId: "",
     container: null,
   };
   const DEFAULT_CARDS_CONFIG = { masteredMinRecent: 2, dormantDays: 30 };
   const CARD_ORDER_KEY = "card_order";
+  const NODE_SUMMARY_KEY = "study_node_summary";
   const SOURCE_FILTERS = [
     ["all", "全部"],
-    ["lesson", "新题讲解"],
-    ["review", "复习测验"],
-    ["quiz", "小测验"],
-    ["reflection", "阶段复盘"],
+    ["lesson", "新学"],
+    ["reviewGroup", "复习"],
   ];
 
   const NODE_DEFS = {
@@ -249,7 +252,7 @@
     return "learning";
   }
 
-  function nodeSummary(logs, subject, node, sourceFilter = STATE.sourceFilter) {
+  function nodeSummary(logs, subject, node, sourceFilter = STATE.sourceFilter, reviewState = null) {
     const dateEntries = logsForNode(logs, subject, node.label);
     const allEntries = displayLogsForNode(logs, subject, node.label);
     const entries = filterEntriesBySource(allEntries, sourceFilter);
@@ -259,12 +262,46 @@
       const source = metaForLog(log).source || "lesson";
       return source !== "lesson";
     }).length;
+    const lowStarCount = allEntries.filter((log) => Number(log.stars || 1) <= 2).length;
+    const latestReview = allEntries.find((log) => {
+      const source = metaForLog(log).source || "lesson";
+      return source !== "lesson";
+    });
+    const autoMainPainPoint = mostCommonText([
+      ...allEntries.filter((log) => Number(log.stars || 1) <= 2).map((log) => log.painPoint),
+      ...allEntries.map((log) => metaForLog(log).stuckStep),
+      ...allEntries.map((log) => log.painPoint),
+    ]);
+    const autoLatestBreakthrough = firstFilled([
+      ...allEntries.map((log) => metaForLog(log).keyInsight),
+      ...allEntries.map((log) => log.routine),
+    ]);
+    const latestReviewResult = latestReview ? metaForLog(latestReview).reviewResult || "" : "";
+    const reviewItem = reviewState?.items?.find((item) => item.subject === subject && item.nodeLabel === node.label);
+    const manualSummary = readNodeSummary(subject, node.label);
+    const hasManual = hasManualSummary(manualSummary);
     return {
+      key: summaryKey(subject, node.label),
+      subject,
       node,
       entries,
+      allEntries,
       count: entries.length,
       totalCount: allEntries.length,
       reviewCount,
+      lowStarCount,
+      latestReviewResult,
+      mainPainPoint: manualSummary.mainPainPointOverride || autoMainPainPoint,
+      latestBreakthrough: manualSummary.keyBreakthroughOverride || autoLatestBreakthrough,
+      reviewNote: manualSummary.reviewNote || "",
+      autoMainPainPoint,
+      autoLatestBreakthrough,
+      manualSummary,
+      hasManualSummary: hasManual,
+      summaryUpdatedAt: manualSummary.updatedAt || "",
+      reviewStatusLabel: reviewItem?.statusLabel || "",
+      nextAction: reviewItem?.primaryReason || "",
+      nextReviewDate: reviewItem?.nextReviewDate || "",
       latestDate: latest?.date || "",
       latestStars: Number(latest?.stars || 0),
       status: calcNodeStatus(logs, subject, node.label),
@@ -273,6 +310,9 @@
 
   function filterEntriesBySource(entries, sourceFilter = STATE.sourceFilter) {
     if (!sourceFilter || sourceFilter === "all") return entries;
+    if (sourceFilter === "reviewGroup") {
+      return entries.filter((log) => (metaForLog(log).source || "lesson") !== "lesson");
+    }
     return entries.filter((log) => (metaForLog(log).source || "lesson") === sourceFilter);
   }
 
@@ -298,10 +338,11 @@
     STATE.container = container;
     bindContainer(container);
     const logs = window.MochiApp?.readStudyLogs?.() || [];
+    const reviewState = window.MochiReviewEngine?.buildReviewState?.({ logs, meta: readAllCardMeta() }) || null;
     const subject = SUBJECTS[STATE.activeSubject] || SUBJECTS.math;
     const subjectKey = STATE.activeSubject;
     let summaries = subject.nodes
-      .map((node) => nodeSummary(logs, subjectKey, node, STATE.sourceFilter))
+      .map((node) => nodeSummary(logs, subjectKey, node, STATE.sourceFilter, reviewState))
       .sort((a, b) => {
         if (a.count && !b.count) return -1;
         if (!a.count && b.count) return 1;
@@ -317,9 +358,14 @@
           <h2>学习档案</h2>
           <p>每条学习记录都会变成一张卡片，按知识点收进这里。</p>
         </div>
-        <button class="btn btn-outline btn-sm" data-card-export>
-          <span class="material-symbols-outlined">ios_share</span>导出档案
-        </button>
+        <div class="archive-head-actions">
+          <button class="btn ${STATE.organizing ? "btn-primary" : "btn-soft"} btn-sm" data-card-organize type="button" aria-pressed="${STATE.organizing ? "true" : "false"}" title="${STATE.organizing ? "退出整理模式" : "开启后可编辑、删除和拖拽卡片"}">
+            <span class="material-symbols-outlined">${STATE.organizing ? "check" : "tune"}</span>${STATE.organizing ? "完成整理" : "整理"}
+          </button>
+          <button class="btn btn-outline btn-sm" data-card-export>
+            <span class="material-symbols-outlined">ios_share</span>导出档案
+          </button>
+        </div>
       </div>
       <div class="subject-tabs archive-tabs">
         ${Object.entries(SUBJECTS).map(([key, item]) => {
@@ -329,6 +375,13 @@
         }).join("")}
       </div>
       ${hasSubjectLogs ? renderSourceFilters(logs, subjectKey) : ""}
+      ${STATE.organizing ? `
+        <div class="organize-mode-bar">
+          <span class="material-symbols-outlined">edit_note</span>
+          <span>整理模式 · 可编辑、删除和拖拽卡片</span>
+          <button class="btn btn-soft btn-sm" data-card-organize type="button">完成整理</button>
+        </div>
+      ` : ""}
       ${hasSubjectLogs && hasVisibleLogs ? `
         <section class="archive-list">
           ${summaries.map((summary) => renderNodeRow(summary, subjectKey, subject.color)).join("")}
@@ -342,6 +395,7 @@
     const counts = subjectEntries.reduce((acc, log) => {
       const source = metaForLog(log).source || "lesson";
       acc[source] = (acc[source] || 0) + 1;
+      if (source !== "lesson") acc.reviewGroup = (acc.reviewGroup || 0) + 1;
       return acc;
     }, { all: subjectEntries.length });
     return `
@@ -379,8 +433,9 @@
   function renderNodeRow(summary, subjectKey, color) {
     const expanded = STATE.expandedNode === summary.node.id && summary.count > 0;
     const status = statusInfo(summary.status);
+    const highlighted = STATE.highlightNodeId === summary.node.id;
     return `
-      <article class="archive-node ${expanded ? "expanded" : ""}">
+      <article class="archive-node ${expanded ? "expanded" : ""} ${highlighted ? "highlighted" : ""}" data-archive-node-id="${escapeHtml(summary.node.id)}">
         <button class="node-row ${summary.status}" data-card-node="${summary.node.id}" style="--subject-color:${color}">
           <span class="node-status">${status.icon}</span>
           <span class="node-main">
@@ -393,21 +448,93 @@
             ${summary.latestStars ? `<span class="node-stars">${stars(summary.latestStars)}</span>` : ""}
           </span>
         </button>
-        ${expanded ? `<div class="study-card-list">${summary.entries.map((log, index) => renderStudyCard(log, subjectKey, index, summary.node.label)).join("")}</div>` : ""}
+        ${expanded ? renderNodeDigest(summary, subjectKey) : ""}
       </article>
+    `;
+  }
+
+  function renderNodeDigest(summary, subjectKey) {
+    const editing = STATE.editingSummaryKey === summary.key;
+    const summaryMode = summary.hasManualSummary ? "已校正" : "自动整理";
+    const cardsLabel = summary.entries.length === summary.totalCount ? `${summary.totalCount}张历史卡片` : `${summary.entries.length}/${summary.totalCount}张筛选卡片`;
+    return `
+      <div class="archive-node-digest">
+        <div class="digest-title-row">
+          <strong>核心摘要</strong>
+          <div class="digest-title-actions">
+            <span class="digest-summary-mode">${summaryMode}</span>
+            <span>${escapeHtml(summary.reviewStatusLabel || statusInfo(summary.status).label)}</span>
+            ${editing || !STATE.organizing ? "" : `<button class="card-action-btn" data-summary-action="edit" data-summary-key="${escapeHtml(summary.key)}" type="button" title="编辑摘要" aria-label="编辑摘要"><span class="material-symbols-outlined">edit_note</span></button>`}
+          </div>
+        </div>
+        ${editing ? renderNodeSummaryEditor(summary) : ""}
+        <div class="digest-grid">
+          <div>
+            <small>主要卡点</small>
+            <p>${formatRichText(summary.mainPainPoint || "暂时没有稳定重复的卡点。")}</p>
+          </div>
+          <div>
+            <small>最近突破</small>
+            <p>${formatRichText(summary.latestBreakthrough || "还没有沉淀出明确突破。")}</p>
+          </div>
+          <div>
+            <small>复习状态</small>
+            <p>${summary.reviewCount ? `复习${summary.reviewCount}次${summary.latestReviewResult ? `，上次：${escapeHtml(summary.latestReviewResult)}` : ""}` : "还没复习过"}</p>
+          </div>
+          <div>
+            <small>下一步</small>
+            <p>${formatRichText(summary.nextAction || (summary.lowStarCount ? `${summary.lowStarCount}次低星，适合继续压缩成一条稳定套路。` : "最近记录比较稳定，先保留精华即可。"))}</p>
+          </div>
+        </div>
+        ${summary.reviewNote ? `
+          <div class="digest-note">
+            <small>复习备注</small>
+            <p>${formatRichText(summary.reviewNote)}</p>
+          </div>
+        ` : ""}
+        <details class="archive-history-details"${STATE.historyExpanded ? " open" : ""}>
+          <summary>${cardsLabel}</summary>
+          <div class="study-card-list">${summary.entries.map((log, index) => renderStudyCard(log, subjectKey, index, summary.node.label)).join("")}</div>
+        </details>
+      </div>
+    `;
+  }
+
+  function renderNodeSummaryEditor(summary) {
+    return `
+      <div class="digest-editor" data-summary-form data-summary-key="${escapeHtml(summary.key)}" data-summary-subject="${escapeHtml(summary.subject)}" data-summary-node-label="${escapeHtml(summary.node.label)}">
+        <label>
+          <span>主要卡点</span>
+          <textarea data-summary-field="mainPainPointOverride" rows="2" placeholder="${escapeHtml(summary.autoMainPainPoint || "自动摘要暂时为空")}">${escapeHtml(summary.manualSummary.mainPainPointOverride || "")}</textarea>
+        </label>
+        <label>
+          <span>核心突破</span>
+          <textarea data-summary-field="keyBreakthroughOverride" rows="2" placeholder="${escapeHtml(summary.autoLatestBreakthrough || "自动摘要暂时为空")}">${escapeHtml(summary.manualSummary.keyBreakthroughOverride || "")}</textarea>
+        </label>
+        <label>
+          <span>复习备注</span>
+          <textarea data-summary-field="reviewNote" rows="2" placeholder="只写下次复习 AI 必须知道的一句话">${escapeHtml(summary.manualSummary.reviewNote || "")}</textarea>
+        </label>
+        <div class="digest-editor-actions">
+          <button class="btn btn-primary btn-sm" data-summary-action="save" type="button"><span class="material-symbols-outlined">save</span>保存</button>
+          <button class="btn btn-outline btn-sm" data-summary-action="cancel" type="button">取消</button>
+          <button class="btn btn-soft btn-sm" data-summary-action="clear" type="button"><span class="material-symbols-outlined">restart_alt</span>恢复自动摘要</button>
+        </div>
+      </div>
     `;
   }
 
   function renderStudyCard(log, subjectKey, index, nodeLabel = log.nodeLabel || "") {
     const id = cardId(log);
     const meta = metaForLog(log);
-    const source = sourceInfo(meta.source);
+    const source = sourceDisplayInfo(meta.source);
     const expandState = STATE.expandedCards.get(id) || null;
     const subject = SUBJECTS[subjectKey];
     const starCount = Math.max(1, Math.min(3, Number(log.stars || 1)));
     const starClass = starCount === 3 ? "stars-gold" : starCount === 2 ? "stars-orange" : "stars-gray";
     const hasRoutine = Boolean(String(log.routine || "").trim());
     const hasOriginalQuestion = Boolean(originalQuestionText(log));
+    const showOrganizeActions = STATE.organizing;
     return `
       <article class="study-card expand-${expandState || "none"}"
         data-card-id="${escapeHtml(id)}"
@@ -424,6 +551,7 @@
             </div>
             <div class="card-head-actions">
               <div class="card-stars-badge ${starClass}">${stars(starCount)}</div>
+              ${showOrganizeActions ? `
               <button class="card-action-btn card-drag-handle" data-card-action="drag-handle" draggable="true" type="button" title="拖拽排序" aria-label="拖拽排序">
                 <span class="material-symbols-outlined">drag_indicator</span>
               </button>
@@ -433,6 +561,7 @@
               <button class="card-action-btn danger" data-card-action="delete-card" type="button" title="删除卡片" aria-label="删除卡片">
                 <span class="material-symbols-outlined">delete</span>
               </button>
+              ` : ""}
             </div>
           </div>
           ${painPointHtml(log)}
@@ -469,13 +598,109 @@
     return readAllCardMeta()[cardId(log)] || {};
   }
 
+  function summaryKey(subject, nodeLabel) {
+    return `${subject}::${nodeLabel}`;
+  }
+
+  function readNodeSummaries() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(NODE_SUMMARY_KEY) || "{}");
+      return saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function writeNodeSummaries(summaries) {
+    localStorage.setItem(NODE_SUMMARY_KEY, JSON.stringify(summaries && typeof summaries === "object" ? summaries : {}));
+  }
+
+  function readNodeSummary(subject, nodeLabel) {
+    const saved = readNodeSummaries()[summaryKey(subject, nodeLabel)] || {};
+    return normalizeNodeSummary(saved);
+  }
+
+  function normalizeNodeSummary(summary) {
+    if (!summary || typeof summary !== "object" || Array.isArray(summary)) {
+      return { mainPainPointOverride: "", keyBreakthroughOverride: "", reviewNote: "", updatedAt: "" };
+    }
+    return {
+      mainPainPointOverride: String(summary.mainPainPointOverride || "").trim(),
+      keyBreakthroughOverride: String(summary.keyBreakthroughOverride || "").trim(),
+      reviewNote: String(summary.reviewNote || "").trim(),
+      updatedAt: String(summary.updatedAt || ""),
+    };
+  }
+
+  function hasManualSummary(summary) {
+    return Boolean(summary?.mainPainPointOverride || summary?.keyBreakthroughOverride || summary?.reviewNote);
+  }
+
+  function saveNodeSummary(subject, nodeLabel, summary) {
+    const key = summaryKey(subject, nodeLabel);
+    const next = normalizeNodeSummary({ ...summary, updatedAt: new Date().toISOString() });
+    const all = readNodeSummaries();
+    if (hasManualSummary(next)) all[key] = next;
+    else delete all[key];
+    writeNodeSummaries(all);
+    return next;
+  }
+
+  function clearNodeSummary(subject, nodeLabel) {
+    const all = readNodeSummaries();
+    delete all[summaryKey(subject, nodeLabel)];
+    writeNodeSummaries(all);
+  }
+
+  function handleSummaryAction(button, container) {
+    const action = button.dataset.summaryAction;
+    const form = button.closest("[data-summary-form]");
+    const key = button.dataset.summaryKey || form?.dataset.summaryKey || "";
+    if (action === "edit") {
+      if (!STATE.organizing) return;
+      STATE.editingSummaryKey = key;
+      render(container);
+      return;
+    }
+    if (action === "cancel") {
+      STATE.editingSummaryKey = "";
+      render(container);
+      return;
+    }
+    const subject = form?.dataset.summarySubject || "";
+    const nodeLabel = form?.dataset.summaryNodeLabel || "";
+    if (!subject || !nodeLabel) return;
+    if (action === "save") {
+      const next = {};
+      form.querySelectorAll("[data-summary-field]").forEach((field) => {
+        next[field.dataset.summaryField] = String(field.value || "").trim();
+      });
+      saveNodeSummary(subject, nodeLabel, next);
+      STATE.editingSummaryKey = "";
+      render(container);
+      return;
+    }
+    if (action === "clear") {
+      clearNodeSummary(subject, nodeLabel);
+      STATE.editingSummaryKey = "";
+      render(container);
+    }
+  }
+
   function sourceInfo(source) {
     return {
       lesson: { label: "新题讲解", className: "source-lesson" },
       review: { label: "复习测验", className: "source-review" },
       quiz: { label: "小测验", className: "source-quiz" },
       reflection: { label: "阶段复盘", className: "source-reflection" },
+      reviewGroup: { label: "复习", className: "source-review" },
     }[source || "lesson"] || { label: "新题讲解", className: "source-lesson" };
+  }
+
+  function sourceDisplayInfo(source) {
+    const normalized = source || "lesson";
+    if (normalized === "lesson") return { label: "新学", className: "source-lesson" };
+    return { label: "复习", className: "source-review" };
   }
 
   function metaSummaryHtml(meta) {
@@ -595,7 +820,25 @@
   function bindContainer(container) {
     if (!container || container.__mochiCardsBound) return;
     container.__mochiCardsBound = true;
+    container.addEventListener("toggle", (event) => {
+      if (event.target.classList.contains("archive-history-details")) {
+        STATE.historyExpanded = event.target.open;
+      }
+    }, true);
     container.addEventListener("click", (event) => {
+      const summaryButton = event.target.closest("[data-summary-action]");
+      if (summaryButton) {
+        event.stopPropagation();
+        handleSummaryAction(summaryButton, container);
+        return;
+      }
+      const organizeButton = event.target.closest("[data-card-organize]");
+      if (organizeButton) {
+        STATE.organizing = !STATE.organizing;
+        if (!STATE.organizing) STATE.editingSummaryKey = "";
+        render(container);
+        return;
+      }
       const exportButton = event.target.closest("[data-card-export]");
       if (exportButton) {
         showExportSheet();
@@ -605,6 +848,8 @@
       if (subjectButton) {
         STATE.activeSubject = subjectButton.dataset.cardSubject || "math";
         STATE.expandedNode = "";
+        STATE.highlightNodeId = "";
+        STATE.historyExpanded = false;
         render(container);
         return;
       }
@@ -612,13 +857,18 @@
       if (sourceButton) {
         STATE.sourceFilter = sourceButton.dataset.cardSource || "all";
         STATE.expandedNode = "";
+        STATE.highlightNodeId = "";
+        STATE.historyExpanded = false;
         render(container);
         return;
       }
       const nodeButton = event.target.closest("[data-card-node]");
       if (nodeButton) {
         const id = nodeButton.dataset.cardNode;
-        STATE.expandedNode = STATE.expandedNode === id ? "" : id;
+        const nextExpanded = STATE.expandedNode === id ? "" : id;
+        if (nextExpanded !== STATE.expandedNode) STATE.historyExpanded = false;
+        STATE.expandedNode = nextExpanded;
+        if (!STATE.expandedNode) STATE.highlightNodeId = "";
         render(container);
         return;
       }
@@ -628,11 +878,13 @@
         const action = event.target.closest("[data-card-action]")?.dataset.cardAction;
         if (action === "edit-card") {
           event.stopPropagation();
+          if (!STATE.organizing) return;
           showEditCard(card);
           return;
         }
         if (action === "delete-card") {
           event.stopPropagation();
+          if (!STATE.organizing) return;
           deleteCard(card);
           return;
         }
@@ -659,6 +911,7 @@
       }
     });
     container.addEventListener("dragstart", (event) => {
+      if (!STATE.organizing) return;
       const handle = event.target.closest("[data-card-action='drag-handle']");
       const card = handle?.closest("[data-card-id]");
       if (!card) return;
@@ -668,6 +921,7 @@
       event.dataTransfer.setData("text/plain", STATE.draggingCardId);
     });
     container.addEventListener("dragover", (event) => {
+      if (!STATE.organizing) return;
       const card = event.target.closest("[data-card-id]");
       if (!card || !STATE.draggingCardId || card.dataset.cardId === STATE.draggingCardId) return;
       event.preventDefault();
@@ -679,6 +933,7 @@
       if (card && !card.contains(event.relatedTarget)) clearDragMarks(card);
     });
     container.addEventListener("drop", (event) => {
+      if (!STATE.organizing) return;
       const target = event.target.closest("[data-card-id]");
       if (!target || !STATE.draggingCardId || target.dataset.cardId === STATE.draggingCardId) return;
       event.preventDefault();
@@ -984,6 +1239,18 @@
     return [...new Set(items.map((item) => String(item).trim()).filter(Boolean))];
   }
 
+  function firstFilled(items) {
+    return items.map((item) => String(item || "").trim()).find(Boolean) || "";
+  }
+
+  function mostCommonText(items) {
+    const counts = new Map();
+    items.map((item) => String(item || "").trim()).filter(Boolean).forEach((item) => {
+      counts.set(item, (counts.get(item) || 0) + 1);
+    });
+    return [...counts.entries()].sort((a, b) => b[1] - a[1] || b[0].length - a[0].length)[0]?.[0] || "";
+  }
+
   function scopedSubjects(subjectScope = "all") {
     return subjectScope && subjectScope !== "all" && SUBJECTS[subjectScope]
       ? [[subjectScope, SUBJECTS[subjectScope]]]
@@ -1062,6 +1329,7 @@
         lines.push(`【${node.label}】共 ${entries.length} 次`);
 
         const chronological = [...entries].sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
+        appendNodeSummaryExportLines(lines, subject, node.label, "  ");
         chronological.forEach((log, index) => {
           const meta = metaForLog(log);
           const source = sourceInfo(meta.source);
@@ -1111,6 +1379,15 @@
     if (Array.isArray(meta.tags) && meta.tags.length) lines.push(`${prefix}题型标签：${meta.tags.join("、")}`);
     if (meta.confidence) lines.push(`${prefix}信心分：${meta.confidence}/5`);
     if (meta.timeSpentMinutes) lines.push(`${prefix}耗时：${meta.timeSpentMinutes}分钟`);
+  }
+
+  function appendNodeSummaryExportLines(lines, subject, nodeLabel, prefix = "") {
+    const summary = readNodeSummary(subject, nodeLabel);
+    if (!hasManualSummary(summary)) return;
+    lines.push(`${prefix}已校正精华摘要：`);
+    if (summary.mainPainPointOverride) lines.push(`${prefix}- 主要卡点：${summary.mainPainPointOverride}`);
+    if (summary.keyBreakthroughOverride) lines.push(`${prefix}- 核心突破：${summary.keyBreakthroughOverride}`);
+    if (summary.reviewNote) lines.push(`${prefix}- 复习备注：${summary.reviewNote}`);
   }
 
   function generateExportJSON(logs = window.MochiApp?.readStudyLogs?.() || [], subjectScope = "all") {
@@ -1227,6 +1504,7 @@
         }).length;
         lines.push("");
         lines.push(`【${node.label}】共 ${entries.length} 次｜低星 ${lowStars} 次｜复习/测验 ${reviewCount} 次｜状态：${statusInfo(calcNodeStatus(normalized, subject, node.label)).label}`);
+        appendNodeSummaryExportLines(lines, subject, node.label, "  ");
         chronological.forEach((log, index) => {
           const meta = metaForLog(log);
           const source = sourceInfo(meta.source);
@@ -1425,12 +1703,22 @@
     render(container);
   }
 
-  function renderDetail(nodeId) {
+  function renderDetail(nodeId, options = {}) {
     const node = getNode(nodeId);
     if (!node || !STATE.container) return;
     STATE.activeSubject = node.subject;
     STATE.expandedNode = node.id;
+    STATE.highlightNodeId = node.id;
+    if (options.editSummary) {
+      STATE.organizing = true;
+      STATE.editingSummaryKey = summaryKey(node.subject, node.label);
+    }
     render(STATE.container);
+    setTimeout(() => {
+      const escaped = window.CSS?.escape ? CSS.escape(node.id) : node.id.replace(/"/g, '\\"');
+      const target = STATE.container?.querySelector(`[data-archive-node-id="${escaped}"]`);
+      target?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    }, 0);
   }
 
   function escapeHtml(value) {
@@ -1462,6 +1750,10 @@
     generateExportDetail,
     generateExportJSON,
     generateReviewPack,
+    readNodeSummaries,
+    readNodeSummary,
+    saveNodeSummary,
+    clearNodeSummary,
     render,
     refresh,
     showExportSheet,

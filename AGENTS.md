@@ -36,6 +36,10 @@ modules/
   timer.js          — 番茄钟模块（window.MochiTimer）
   pet.js            — 学习状态模块（window.MochiPet，内部兼容旧命名）
   ai.js             — AI导入解析模块（window.MochiAI）
+  reviewEngine.js   — 复习调度引擎，聚合知识点、计算优先级、生成定向复习包
+  reviewPage.js     — 复习页面，渲染 #review 待处理列表和回填导入交互
+docs/
+  review-module.md  — 复习模块设计、V1 边界和后续迭代方向
 assets/farm/
   crops_.png        — 星露谷物语植物精灵图（已授权）
   tools_.png
@@ -62,6 +66,7 @@ current_season                — 当前赛季，包含 id/name/startDate/endDat
 season_archives               — 历史赛季数组，每条包含赛季信息和结束时 snapshot
 card_order                    — 学习档案卡片自定义排序，按 subject::nodeLabel 保存卡片 id 顺序；不改 study_log 字段
 study_card_meta               — 学习卡片复习元信息，按 logId 保存来源、复习结果、错误类型、卡住步骤、标签、信心和耗时；不改 study_log 字段
+study_node_summary            — 知识点级人工精华摘要，按 subject::nodeLabel 保存；字段：mainPainPointOverride / keyBreakthroughOverride / reviewNote / updatedAt
 admin_password                — 管理后台密码，默认未设置时使用 mochi2025
 sound_reminder_enabled        — 休息结束提醒音开关（用户主动开启）
 focus_end_sound               — 专注结束提示音选择：off / soft / bell / ding
@@ -150,6 +155,29 @@ mochi_debug_tab               — 调试浮窗当前 Tab
 - 顶部有“导出档案”按钮，支持摘要、详细记录、AI复习包、JSON 四种格式，并可选择全部科目或单科导出
 - 详细记录由 `knowledgeMap.js` 的 `generateExportDetail()` 生成，按科目 → 知识点 → 时间正序逐张卡片输出日期、星级、题数、卡点、原题、套路
 - 卡片文本支持轻量 `$...$` 行内公式显示，优先处理下标/上标，不引入外部公式库
+
+## 复习模块设计（重点保护）
+
+- 复习页路由为 `#review`，它是“今天该复习什么”的指挥台，不是第二个学习档案，也不是题库管理页。
+- V1 使用本地规则计算，不接 API；外部 `skill/gaokao复习私教.md` 仍负责出题、追问和讲解。
+- 复习页的交互是待处理列表：点“开始复习”自动复制单知识点 AI 复习素材包，并展开回填框。
+- 点“开始复习”不代表已复习；只有成功导入复习 AI 输出的 `MOCHI-RECORD`，才算完成一次复习。
+- 导入成功后新增一张复习卡片，仍归入原科目/原知识点，复习扩展信息继续写入 `study_card_meta`。
+- 复习算法、推荐原因、冷却天数和单知识点复习包生成集中在 `modules/reviewEngine.js`，不要散落到 `reviewPage.js` 或 `app.js`。
+- 复习页面交互集中在 `modules/reviewPage.js`，只负责渲染、筛选、复制材料、回填导入和跳转学习档案。
+- 首页可以展示一张低压力“今日复习”卡片，但只能作为当天入口；完整复习流程仍归 `reviewPage.js` 管。
+- 今日建议必须保持低压力，默认最多 1-2 个；刚复习过的知识点应进入“待巩固/近期稳定”冷却，不要连续压到学生面前。
+- 复习页默认不展示大段复习包全文，材料是给 AI 的，不是给学生阅读的；回填输入框要轻量，不要喧宾夺主。
+- 复习结果回填应保持单行粘贴入口，和导入按钮在同一行；不要再改回大 textarea，除非用户明确要求看/编辑全文。
+- 学习档案前台来源标签默认收敛为“新学 / 复习”，内部 `lesson / review / quiz / reflection` 可以保留用于编辑、导出和分析。
+- 学习档案展开知识点时默认先显示摘要：主要卡点、最近突破、复习状态、仍需留意；历史卡片应折叠，避免档案越用越厚。
+- 学习档案默认是阅读模式；摘要编辑、卡片编辑、删除和拖拽排序只在“整理模式”下显示，避免学生被维护工具淹没。
+- 复习结果导入成功后可以引导用户去更新核心摘要，但不要在复习页承载摘要编辑表单。
+- 从复习页点“看卡片”应定位并高亮原知识点，而不是让用户自己在档案里找。
+- 核心摘要卡是规则型摘要，不是 AI 生成总结；它只提取已有字段和 `reviewEngine` 状态。不要让文案暗示它能理解题意或自动生成高质量讲义。
+- 目标设备可能是 13 寸笔记本，学习卡片、复习卡片和核心摘要的关键文字要偏大、清楚，不要为了密度把字号压小。
+- 后续要调整“几天复习一次”“几星算薄弱”“独立做对后冷却多久”等规则，优先改 `DEFAULT_REVIEW_SETTINGS` 或 `reviewEngine`。
+- 详细设计见 `docs/review-module.md`。后续 Agent 开发复习模块前应先阅读该文档。
 
 ## 有效学习日规则
 
@@ -282,3 +310,26 @@ v34 之后的改动：
 - 学习档案卡片新增编辑、删除和同一知识点内拖拽排序；排序写入 `card_order`，不新增 `study_log` 字段
 - 学习档案导入新增复习扩展字段：学习来源、复习结果、错误类型、卡住步骤、关键突破、题型标签、信心分、耗时分钟；写入 `study_card_meta`
 - 学习档案导出新增“AI复习包”，给 `skill/gaokao复习私教.md` 使用；复习记录仍回写为 MOCHI-RECORD 并归入原知识点
+- 复习 V1 新增 `#review` 页面、`modules/reviewEngine.js` 和 `modules/reviewPage.js`：本地计算待复习知识点，点“开始复习”复制定向复习包，回填复习 AI 输出后才导入并更新状态
+
+### V1.1 摘要可编辑规则
+
+- `study_node_summary` 用于保存知识点级人工摘要，key 为 `subject::nodeLabel`，不要写入 `study_log`。
+- 人工摘要只保存 `mainPainPointOverride`、`keyBreakthroughOverride`、`reviewNote`、`updatedAt`。
+- 学习档案核心摘要有人工摘要时显示”已校正”，否则显示”自动整理”。
+- “恢复自动摘要”只清除 `study_node_summary` 对应项，不删除任何历史卡片。
+- 单知识点 AI 复习包应优先携带人工摘要，再携带历史记录。
+- 首页新增”今日复习”卡片，点击”开始复习”复制单知识点复习包并跳转 `#review` 展开对应项。
+- 学习档案新增”整理模式”，默认隐藏摘要编辑、卡片编辑、删除和拖拽排序；复习导入成功后显示”去更新核心摘要”。
+
+### V1.2 UX 减压与引导优化
+
+- 学习档案拖拽排序 Bug 修复：`reorderCards` 调用 `render()` 后 `<details>` 历史卡片重建为关闭状态。修法：STATE 新增 `historyExpanded`，用 toggle 事件捕获跟踪展开状态，重渲时恢复 `open` 属性；切换节点/科目/来源时重置为 false。
+- 首页右侧列顺序调整：农场 → 导入框 → 今日目标 → 今日复习。导入是最高频操作，不应排最后。
+- 导入框标题区域增加副标题文案，placeholder 更新为完整格式说明。
+- 首页空状态引导：无学习记录时，今日目标和今日复习替换为三步引导卡；有记录后恢复正常。
+- 复习页”待处理”默认折叠超出项：超过 4 条时只显示前 4 条，底部虚线按钮”还有 N 项 — 显示全部”；切换筛选时自动重置折叠。
+- 学习档案整理模式视觉提示：整理按钮加 tooltip 说明；模式激活时列表上方出现淡紫色状态条，内嵌”完成整理”按钮。
+- 移动端底部导航顺序调整为：首页 / 复习 / 档案 / 日历 / 设置，并将”日程”重命名为”日历”。
+- README、AGENTS、CLAUDE.md 补全 `study_node_summary`、`card_order`、`study_card_meta` 在 localStorage 表格中的缺漏。
+- Instruction/ 目录新增 plan-01 到 plan-04，记录本轮 UX 改进的问题分析、改动范围和设计原则。

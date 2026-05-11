@@ -106,6 +106,7 @@
   const SEASON_ARCHIVES_KEY = "season_archives";
   const CARD_ORDER_KEY = "card_order";
   const CARD_META_KEY = "study_card_meta";
+  const NODE_SUMMARY_KEY = "study_node_summary";
   const BACKUP_VERSION = "1.0";
   const MOCHI_RECORD_FIELDS = [
     "科目",
@@ -936,6 +937,7 @@
     if (routeId === "home") window.MochiFarm?.renderFarm?.(view);
     else if (routeId === "schedule") window.MochiCalendar.renderSchedule(view);
     else if (routeId === "map") window.MochiCards.render(view);
+    else if (routeId === "review") window.MochiReviewPage?.render?.(view);
     else if (routeId === "achievements") renderAchievements(view);
     else if (routeId === "season") renderSeason(view);
     else if (routeId === "settings") renderSettings(view);
@@ -1936,6 +1938,7 @@
     if (routeId === "schedule") window.MochiCalendar?.renderSchedule?.(view);
     if (routeId === "settings") renderSettings(view);
     if (routeId === "home") window.MochiFarm?.renderFarm?.(view);
+    if (routeId === "review") window.MochiReviewPage?.render?.(view);
   }
 
   function renderAdminSeasonSection() {
@@ -3378,6 +3381,7 @@ ${record.originalQuestion || "暂无原题描述。"}
         season_archives: readStorageJson(SEASON_ARCHIVES_KEY, []),
         card_order: readStorageJson(CARD_ORDER_KEY, {}),
         study_card_meta: readStorageJson(CARD_META_KEY, {}),
+        study_node_summary: readStorageJson(NODE_SUMMARY_KEY, {}),
         game_config: readStorageJson("game_config", {}),
         localStorage: raw,
       },
@@ -3439,6 +3443,9 @@ ${record.originalQuestion || "暂无原题描述。"}
     if (data.study_card_meta && typeof data.study_card_meta === "object" && !Array.isArray(data.study_card_meta)) {
       localStorage.setItem(CARD_META_KEY, JSON.stringify(data.study_card_meta));
     }
+    if (data.study_node_summary && typeof data.study_node_summary === "object" && !Array.isArray(data.study_node_summary)) {
+      localStorage.setItem(NODE_SUMMARY_KEY, JSON.stringify(data.study_node_summary));
+    }
     if (data.game_config && typeof data.game_config === "object") {
       localStorage.setItem("game_config", JSON.stringify(data.game_config));
     }
@@ -3495,7 +3502,7 @@ ${record.originalQuestion || "暂无原题描述。"}
   }
 
   function progressDataKeys() {
-    const fixed = [STUDY_LOG_KEY, "focus_log", "farm_state", "mochi_state", "achievement_state", CURRENT_SEASON_KEY, CARD_ORDER_KEY, CARD_META_KEY, "mochi_study_points", "mochi_hearts", "daily_task_settings"];
+    const fixed = [STUDY_LOG_KEY, "focus_log", "farm_state", "mochi_state", "achievement_state", CURRENT_SEASON_KEY, CARD_ORDER_KEY, CARD_META_KEY, NODE_SUMMARY_KEY, "mochi_study_points", "mochi_hearts", "daily_task_settings"];
     const dynamic = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
       .filter((key) => key && key.startsWith("daily_tasks_"));
     return [...new Set([...fixed, ...dynamic])];
@@ -3516,7 +3523,7 @@ ${record.originalQuestion || "暂无原题描述。"}
   }
 
   function allDataKeys() {
-    const fixed = ["mochi_state", "farm_state", STUDY_LOG_KEY, "focus_log", "achievement_state", "achievement_config", "lottery_config", "lottery_history", CURRENT_SEASON_KEY, SEASON_ARCHIVES_KEY, CARD_ORDER_KEY, CARD_META_KEY, "admin_password", "api_config", HOLIDAYS_KEY, HOLIDAY_MODE_KEY, "mochi_debug_panel_open", "mochi_debug_float_collapsed", "mochi_debug_tab", "game_config", "sound_reminder_enabled", "focus_end_sound", "rest_reminder_sound"];
+    const fixed = ["mochi_state", "farm_state", STUDY_LOG_KEY, "focus_log", "achievement_state", "achievement_config", "lottery_config", "lottery_history", CURRENT_SEASON_KEY, SEASON_ARCHIVES_KEY, CARD_ORDER_KEY, CARD_META_KEY, NODE_SUMMARY_KEY, "admin_password", "api_config", HOLIDAYS_KEY, HOLIDAY_MODE_KEY, "mochi_debug_panel_open", "mochi_debug_float_collapsed", "mochi_debug_tab", "game_config", "sound_reminder_enabled", "focus_end_sound", "rest_reminder_sound"];
     const dynamic = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
       .filter((key) => key && isRetiredStorageKey(key));
     return [...new Set([...fixed, ...dynamic])];
@@ -4085,6 +4092,7 @@ ${record.originalQuestion || "暂无原题描述。"}
     refreshFocusOverlay,
     tickFocusOverlay,
     parsePastedRecordEl,
+    applyMochiRecord,
     readStudyLogs,
     writeStudyLogs,
     readFocusLogs,
