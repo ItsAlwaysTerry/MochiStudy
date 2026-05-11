@@ -1113,6 +1113,53 @@ button {
   opacity: 0.8;
 }
 
+.streak-banner {
+  padding: 12px 16px;
+  background: linear-gradient(135deg, rgba(255, 183, 77, 0.18), rgba(134, 77, 97, 0.10)), var(--surface);
+  border: 1.5px solid rgba(255, 183, 77, 0.35);
+  display: grid;
+  gap: 4px;
+}
+
+.streak-banner-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.streak-fire-icon {
+  font-size: 28px;
+  color: #e07a20;
+  flex-shrink: 0;
+  font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
+.streak-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.streak-num {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 20px;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.streak-sub {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.streak-encourage {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  padding-left: 38px;
+}
+
 .import-card {
   padding: 16px 20px;
   border: 1.5px solid var(--primary-soft, rgba(155, 100, 130, 0.3));
@@ -4470,20 +4517,49 @@ body.focus-mode #view {
   overflow: hidden;
 }
 
-.review-row-grid {
-  display: grid;
-  grid-template-columns: minmax(180px, 1.5fr) 90px 90px 92px 92px minmax(110px, 1fr) auto;
-  gap: 10px;
+.review-row-main {
+  display: flex;
   align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
   min-height: 58px;
-  padding: 12px 14px;
-  font-size: 15px;
 }
 
-.review-row-grid span {
-  color: var(--muted);
-  font-weight: 800;
+.review-row-chip {
+  flex-shrink: 0;
+  font-size: 12px;
+  min-height: 26px;
+  padding: 4px 10px;
 }
+
+.review-row-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.review-row-info strong {
+  display: block;
+  font-size: 16px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.review-row-reason {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.review-row-start {
+  flex-shrink: 0;
+}
+
 
 .review-import-panel {
   grid-column: 1 / -1;
@@ -4702,7 +4778,6 @@ body.focus-mode #view {
   .review-task-grid,
   .review-import-inline,
   .review-card,
-  .review-row-grid,
   .digest-grid {
     grid-template-columns: 1fr;
   }

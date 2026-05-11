@@ -317,6 +317,42 @@
     `;
   }
 
+  function renderStreakBanner() {
+    const streak = window.MochiApp?.calcStudyStreak?.() || 0;
+    const todayCount = window.MochiApp?.getTodayRecordCount?.() || 0;
+
+    let streakText = "";
+    let streakSub = "";
+    if (streak >= 2) {
+      streakText = `连续 ${streak} 天`;
+      streakSub = todayCount > 0 ? `今天已导入 ${todayCount} 条` : "今天还没有记录";
+    } else if (streak === 1) {
+      streakText = "今天有学习";
+      streakSub = `已导入 ${todayCount} 条记录`;
+    } else {
+      return "";
+    }
+
+    let encouragement = "";
+    if (streak >= 14) encouragement = "两周不间断，这是真的厉害。";
+    else if (streak >= 7) encouragement = "一周连续打卡，状态很稳。";
+    else if (streak >= 3) encouragement = "连续好几天了，保持住。";
+    else if (streak >= 2) encouragement = "连续两天，好的开始。";
+
+    return `
+      <section class="card streak-banner">
+        <div class="streak-banner-row">
+          <span class="material-symbols-outlined streak-fire-icon">local_fire_department</span>
+          <div class="streak-banner-text">
+            <strong class="streak-num">${escapeAttr(streakText)}</strong>
+            <span class="streak-sub">${escapeAttr(streakSub)}</span>
+          </div>
+        </div>
+        ${encouragement ? `<p class="streak-encourage">${escapeAttr(encouragement)}</p>` : ""}
+      </section>
+    `;
+  }
+
   function renderFarm(container) {
     const state = readState();
     const farmLv = getFarmLevel(state.totalHarvests);
@@ -362,6 +398,7 @@
               <div class="mini-farm-xp-fill" style="width:${harvestPct}%"></div>
             </div>
           </section>
+          ${renderStreakBanner()}
           ${holiday
             ? `
               <section class="card import-card">

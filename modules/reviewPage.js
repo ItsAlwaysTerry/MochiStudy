@@ -31,7 +31,7 @@
         <div class="section-title-row">
           <div>
             <h3>今日建议</h3>
-            <p class="muted">只推最该处理的 1-2 个，复习完会按结果降权或进入巩固期。</p>
+            <p class="muted">一次只做 1-2 个，做完就算成功，不用贪多。</p>
           </div>
         </div>
         <div class="review-suggestion-list">
@@ -45,7 +45,7 @@
         <div class="section-title-row">
           <div>
             <h3>待处理</h3>
-            <p class="muted">每一行是一个知识点，不是单张卡片。近期稳定和待巩固在下方折叠区。</p>
+            <p class="muted">可以随时挑一个做，做完导入复习结果就完成了。稳定和巩固中的在下方。</p>
           </div>
         </div>
         ${renderFilters()}
@@ -294,16 +294,18 @@
 
   function renderReviewRow(item) {
     const expanded = STATE.activeKey === item.key && STATE.activeOrigin === "row";
+    const reason = item.primaryReason || item.summaryLine || "";
     return `
-      <article class="review-row ${expanded ? "active" : ""}" data-review-card data-review-key="${escapeHtml(item.key)}">
-        <div class="review-row-grid">
-          <strong>${escapeHtml(item.subjectLabel)} · ${escapeHtml(item.nodeLabel)}</strong>
-          <span>${escapeHtml(statusLabel(item.status))}</span>
-          <span>${item.daysSinceLastStudy}天前</span>
-          <span>${item.lowStarCount}次低星</span>
-          <span>${item.reviewCount}次复习</span>
-          <span>${escapeHtml(item.lastReviewResult || "暂无")}</span>
-          <button class="btn btn-soft btn-sm" data-review-action="start" data-review-origin="row" data-review-key="${escapeHtml(item.key)}" type="button">开始</button>
+      <article class="review-row ${expanded ? "active" : ""}" data-review-card data-review-key="${escapeHtml(item.key)}" style="--subject-color:${escapeHtml(item.subjectColor || "#864d61")}">
+        <div class="review-row-main">
+          <span class="chip ${item.subject} review-row-chip">${escapeHtml(item.subjectLabel)}</span>
+          <div class="review-row-info">
+            <strong>${escapeHtml(item.nodeLabel)}</strong>
+            <span class="review-row-reason">${escapeHtml(reason)}</span>
+          </div>
+          <button class="btn btn-soft btn-sm review-row-start" data-review-action="start" data-review-origin="row" data-review-key="${escapeHtml(item.key)}" type="button">
+            <span class="material-symbols-outlined">play_arrow</span>开始
+          </button>
         </div>
         ${expanded ? renderImportPanel(item) : ""}
       </article>

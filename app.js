@@ -563,6 +563,33 @@
     }, 0);
   }
 
+  function calcStudyStreak() {
+    const logs = readStudyLogs();
+    const studiedDates = new Set(
+      logs.map((log) => String(log.date || "").slice(0, 10)).filter(Boolean)
+    );
+    const today = todayKey();
+    const cursor = new Date(`${today}T12:00:00`);
+    let streak = 0;
+    for (let i = 0; i < 365; i += 1) {
+      const dateKey = cursor.toISOString().slice(0, 10);
+      if (isHolidayToday(dateKey)) {
+        if (studiedDates.has(dateKey)) {
+          streak += 1;
+        } else if (dateKey !== today) {
+          break;
+        }
+      }
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return streak;
+  }
+
+  function getTodayRecordCount() {
+    const today = todayKey();
+    return readStudyLogs().filter((log) => String(log.date || "").slice(0, 10) === today).length;
+  }
+
   function loadAchievementConfig() {
     try {
       const saved = JSON.parse(localStorage.getItem("achievement_config") || "{}");
@@ -4120,6 +4147,8 @@ ${record.originalQuestion || "暂无原题描述。"}
     loadSeasonArchives,
     buildSeasonSnapshot,
     calcSeasonTitle,
+    calcStudyStreak,
+    getTodayRecordCount,
   };
 
   init();
