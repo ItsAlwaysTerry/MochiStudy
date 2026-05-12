@@ -960,6 +960,35 @@
     }
   }
 
+  let learnActiveTab = "review";
+
+  function renderLearn(container, tab) {
+    if (!tab) learnActiveTab = "review";
+    else if (tab === "review" || tab === "map") learnActiveTab = tab;
+    container.innerHTML = `
+      <div class="learn-tab-bar">
+        <button class="learn-tab-btn ${learnActiveTab === "review" ? "active" : ""}" data-action="learn-tab" data-tab="review" type="button">
+          <span class="material-symbols-outlined">rate_review</span>复习队列
+        </button>
+        <button class="learn-tab-btn ${learnActiveTab === "map" ? "active" : ""}" data-action="learn-tab" data-tab="map" type="button">
+          <span class="material-symbols-outlined">collections_bookmark</span>学习档案
+        </button>
+      </div>
+      <div id="learn-content-pane"></div>
+    `;
+    const pane = container.querySelector("#learn-content-pane");
+    if (learnActiveTab === "review") {
+      window.MochiReviewPage?.render?.(pane);
+    } else {
+      window.MochiCards?.render?.(pane);
+    }
+    container.querySelectorAll("[data-action='learn-tab']").forEach((button) => {
+      button.addEventListener("click", () => {
+        renderLearn(container, button.dataset.tab || "review");
+      });
+    });
+  }
+
   function route(routeName) {
     const rawRouteId = routeName || location.hash.replace("#", "") || "home";
     const routeId = rawRouteId === "schedule" ? "season" : rawRouteId;
@@ -969,8 +998,9 @@
     setActive(routeId);
     if (routeId === "home") window.MochiFarm?.renderFarm?.(view);
     else if (routeId === "schedule") renderSeason(view);
-    else if (routeId === "map") window.MochiCards.render(view);
-    else if (routeId === "review") window.MochiReviewPage?.render?.(view);
+    else if (routeId === "learn") renderLearn(view);
+    else if (routeId === "review") renderLearn(view, "review");
+    else if (routeId === "map") renderLearn(view, "map");
     else if (routeId === "achievements") renderAchievements(view);
     else if (routeId === "season") renderSeason(view);
     else if (routeId === "settings") renderSettings(view);
@@ -1000,8 +1030,10 @@
   }
 
   function setActive(routeId) {
+    const isLearnRoute = routeId === "review" || routeId === "map" || routeId === "learn";
     document.querySelectorAll("[data-route]").forEach((el) => {
-      el.classList.toggle("active", el.dataset.route === routeId);
+      const match = el.dataset.route === routeId || (el.dataset.route === "learn" && isLearnRoute);
+      el.classList.toggle("active", match);
     });
     document.querySelector(".side-nav")?.classList.remove("open");
     updateNavBadge();
@@ -1038,16 +1070,49 @@
   }
 
   function renderNoSeason() {
+    const logs = readStudyLogs();
+    const focusLogs = readFocusLogs();
+    const totalRecords = logs.length;
+    const studyDays = new Set(logs.map((log) => String(log.date || "").slice(0, 10)).filter(Boolean)).size;
+    const focusMinutes = focusLogs.reduce((sum, log) => sum + Number(log.duration || 0), 0);
+    const focusHours = Math.floor(focusMinutes / 60);
+    const subjectLabels = { math: "数学", physics: "物理", chemistry: "化学" };
+    const subjectCounts = { math: 0, physics: 0, chemistry: 0 };
+    logs.forEach((log) => {
+      if (log.subject in subjectCounts) subjectCounts[log.subject] += 1;
+    });
+    const hasData = totalRecords > 0;
     return `
       <section class="card season-empty">
-        <span class="material-symbols-outlined">emoji_events</span>
-        <div>
-          <h3>还没有开启赛季</h3>
-          <p class="muted">管理员可以在设置页开启一个有开始和结束日期的学习周期。开启后，这里会显示倒计时、学习摘要、称号、热力图和趋势图。</p>
+        <div class="season-empty-head">
+          <span class="material-symbols-outlined">emoji_events</span>
+          <div>
+            <h3>还没有开启赛季</h3>
+            <p class="muted">赛季期间可以看倒计时、称号和热力图。赛季管理在<a href="?admin=1" style="color:var(--primary);margin-left:4px">管理后台</a>。</p>
+          </div>
         </div>
-        <p class="muted" style="font-size:13px;margin-top:8px">
-          请联系管理员开启赛季（访问 ?admin=1）
-        </p>
+        ${hasData ? `
+        <div class="season-empty-stats">
+          <div class="stat-mini">
+            <span class="stat-mini-num">${totalRecords}</span>
+            <span class="stat-mini-label">累计记录</span>
+          </div>
+          <div class="stat-mini">
+            <span class="stat-mini-num">${studyDays}</span>
+            <span class="stat-mini-label">学习天数</span>
+          </div>
+          <div class="stat-mini">
+            <span class="stat-mini-num">${focusHours}</span>
+            <span class="stat-mini-label">专注小时</span>
+          </div>
+          ${Object.entries(subjectCounts).map(([subject, count]) => `
+          <div class="stat-mini">
+            <span class="stat-mini-num">${count}</span>
+            <span class="stat-mini-label">${subjectLabels[subject]}</span>
+          </div>
+          `).join("")}
+        </div>
+        ` : `<p class="muted" style="margin-top:16px">还没有任何学习记录，先去首页导入第一条吧。</p>`}
       </section>
     `;
   }
@@ -1989,7 +2054,9 @@
     if (routeId === "schedule") window.MochiCalendar?.renderSchedule?.(view);
     if (routeId === "settings") renderSettings(view);
     if (routeId === "home") window.MochiFarm?.renderFarm?.(view);
-    if (routeId === "review") window.MochiReviewPage?.render?.(view);
+    if (routeId === "learn") renderLearn(view);
+    if (routeId === "review") renderLearn(view, "review");
+    if (routeId === "map") renderLearn(view, "map");
   }
 
   function renderAdminSeasonSection() {
@@ -3820,7 +3887,7 @@ ${record.originalQuestion || "暂无原题描述。"}
     checkAndGrantAchievements();
     debugRefreshFarm();
     if (currentRoute() === "achievements") renderAchievements(view);
-    if (currentRoute() === "map") window.MochiCards?.refresh?.();
+    if ((currentRoute() === "map" || currentRoute() === "learn") && learnActiveTab === "map") window.MochiCards?.refresh?.();
   }
 
   function debugAddFocusMinutes(minutes) {
@@ -3861,7 +3928,7 @@ ${record.originalQuestion || "暂无原题描述。"}
     const routeId = location.hash.replace("#", "") || "home";
     if (routeId === "home") window.MochiFarm?.renderFarm?.(view);
     if (routeId === "schedule") window.MochiCalendar?.renderSchedule?.(view);
-    if (routeId === "map") window.MochiCards?.refresh?.();
+    if ((routeId === "map" || routeId === "learn") && learnActiveTab === "map") window.MochiCards?.refresh?.();
     if (routeId === "season") renderSeason(view);
   }
 

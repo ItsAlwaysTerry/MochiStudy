@@ -297,6 +297,17 @@ v34 之后的改动：
 - `index.html`：删除侧边栏日历导航按钮。
 - `style.css`：新增 `.home-flow`、`.home-focus-details`、`.home-focus-summary`、`.nav-lottery-badge`、`.review-today-badge`、`.review-row-today`、`.review-panel-hint`；删除旧 `.farm-layout-v2` / `.farm-focus-area` / `.farm-side-area` 相关规则。
 
+### V3.2 导航革命 + 首页闭环 + 档案瘦身
+
+- `modules/farm.js`：`renderTodayReviewCard()` 无建议时显示下一到期项（nodeLabel + 天数）。
+- `modules/farm.js`：新增 `HOME_REVIEW_STATE`；复习卡「复制材料」后展开内联 textarea，导入全程在首页完成，不跳页；三个 action：start / import / dismiss。
+- `modules/reviewPage.js`：新增导出函数 `copyItemPack(key)` 和 `importItemByKey(key, text, callbacks)`，供 `farm.js` 调用。
+- `modules/knowledgeMap.js`：删除 STATE 中 `organizing`/`draggingCardId`/`sourceFilter`/`editingSummaryKey`；删除 `SOURCE_FILTERS` 常量；`filterEntriesBySource()` 改为直通函数；删除整理按钮、来源筛选器、拖拽事件、`reorderCards()`、拖拽手柄按钮、内联编辑按钮；`refresh()` 加 `document.contains` 守卫。
+- `app.js`：新增 `learnActiveTab` 状态 + `renderLearn(container, tab)` 函数；`route()` 让 learn/review/map 都走 `renderLearn`；`setActive()` 让 `data-route="learn"` 在 review/map 路由时高亮。
+- `app.js`：`renderNoSeason()` 改为显示累计记录、学习天数、专注小时、三科记录数；无数据时显示引导语。
+- `index.html`：侧边栏「复习」+「学习档案」合并为「学习」；底部导航从 5 tab（首页/复习/档案/勋章/设置）缩减为 4 tab（首页/学习/勋章/设置）。
+- `style.css`：新增 `.learn-tab-bar`/`.learn-tab-btn`、`.home-review-import` 系列、`.home-review-msg`、`.home-review-next-due`、`.season-empty-stats`/`.stat-mini` 系列。
+
 ### V1.9 自我迭代修复：readJSON bug + 导入动线 + 主动回忆前缀
 
 - `app.js` `parsePastedRecordEl()`：修复 `readJSON` 拼写错误（应为 `readJson`），该 bug 导致打卡成功卡不显示、sparkle 不触发、textarea 不清空，记录本身正常保存不受影响。

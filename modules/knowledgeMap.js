@@ -1,25 +1,16 @@
 (function () {
   const STATE = {
     activeSubject: "math",
-    sourceFilter: "all",
     exportSubject: "all",
     expandedNode: "",
     highlightNodeId: "",
-    editingSummaryKey: "",
-    organizing: false,
     historyExpanded: false,
     expandedCards: new Map(),
-    draggingCardId: "",
     container: null,
   };
   const DEFAULT_CARDS_CONFIG = { masteredMinRecent: 2, dormantDays: 30 };
   const CARD_ORDER_KEY = "card_order";
   const NODE_SUMMARY_KEY = "study_node_summary";
-  const SOURCE_FILTERS = [
-    ["all", "全部"],
-    ["lesson", "新学"],
-    ["reviewGroup", "复习"],
-  ];
 
   const NODE_DEFS = {
     math: {
@@ -252,11 +243,11 @@
     return "learning";
   }
 
-  function nodeSummary(logs, subject, node, sourceFilter = STATE.sourceFilter, reviewState = null) {
+  function nodeSummary(logs, subject, node, reviewState = null) {
     const dateEntries = logsForNode(logs, subject, node.label);
     const allEntries = displayLogsForNode(logs, subject, node.label);
-    const entries = filterEntriesBySource(allEntries, sourceFilter);
-    const visibleDateEntries = filterEntriesBySource(dateEntries, sourceFilter);
+    const entries = filterEntriesBySource(allEntries);
+    const visibleDateEntries = filterEntriesBySource(dateEntries);
     const latest = visibleDateEntries[0] || dateEntries[0];
     const reviewCount = allEntries.filter((log) => {
       const source = metaForLog(log).source || "lesson";
@@ -308,12 +299,8 @@
     };
   }
 
-  function filterEntriesBySource(entries, sourceFilter = STATE.sourceFilter) {
-    if (!sourceFilter || sourceFilter === "all") return entries;
-    if (sourceFilter === "reviewGroup") {
-      return entries.filter((log) => (metaForLog(log).source || "lesson") !== "lesson");
-    }
-    return entries.filter((log) => (metaForLog(log).source || "lesson") === sourceFilter);
+  function filterEntriesBySource(entries) {
+    return entries;
   }
 
   function readState() {
@@ -342,14 +329,13 @@
     const subject = SUBJECTS[STATE.activeSubject] || SUBJECTS.math;
     const subjectKey = STATE.activeSubject;
     let summaries = subject.nodes
-      .map((node) => nodeSummary(logs, subjectKey, node, STATE.sourceFilter, reviewState))
+      .map((node) => nodeSummary(logs, subjectKey, node, reviewState))
       .sort((a, b) => {
         if (a.count && !b.count) return -1;
         if (!a.count && b.count) return 1;
         if (a.count && b.count) return String(b.latestDate).localeCompare(String(a.latestDate));
         return subject.nodes.indexOf(a.node) - subject.nodes.indexOf(b.node);
       });
-    if (STATE.sourceFilter !== "all") summaries = summaries.filter((summary) => summary.count > 0);
     const hasSubjectLogs = subjectLogs(logs, subjectKey).length > 0;
     const hasVisibleLogs = summaries.some((summary) => summary.count > 0);
     container.innerHTML = `
@@ -359,9 +345,6 @@
           <p>每条学习记录都会变成一张卡片，按知识点收进这里。</p>
         </div>
         <div class="archive-head-actions">
-          <button class="btn ${STATE.organizing ? "btn-primary" : "btn-soft"} btn-sm" data-card-organize type="button" aria-pressed="${STATE.organizing ? "true" : "false"}" title="${STATE.organizing ? "退出整理模式" : "开启后可编辑、删除和拖拽卡片"}">
-            <span class="material-symbols-outlined">${STATE.organizing ? "check" : "tune"}</span>${STATE.organizing ? "完成整理" : "整理"}
-          </button>
           <button class="btn btn-outline btn-sm" data-card-export>
             <span class="material-symbols-outlined">ios_share</span>导出档案
           </button>
@@ -374,38 +357,11 @@
           return `<button class="subject-tab ${active}" data-card-subject="${key}" style="--subject-color:${item.color}">${item.label} (${count})</button>`;
         }).join("")}
       </div>
-      ${hasSubjectLogs ? renderSourceFilters(logs, subjectKey) : ""}
-      ${STATE.organizing ? `
-        <div class="organize-mode-bar">
-          <span class="material-symbols-outlined">edit_note</span>
-          <span>整理模式 · 可编辑、删除和拖拽卡片</span>
-          <button class="btn btn-soft btn-sm" data-card-organize type="button">完成整理</button>
-        </div>
-      ` : ""}
       ${hasSubjectLogs && hasVisibleLogs ? `
         <section class="archive-list">
           ${summaries.map((summary) => renderNodeRow(summary, subjectKey, subject.color)).join("")}
         </section>
-      ` : hasSubjectLogs ? renderFilteredEmpty(subject.label) : renderEmpty(subject.label)}
-    `;
-  }
-
-  function renderSourceFilters(logs, subjectKey) {
-    const subjectEntries = subjectLogs(logs, subjectKey);
-    const counts = subjectEntries.reduce((acc, log) => {
-      const source = metaForLog(log).source || "lesson";
-      acc[source] = (acc[source] || 0) + 1;
-      if (source !== "lesson") acc.reviewGroup = (acc.reviewGroup || 0) + 1;
-      return acc;
-    }, { all: subjectEntries.length });
-    return `
-      <div class="archive-source-filters" aria-label="按卡片类型筛选">
-        ${SOURCE_FILTERS.map(([value, label]) => {
-          const active = STATE.sourceFilter === value ? "active" : "";
-          const count = counts[value] || 0;
-          return `<button class="${active}" data-card-source="${value}" type="button">${label}<span>${count}</span></button>`;
-        }).join("")}
-      </div>
+      ` : renderEmpty(subject.label)}
     `;
   }
 
@@ -419,16 +375,6 @@
     `;
   }
 
-  function renderFilteredEmpty(label) {
-    const filterLabel = sourceInfo(STATE.sourceFilter).label;
-    return `
-      <section class="card archive-empty">
-        <span class="material-symbols-outlined">filter_alt</span>
-        <h3>${label}暂无“${escapeHtml(filterLabel)}”卡片</h3>
-        <p class="muted">切回“全部”可以查看这个科目的所有学习记录。</p>
-      </section>
-    `;
-  }
 
   function renderNodeRow(summary, subjectKey, color) {
     const expanded = STATE.expandedNode === summary.node.id && summary.count > 0;
@@ -466,9 +412,8 @@
   }
 
   function renderNodeDigest(summary, subjectKey) {
-    const editing = STATE.editingSummaryKey === summary.key;
     const summaryMode = summary.hasManualSummary ? "已校正" : "自动整理";
-    const cardsLabel = summary.entries.length === summary.totalCount ? `${summary.totalCount}张历史卡片` : `${summary.entries.length}/${summary.totalCount}张筛选卡片`;
+    const cardsLabel = `${summary.totalCount}张历史卡片`;
     return `
       <div class="archive-node-digest">
         <div class="digest-title-row">
@@ -476,10 +421,8 @@
           <div class="digest-title-actions">
             <span class="digest-summary-mode">${summaryMode}</span>
             <span>${escapeHtml(summary.reviewStatusLabel || statusInfo(summary.status).label)}</span>
-            ${editing || !STATE.organizing ? "" : `<button class="card-action-btn" data-summary-action="edit" data-summary-key="${escapeHtml(summary.key)}" type="button" title="编辑摘要" aria-label="编辑摘要"><span class="material-symbols-outlined">edit_note</span></button>`}
           </div>
         </div>
-        ${editing ? renderNodeSummaryEditor(summary) : ""}
         <div class="digest-grid">
           <div>
             <small>主要卡点</small>
@@ -515,30 +458,6 @@
     `;
   }
 
-  function renderNodeSummaryEditor(summary) {
-    return `
-      <div class="digest-editor" data-summary-form data-summary-key="${escapeHtml(summary.key)}" data-summary-subject="${escapeHtml(summary.subject)}" data-summary-node-label="${escapeHtml(summary.node.label)}">
-        <label>
-          <span>主要卡点</span>
-          <textarea data-summary-field="mainPainPointOverride" rows="2" placeholder="${escapeHtml(summary.autoMainPainPoint || "自动摘要暂时为空")}">${escapeHtml(summary.manualSummary.mainPainPointOverride || "")}</textarea>
-        </label>
-        <label>
-          <span>核心突破</span>
-          <textarea data-summary-field="keyBreakthroughOverride" rows="2" placeholder="${escapeHtml(summary.autoLatestBreakthrough || "自动摘要暂时为空")}">${escapeHtml(summary.manualSummary.keyBreakthroughOverride || "")}</textarea>
-        </label>
-        <label>
-          <span>复习备注</span>
-          <textarea data-summary-field="reviewNote" rows="2" placeholder="只写下次复习 AI 必须知道的一句话">${escapeHtml(summary.manualSummary.reviewNote || "")}</textarea>
-        </label>
-        <div class="digest-editor-actions">
-          <button class="btn btn-primary btn-sm" data-summary-action="save" type="button"><span class="material-symbols-outlined">save</span>保存</button>
-          <button class="btn btn-outline btn-sm" data-summary-action="cancel" type="button">取消</button>
-          <button class="btn btn-soft btn-sm" data-summary-action="clear" type="button"><span class="material-symbols-outlined">restart_alt</span>恢复自动摘要</button>
-        </div>
-      </div>
-    `;
-  }
-
   function renderStudyCard(log, subjectKey, index, nodeLabel = log.nodeLabel || "") {
     const id = cardId(log);
     const meta = metaForLog(log);
@@ -549,7 +468,6 @@
     const starClass = starCount === 3 ? "stars-gold" : starCount === 2 ? "stars-orange" : "stars-gray";
     const hasRoutine = Boolean(String(log.routine || "").trim());
     const hasOriginalQuestion = Boolean(originalQuestionText(log));
-    const showOrganizeActions = STATE.organizing;
     return `
       <article class="study-card expand-${expandState || "none"}"
         data-card-id="${escapeHtml(id)}"
@@ -566,17 +484,6 @@
             </div>
             <div class="card-head-actions">
               <div class="card-stars-badge ${starClass}">${stars(starCount)}</div>
-              ${showOrganizeActions ? `
-              <button class="card-action-btn card-drag-handle" data-card-action="drag-handle" draggable="true" type="button" title="拖拽排序" aria-label="拖拽排序">
-                <span class="material-symbols-outlined">drag_indicator</span>
-              </button>
-              <button class="card-action-btn" data-card-action="edit-card" type="button" title="编辑卡片" aria-label="编辑卡片">
-                <span class="material-symbols-outlined">edit</span>
-              </button>
-              <button class="card-action-btn danger" data-card-action="delete-card" type="button" title="删除卡片" aria-label="删除卡片">
-                <span class="material-symbols-outlined">delete</span>
-              </button>
-              ` : ""}
             </div>
           </div>
           ${painPointHtml(log)}
@@ -665,41 +572,6 @@
     const all = readNodeSummaries();
     delete all[summaryKey(subject, nodeLabel)];
     writeNodeSummaries(all);
-  }
-
-  function handleSummaryAction(button, container) {
-    const action = button.dataset.summaryAction;
-    const form = button.closest("[data-summary-form]");
-    const key = button.dataset.summaryKey || form?.dataset.summaryKey || "";
-    if (action === "edit") {
-      if (!STATE.organizing) return;
-      STATE.editingSummaryKey = key;
-      render(container);
-      return;
-    }
-    if (action === "cancel") {
-      STATE.editingSummaryKey = "";
-      render(container);
-      return;
-    }
-    const subject = form?.dataset.summarySubject || "";
-    const nodeLabel = form?.dataset.summaryNodeLabel || "";
-    if (!subject || !nodeLabel) return;
-    if (action === "save") {
-      const next = {};
-      form.querySelectorAll("[data-summary-field]").forEach((field) => {
-        next[field.dataset.summaryField] = String(field.value || "").trim();
-      });
-      saveNodeSummary(subject, nodeLabel, next);
-      STATE.editingSummaryKey = "";
-      render(container);
-      return;
-    }
-    if (action === "clear") {
-      clearNodeSummary(subject, nodeLabel);
-      STATE.editingSummaryKey = "";
-      render(container);
-    }
   }
 
   function sourceInfo(source) {
@@ -853,19 +725,6 @@
         }
         return;
       }
-      const summaryButton = event.target.closest("[data-summary-action]");
-      if (summaryButton) {
-        event.stopPropagation();
-        handleSummaryAction(summaryButton, container);
-        return;
-      }
-      const organizeButton = event.target.closest("[data-card-organize]");
-      if (organizeButton) {
-        STATE.organizing = !STATE.organizing;
-        if (!STATE.organizing) STATE.editingSummaryKey = "";
-        render(container);
-        return;
-      }
       const exportButton = event.target.closest("[data-card-export]");
       if (exportButton) {
         showExportSheet();
@@ -874,15 +733,6 @@
       const subjectButton = event.target.closest("button[data-card-subject]");
       if (subjectButton) {
         STATE.activeSubject = subjectButton.dataset.cardSubject || "math";
-        STATE.expandedNode = "";
-        STATE.highlightNodeId = "";
-        STATE.historyExpanded = false;
-        render(container);
-        return;
-      }
-      const sourceButton = event.target.closest("button[data-card-source]");
-      if (sourceButton) {
-        STATE.sourceFilter = sourceButton.dataset.cardSource || "all";
         STATE.expandedNode = "";
         STATE.highlightNodeId = "";
         STATE.historyExpanded = false;
@@ -903,22 +753,6 @@
       if (card) {
         const id = card.dataset.cardId;
         const action = event.target.closest("[data-card-action]")?.dataset.cardAction;
-        if (action === "edit-card") {
-          event.stopPropagation();
-          if (!STATE.organizing) return;
-          showEditCard(card);
-          return;
-        }
-        if (action === "delete-card") {
-          event.stopPropagation();
-          if (!STATE.organizing) return;
-          deleteCard(card);
-          return;
-        }
-        if (action === "drag-handle") {
-          event.stopPropagation();
-          return;
-        }
         if (action === "toggle-routine" || (!action && event.target.closest(".card-front"))) {
           if (event.target.closest(".card-question-area") || event.target.closest(".card-head-actions")) return;
           const current = STATE.expandedCards.get(id);
@@ -937,78 +771,6 @@
         }
       }
     });
-    container.addEventListener("dragstart", (event) => {
-      if (!STATE.organizing) return;
-      const handle = event.target.closest("[data-card-action='drag-handle']");
-      const card = handle?.closest("[data-card-id]");
-      if (!card) return;
-      STATE.draggingCardId = card.dataset.cardId || "";
-      card.classList.add("dragging");
-      event.dataTransfer.effectAllowed = "move";
-      event.dataTransfer.setData("text/plain", STATE.draggingCardId);
-    });
-    container.addEventListener("dragover", (event) => {
-      if (!STATE.organizing) return;
-      const card = event.target.closest("[data-card-id]");
-      if (!card || !STATE.draggingCardId || card.dataset.cardId === STATE.draggingCardId) return;
-      event.preventDefault();
-      markDragTarget(card, event);
-      event.dataTransfer.dropEffect = "move";
-    });
-    container.addEventListener("dragleave", (event) => {
-      const card = event.target.closest("[data-card-id]");
-      if (card && !card.contains(event.relatedTarget)) clearDragMarks(card);
-    });
-    container.addEventListener("drop", (event) => {
-      if (!STATE.organizing) return;
-      const target = event.target.closest("[data-card-id]");
-      if (!target || !STATE.draggingCardId || target.dataset.cardId === STATE.draggingCardId) return;
-      event.preventDefault();
-      reorderCards(STATE.draggingCardId, target, event);
-    });
-    container.addEventListener("dragend", () => {
-      STATE.draggingCardId = "";
-      clearAllDragMarks();
-    });
-  }
-
-  function markDragTarget(card, event) {
-    const rect = card.getBoundingClientRect();
-    const before = event.clientY < rect.top + rect.height / 2;
-    clearAllDragMarks();
-    card.classList.add(before ? "drop-before" : "drop-after");
-  }
-
-  function clearDragMarks(card) {
-    card.classList.remove("dragging", "drop-before", "drop-after");
-  }
-
-  function clearAllDragMarks() {
-    STATE.container?.querySelectorAll(".study-card").forEach(clearDragMarks);
-  }
-
-  function reorderCards(sourceId, targetCard, event) {
-    const subjectKey = targetCard.dataset.cardSubject || STATE.activeSubject || "math";
-    const nodeLabel = targetCard.dataset.cardNodeLabel || "";
-    const logs = window.MochiApp?.readStudyLogs?.() || [];
-    const entries = displayLogsForNode(logs, subjectKey, nodeLabel);
-    const ids = entries.map((log) => cardId(log));
-    const sourceIndex = ids.indexOf(sourceId);
-    const targetIndex = ids.indexOf(targetCard.dataset.cardId || "");
-    if (sourceIndex < 0 || targetIndex < 0) return;
-
-    const [moved] = ids.splice(sourceIndex, 1);
-    const rect = targetCard.getBoundingClientRect();
-    const insertAfter = event.clientY >= rect.top + rect.height / 2;
-    let nextIndex = ids.indexOf(targetCard.dataset.cardId || "");
-    if (insertAfter) nextIndex += 1;
-    ids.splice(nextIndex, 0, moved);
-
-    const order = readCardOrder();
-    order[cardOrderKey(subjectKey, nodeLabel)] = ids;
-    saveCardOrder(order);
-    clearAllDragMarks();
-    render(STATE.container);
   }
 
   function rerenderCard(cardEl) {
@@ -1231,7 +993,8 @@
   }
 
   function refresh() {
-    if (STATE.container) render(STATE.container);
+    if (!STATE.container || !document.contains(STATE.container)) return;
+    render(STATE.container);
   }
 
   function exportDate() {
@@ -1736,10 +1499,6 @@
     STATE.activeSubject = node.subject;
     STATE.expandedNode = node.id;
     STATE.highlightNodeId = node.id;
-    if (options.editSummary) {
-      STATE.organizing = true;
-      STATE.editingSummaryKey = summaryKey(node.subject, node.label);
-    }
     render(STATE.container);
     setTimeout(() => {
       const escaped = window.CSS?.escape ? CSS.escape(node.id) : node.id.replace(/"/g, '\\"');

@@ -156,6 +156,55 @@
     return copied;
   }
 
+  function copyItemPack(key) {
+    const item = findItem(key);
+    if (!item) return false;
+    const pack = window.MochiReviewEngine.generateNodeReviewPack(item);
+    return copyToClipboard(pack);
+  }
+
+  function importItemByKey(key, text, callbacks = {}) {
+    const item = findItem(key);
+    if (!item) {
+      callbacks.onError?.("找不到该复习项目，请刷新后重试。");
+      return;
+    }
+    const record = window.MochiApp?.parseMochiRecord?.(text);
+    if (!record) {
+      callbacks.onError?.("没有找到 MOCHI-RECORD，请粘贴 AI 最后输出的完整记录段，必须同时包含 ---MOCHI-RECORD-START--- 和 ---MOCHI-RECORD-END---。");
+      return;
+    }
+    const normalizedLabel = window.MochiCards?.normalizeNodeLabel?.(record.subject, record.nodeLabel, record.nodeId) || record.nodeLabel;
+    if (record.subject !== item.subject || normalizedLabel !== item.nodeLabel) {
+      callbacks.onError?.(`这条记录不是「${item.nodeLabel}」的内容，请检查 AI 输出是否匹配本次复习项目。`);
+      return;
+    }
+    record.nodeLabel = item.nodeLabel;
+    record.nodeId = item.nodeId;
+    record.meta = {
+      ...(record.meta || {}),
+      source: "review",
+      sourceRecordIds: Array.isArray(record.meta?.sourceRecordIds) && record.meta.sourceRecordIds.length
+        ? record.meta.sourceRecordIds
+        : item.entries.map((log) => window.MochiReviewEngine.cardId(log)),
+    };
+    const applied = window.MochiApp?.applyMochiRecord?.(record);
+    if (!applied) {
+      callbacks.onError?.("导入失败，请刷新后重试。");
+      return;
+    }
+    window.MochiApp?.toast?.("复习结果已导入");
+    window.MochiPet?.renderMiniState?.();
+    window.MochiFarm?.refreshFarmSummary?.();
+    window.MochiCards?.refresh?.();
+    const starMsgs = {
+      3: `「${item.nodeLabel}」做对了，下次冷却，继续保持。`,
+      2: `「${item.nodeLabel}」基本掌握，下次还会再出现。`,
+      1: `「${item.nodeLabel}」记录了卡点，下次重点照顾。`,
+    };
+    callbacks.onSuccess?.(starMsgs[record.stars] || "已导入复习结果。");
+  }
+
   function findItem(key) {
     return (window.MochiReviewEngine?.buildReviewState?.().items || []).find((item) => item.key === key);
   }
@@ -275,5 +324,5 @@
     return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
   }
 
-  window.MochiReviewPage = { render, startItem };
+  window.MochiReviewPage = { render, startItem, copyItemPack, importItemByKey };
 })();

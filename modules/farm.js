@@ -9,6 +9,7 @@
     harvestXP: 20,
     levelMinHarvests: [0, 3, 8, 18, 35],
   };
+  const HOME_REVIEW_STATE = { activeKey: "", importResult: "", importError: "" };
 
   const SUBJECT_CROP_DEFS = {
     math: {
@@ -225,10 +226,35 @@
     const reviewState = window.MochiReviewEngine?.buildReviewState?.();
     const item = reviewState?.todaySuggestions?.[0];
     if (!item) {
+      if (HOME_REVIEW_STATE.importResult) {
+        return `
+          <section class="card home-review-card calm">
+            <div class="home-review-head">
+              <span class="material-symbols-outlined">rate_review</span>
+              <div>
+                <h3>今日复习</h3>
+                <p>复习结果已保存。</p>
+              </div>
+            </div>
+            <p class="home-review-msg home-review-msg-success">${escapeAttr(HOME_REVIEW_STATE.importResult)}</p>
+            <button class="btn btn-soft btn-sm" data-home-review-action="dismiss" type="button">继续</button>
+          </section>
+        `;
+      }
       const hasAnyReview = (reviewState?.items || []).some((i) => i.reviewCount > 0);
       const calmText = hasAnyReview
         ? "近期复习过的知识点都在巩固中，今天可以专心做新题。"
         : "还没有复习过任何知识点，先从学习档案里找一个开始。";
+      const today = new Date().toISOString().slice(0, 10);
+      const nextDue = (reviewState?.items || [])
+        .filter((i) => i.nextReviewDate && i.nextReviewDate > today)
+        .sort((a, b) => a.nextReviewDate.localeCompare(b.nextReviewDate))[0];
+      let nextDueHint = "";
+      if (nextDue) {
+        const diff = Math.ceil((new Date(`${nextDue.nextReviewDate}T12:00:00`) - new Date()) / 86400000);
+        const diffLabel = diff === 1 ? "明天" : `${diff} 天后`;
+        nextDueHint = `<p class="home-review-next-due">下一个到期：${escapeAttr(nextDue.nodeLabel)} · ${diffLabel}</p>`;
+      }
       return `
         <section class="card home-review-card calm">
           <div class="home-review-head">
@@ -238,10 +264,12 @@
               <p>${calmText}</p>
             </div>
           </div>
+          ${nextDueHint}
           <button class="btn btn-soft btn-sm" data-route="review" type="button">看复习页</button>
         </section>
       `;
     }
+    const isActive = HOME_REVIEW_STATE.activeKey === item.key;
     return `
       <section class="card home-review-card" style="--subject-color:${escapeAttr(item.subjectColor || "#864d61")}">
         <div class="home-review-head">
@@ -252,18 +280,33 @@
           </div>
         </div>
         ${item.mainPainPoint ? `
-        <details class="home-review-spoiler">
+        <details class="home-review-spoiler"${isActive ? " open" : ""}>
           <summary class="home-review-recall-hint">还记得吗？先想一想，再展开看卡点</summary>
           <p class="home-review-pain">${escapeAttr(item.mainPainPoint)}</p>
         </details>
         ` : ""}
-        <p class="home-review-reason">${escapeAttr(item.primaryReason || item.summaryLine || "适合做一次轻量回顾。")}</p>
+        ${isActive ? `
+        <div class="home-review-import">
+          ${HOME_REVIEW_STATE.importError ? `<p class="home-review-msg home-review-msg-error">${escapeAttr(HOME_REVIEW_STATE.importError)}</p>` : ""}
+          ${HOME_REVIEW_STATE.importResult ? `
+            <p class="home-review-msg home-review-msg-success">${escapeAttr(HOME_REVIEW_STATE.importResult)}</p>
+            <button class="btn btn-soft btn-sm" data-home-review-action="dismiss" type="button" style="margin-top:6px">继续</button>
+          ` : `
+            <p class="home-review-import-hint">材料已复制 · 先在脑子里回想 20 秒，再去 AI 粘贴做题</p>
+            <textarea id="home-review-paste" rows="3" placeholder="粘贴 AI 输出（含 MOCHI-RECORD 那段即可）" style="width:100%;box-sizing:border-box;margin-top:8px"></textarea>
+            <button class="btn btn-primary btn-sm" data-home-review-action="import" data-review-key="${escapeAttr(item.key)}" style="width:100%;margin-top:6px" type="button">
+              <span class="material-symbols-outlined">download_done</span>导入复习结果
+            </button>
+          `}
+        </div>
+        ` : `
         <div class="home-review-actions">
           <button class="btn btn-primary btn-sm" data-home-review-action="start" data-review-key="${escapeAttr(item.key)}" type="button">
             <span class="material-symbols-outlined">content_copy</span>复制材料
           </button>
           <button class="btn btn-outline btn-sm" data-route="review" type="button">看全部</button>
         </div>
+        `}
       </section>
     `;
   }
@@ -428,7 +471,7 @@
     container.querySelectorAll("[data-farm-action]").forEach((button) => {
       button.addEventListener("click", handleFarmAction);
     });
-    container.querySelectorAll("[data-home-review-action='start']").forEach((button) => {
+    container.querySelectorAll("[data-home-review-action]").forEach((button) => {
       button.addEventListener("click", handleHomeReviewStart);
     });
     container.querySelectorAll("[data-action='scroll-to-import']").forEach((button) => {
@@ -444,9 +487,44 @@
   }
 
   async function handleHomeReviewStart(event) {
+    const action = event.currentTarget.dataset.homeReviewAction;
     const key = event.currentTarget.dataset.reviewKey || "";
-    const copied = await window.MochiReviewPage?.startItem?.(key, "suggestion");
-    if (!copied) window.MochiApp?.navigate?.("review");
+
+    if (action === "start") {
+      const copied = await window.MochiReviewPage?.copyItemPack?.(key);
+      HOME_REVIEW_STATE.activeKey = key;
+      HOME_REVIEW_STATE.importResult = "";
+      HOME_REVIEW_STATE.importError = "";
+      window.MochiApp?.toast?.(copied ? "复习材料已复制，先自己回想 20 秒" : "复制失败，请手动获取材料");
+    } else if (action === "import") {
+      const textarea = document.getElementById("home-review-paste");
+      const text = textarea?.value || "";
+      window.MochiReviewPage?.importItemByKey?.(key, text, {
+        onSuccess(msg) {
+          HOME_REVIEW_STATE.importResult = msg;
+          HOME_REVIEW_STATE.importError = "";
+          const view = document.getElementById("view");
+          if (view && view.querySelector(".home-flow")) {
+            renderFarm(view);
+            window.MochiApp?.sparkle?.(view, "✓");
+          }
+        },
+        onError(msg) {
+          HOME_REVIEW_STATE.importError = msg;
+          HOME_REVIEW_STATE.importResult = "";
+          const view = document.getElementById("view");
+          if (view && view.querySelector(".home-flow")) renderFarm(view);
+        },
+      });
+      return;
+    } else if (action === "dismiss") {
+      HOME_REVIEW_STATE.activeKey = "";
+      HOME_REVIEW_STATE.importResult = "";
+      HOME_REVIEW_STATE.importError = "";
+    }
+
+    const view = document.getElementById("view");
+    if (view && view.querySelector(".home-flow")) renderFarm(view);
   }
 
   function handleFarmAction(event) {
