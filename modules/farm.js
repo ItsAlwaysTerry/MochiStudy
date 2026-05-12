@@ -381,15 +381,9 @@
       const end = new Date(`${currentSeason.endDate}T12:00:00`);
       const daysLeft = Math.max(0, Math.ceil((end - today) / (1000 * 60 * 60 * 24)));
       const isEndingSoon = daysLeft <= 3 && daysLeft > 0;
-      return `
-        <div class="season-banner${isEndingSoon ? " ending-soon" : ""}">
-          <span class="season-banner-icon">${isEndingSoon ? "⚠️" : "🏆"}</span>
-          <span class="season-banner-name">${escapeAttr(currentSeason.name)}</span>
-          <span class="season-banner-sep">·</span>
-          <span class="season-banner-dates">${currentSeason.startDate} — ${currentSeason.endDate}</span>
-          <span class="season-banner-countdown">${isEndingSoon ? `还剩 ${daysLeft} 天，即将结束` : `${daysLeft} 天后结束`}</span>
-        </div>
-      `;
+      const icon = isEndingSoon ? "⚠️" : "🏆";
+      const countdown = daysLeft === 0 ? "今天结束" : isEndingSoon ? `还剩 ${daysLeft} 天` : `${daysLeft} 天`;
+      return `<div class="season-badge${isEndingSoon ? " ending-soon" : ""}">${icon} ${escapeAttr(currentSeason.name)} · ${countdown}</div>`;
     })() : "";
 
     container.innerHTML = `
@@ -423,7 +417,7 @@
                     <p class="import-header-hint">把 AI 家教输出的 MOCHI-RECORD 粘贴进来</p>
                   </div>
                 </div>
-                <textarea id="record-paste" rows="2" placeholder="粘贴 ---MOCHI-RECORD-START--- 到 ---MOCHI-RECORD-END--- 之间的完整内容"></textarea>
+                <textarea id="record-paste" rows="3" placeholder="粘贴 MOCHI-RECORD 完整内容（START 到 END 整段）"></textarea>
                 <button class="btn btn-primary" data-action="parse-record" style="width:100%;margin-top:8px">
                   <span class="material-symbols-outlined">auto_awesome</span>确认导入
                 </button>
@@ -439,14 +433,6 @@
               </section>
             `
           }
-          ${holiday && hasRecords ? `
-            <section class="card daily-goal-compact">
-              <div class="daily-goal-row">
-                <span class="daily-goal-label">今日</span>
-                ${renderDailyGoalDots()}
-              </div>
-            </section>
-          ` : ""}
           ${hasRecords ? renderTodayReviewCard() : (holiday ? renderGuideCard() : "")}
         </div>
       </div>

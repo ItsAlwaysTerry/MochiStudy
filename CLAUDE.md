@@ -269,6 +269,13 @@ v34 之后的改动：
 - `modules/farm.js` `renderTodayReviewCard()`：新增 `mainPainPoint` 作为主体文字（`.home-review-pain`），用户在首页即可看到卡点；`primaryReason` 降为辅助灰色。
 - `app.js` 将 `escapeHtml` 加入 `window.MochiApp` 导出；`farm.js` 的 `escapeAttr` 改为优先调用 `window.MochiApp.escapeHtml`，消除重复。
 
+### V2.0 80/20 大刀阔斧简化
+
+- `index.html` 底部导航：将「日历」替换为「勋章」——日历是回顾功能（低频），勋章/抽奖是每日激励循环（高频），移动端现可直接进入。
+- `modules/farm.js` + `style.css`：删除首页 `daily-goal-compact` 区块（三个学科圆圈打卡点），该信息已被迷你农场的 `N/15` 数字完全覆盖，纯冗余。同时删除 `.daily-goal-row`、`.goal-dot` 等相关 CSS。
+- `modules/farm.js` + `style.css`：赛季横幅从多行 flex 卡片压缩为单行徽章（`.season-badge`），保留名称和倒计时，去掉日期范围——首页顶部视觉负担降低约 70%。
+- `modules/farm.js`：导入框 `rows="2"→"3"`，placeholder 从 40 字缩短为 18 字——导入框是首页核心操作，更大的输入区域配合简洁提示减少认知摩擦。
+
 ### V1.9 自我迭代修复：readJSON bug + 导入动线 + 主动回忆前缀
 
 - `app.js` `parsePastedRecordEl()`：修复 `readJSON` 拼写错误（应为 `readJson`），该 bug 导致打卡成功卡不显示、sparkle 不触发、textarea 不清空，记录本身正常保存不受影响。
