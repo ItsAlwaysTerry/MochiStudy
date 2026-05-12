@@ -747,6 +747,7 @@
       toast(message);
     }
 
+    updateNavBadge();
     return newBadges;
   }
 
@@ -941,6 +942,7 @@
       spinButton.innerHTML = state.lotteryTickets > 0 ? "再抽一次" : "没有机会了";
       spinButton.disabled = state.lotteryTickets <= 0;
     }
+    updateNavBadge();
     if (currentRoute() === "achievements") renderAchievements(document.getElementById("view"));
   }
 
@@ -959,10 +961,14 @@
   }
 
   function route(routeName) {
-    const routeId = routeName || location.hash.replace("#", "") || "home";
+    const rawRouteId = routeName || location.hash.replace("#", "") || "home";
+    const routeId = rawRouteId === "schedule" ? "season" : rawRouteId;
+    if (rawRouteId === "schedule" && location.hash === "#schedule") {
+      history.replaceState(null, "", "#season");
+    }
     setActive(routeId);
     if (routeId === "home") window.MochiFarm?.renderFarm?.(view);
-    else if (routeId === "schedule") window.MochiCalendar.renderSchedule(view);
+    else if (routeId === "schedule") renderSeason(view);
     else if (routeId === "map") window.MochiCards.render(view);
     else if (routeId === "review") window.MochiReviewPage?.render?.(view);
     else if (routeId === "achievements") renderAchievements(view);
@@ -976,11 +982,29 @@
     return location.hash.replace("#", "") || "home";
   }
 
+  function updateNavBadge() {
+    const tickets = loadAchievementState().lotteryTickets || 0;
+    document.querySelectorAll('[data-route="achievements"]').forEach((btn) => {
+      let badge = btn.querySelector(".nav-lottery-badge");
+      if (tickets > 0) {
+        if (!badge) {
+          badge = document.createElement("span");
+          badge.className = "nav-lottery-badge";
+          btn.appendChild(badge);
+        }
+        badge.textContent = tickets;
+      } else if (badge) {
+        badge.remove();
+      }
+    });
+  }
+
   function setActive(routeId) {
     document.querySelectorAll("[data-route]").forEach((el) => {
       el.classList.toggle("active", el.dataset.route === routeId);
     });
     document.querySelector(".side-nav")?.classList.remove("open");
+    updateNavBadge();
   }
 
   function navigate(routeId, updateHash = true) {

@@ -285,6 +285,18 @@ v34 之后的改动：
 - `modules/reviewPage.js`：`renderTodayTask()` 删掉 `.review-task-grid` 两列，改为单行 `.review-task-pain`，「为什么今天」列下线。
 - `style.css`：新增 `.home-review-spoiler` 系列样式、`.review-task-pain`，删除无用 `.review-task-grid` 声明。
 
+### V3.1 激进简化：布局重构 + 页面下架 + 交互整合
+
+- `modules/farm.js`：`renderFarm()` 改为单列 `.home-flow` 布局，删除 `farm-layout-v2` 两列结构；导入框升至第一位，迷你农场移至第三位，番茄钟折叠进 `<details class="home-focus-details">`。
+- `modules/farm.js`：`refreshFarmSummary()` 选择器从 `.farm-layout-v2` 改为 `.home-flow`。
+- `modules/reviewPage.js`：整页扁平化，删除 filter bar、删除三分区（今日建议/待处理/冷却）、删除展开/折叠逻辑；改为单一 `renderFlatList()` 函数，今日优先条目用绿色左边框 + 「今日」徽章区分。
+- `modules/reviewPage.js`：删除 `renderTodayTask()`、`renderTodayEmpty()`、`renderPendingList()`、`renderFilters()` 四个函数；删除 `STATE.subjectFilter`、`STATE.pendingExpanded`。
+- `modules/reviewPage.js`：`renderImportPanel()` 从 4步+回忆卡 简化为 2行提示文字 + textarea（rows=3）。
+- `app.js`：新增 `updateNavBadge()` 函数；在 `setActive()` 末尾和 `checkAndGrantAchievements()` 末尾调用；抽奖结束后同步刷新；`lotteryTickets > 0` 时在「勋章」导航按钮右上角显示数字红色徽章。
+- `app.js`：路由 `#schedule` 重定向到赛季页。
+- `index.html`：删除侧边栏日历导航按钮。
+- `style.css`：新增 `.home-flow`、`.home-focus-details`、`.home-focus-summary`、`.nav-lottery-badge`、`.review-today-badge`、`.review-row-today`、`.review-panel-hint`；删除旧 `.farm-layout-v2` / `.farm-focus-area` / `.farm-side-area` 相关规则。
+
 ### V1.9 自我迭代修复：readJSON bug + 导入动线 + 主动回忆前缀
 
 - `app.js` `parsePastedRecordEl()`：修复 `readJSON` 拼写错误（应为 `readJson`），该 bug 导致打卡成功卡不显示、sparkle 不触发、textarea 不清空，记录本身正常保存不受影响。

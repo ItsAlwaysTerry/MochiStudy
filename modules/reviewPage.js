@@ -1,12 +1,8 @@
 ﻿(function () {
-  const PENDING_VISIBLE_CAP = 4;
-
   const STATE = {
-    subjectFilter: "all",
     activeKey: "",
     activeOrigin: "",
     message: "",
-    pendingExpanded: false,
     container: null,
   };
 
@@ -21,50 +17,15 @@
       <div class="page-head review-head">
         <div>
           <h2>复习</h2>
-          <p>今天先处理 1-2 个薄弱点，不用贪多。</p>
+          <p>从最需要复习的开始，做完一个就算赢。</p>
         </div>
       </div>
 
       ${STATE.message ? `<div class="review-toast-inline">${escapeHtml(STATE.message)}</div>` : ""}
 
-      <section class="review-section">
-        <div class="section-title-row">
-          <div>
-            <h3>今日建议</h3>
-            <p class="muted">一次只做 1-2 个，做完就算成功，不用贪多。</p>
-          </div>
-        </div>
-        <div class="review-suggestion-list">
-          ${reviewState.todaySuggestions.length
-            ? reviewState.todaySuggestions.map((item, index) => renderTodayTask(item, index)).join("")
-            : renderTodayEmpty(filteredItems.length)}
-        </div>
-      </section>
-
-      <section class="review-section">
-        <div class="section-title-row">
-          <div>
-            <h3>待处理</h3>
-            <p class="muted">可以随时挑一个做，做完导入复习结果就完成了。稳定和巩固中的在下方。</p>
-          </div>
-        </div>
-        ${renderFilters()}
-        <div class="review-table">
-          ${renderPendingList(filteredItems)}
-        </div>
-      </section>
-
-      ${cooldownItems.length ? `
-      <details class="review-section review-cooldown-section">
-        <summary class="review-cooldown-summary">
-          <span>冷却 / 已稳定</span>
-          <span class="review-cooldown-count">${cooldownItems.length} 项近期不需要处理</span>
-        </summary>
-        <div class="review-table review-cooldown-table">
-          ${cooldownItems.map((item) => renderReviewRow(item)).join("")}
-        </div>
-      </details>
-      ` : ""}
+      <div class="review-table">
+        ${renderFlatList(filteredItems, reviewState.todaySuggestions, cooldownItems)}
+      </div>
 
       <section class="review-help">
         <span class="material-symbols-outlined">sync_alt</span>
@@ -90,22 +51,6 @@
       const button = event.target.closest("[data-review-action]");
       if (!button) return;
       const action = button.dataset.reviewAction;
-      if (action === "filter-subject") {
-        STATE.subjectFilter = button.dataset.value || "all";
-        STATE.pendingExpanded = false;
-        render(container);
-        return;
-      }
-      if (action === "expand-pending") {
-        STATE.pendingExpanded = !STATE.pendingExpanded;
-        render(container);
-        return;
-      }
-      if (action === "scroll-pending") {
-        const pendingSection = container.querySelector(".review-section:nth-of-type(2)");
-        pendingSection?.scrollIntoView?.({ behavior: "smooth", block: "start" });
-        return;
-      }
       const key = button.dataset.reviewKey || "";
       const item = findItem(key);
       if (!item) return;
@@ -219,86 +164,50 @@
     const skipKeys = new Set((todaySuggestions || []).map((s) => s.key));
     return items.filter((item) => {
       if (skipKeys.has(item.key)) return false;
-      if (STATE.subjectFilter !== "all" && item.subject !== STATE.subjectFilter) return false;
       return !["stable", "consolidating"].includes(item.status) && item.score > 0;
     });
   }
 
   function filterCooldownItems(items) {
     return items.filter((item) => {
-      if (STATE.subjectFilter !== "all" && item.subject !== STATE.subjectFilter) return false;
       return ["stable", "consolidating"].includes(item.status) && item.score >= 0;
     });
   }
 
-  function renderPendingList(items) {
-    if (!items.length) return renderEmpty("当前筛选下没有待处理的薄弱点。");
-    if (items.length <= PENDING_VISIBLE_CAP || STATE.pendingExpanded) {
-      const rows = items.map((item) => renderReviewRow(item)).join("");
-      if (items.length <= PENDING_VISIBLE_CAP) return rows;
-      return rows + `
-        <button class="review-pending-toggle" data-review-action="expand-pending" type="button">
-          <span class="material-symbols-outlined">expand_less</span>收起
-        </button>`;
+  function renderFlatList(activeItems, todaySuggestions, cooldownItems) {
+    const todayKeys = new Set((todaySuggestions || []).map((s) => s.key));
+    if (!activeItems.length && !todaySuggestions.length) {
+      return renderEmpty("目前没有需要处理的薄弱点，继续导入新记录吧。");
     }
-    const hidden = items.length - PENDING_VISIBLE_CAP;
-    return items.slice(0, PENDING_VISIBLE_CAP).map((item) => renderReviewRow(item)).join("") + `
-      <button class="review-pending-toggle" data-review-action="expand-pending" type="button">
-        <span class="material-symbols-outlined">expand_more</span>还有 ${hidden} 项待处理 — 显示全部
-      </button>`;
+    const allVisible = [...todaySuggestions, ...activeItems];
+    const rows = allVisible.map((item) => renderReviewRow(item, todayKeys.has(item.key))).join("");
+    const cooldown = cooldownItems.length ? `
+      <details class="review-cooldown-section">
+        <summary class="review-cooldown-summary">
+          <span>冷却 / 已稳定</span>
+          <span class="review-cooldown-count">${cooldownItems.length} 项近期不需要处理</span>
+        </summary>
+        <div class="review-table review-cooldown-table">
+          ${cooldownItems.map((item) => renderReviewRow(item, false)).join("")}
+        </div>
+      </details>
+    ` : "";
+    return rows + cooldown;
   }
 
-  function renderFilters() {
-    const subjects = [["all", "全部"], ...Object.entries(window.MochiKnowledge?.SUBJECTS || {}).map(([key, item]) => [key, item.label])];
-    return `
-      <div class="review-filter-bar">
-        <div class="review-filter-group">
-          ${subjects.map(([value, label]) => `
-            <button class="${STATE.subjectFilter === value ? "active" : ""}" data-review-action="filter-subject" data-value="${escapeHtml(value)}" type="button">${escapeHtml(label)}</button>
-          `).join("")}
-        </div>
-      </div>
-    `;
-  }
-
-  function renderTodayTask(item, index) {
-    const expanded = STATE.activeKey === item.key && STATE.activeOrigin === "suggestion";
-    return `
-      <article class="review-task ${expanded ? "active" : ""}" data-review-card data-review-key="${escapeHtml(item.key)}" style="--subject-color:${escapeHtml(item.subjectColor || "#864d61")}">
-        <div class="review-task-index">${index + 1}</div>
-        <div class="review-task-main">
-          <div class="review-task-title">
-            <span>${escapeHtml(item.subjectLabel)}</span>
-            <strong>${escapeHtml(item.nodeLabel)}</strong>
-            <em>${escapeHtml(item.statusLabel)}</em>
-          </div>
-          <p class="review-task-pain">${escapeHtml(item.mainPainPoint || "没有明确卡点，适合轻量回顾。")}</p>
-        </div>
-        <div class="review-actions">
-          <button class="btn btn-primary btn-sm" data-review-action="start" data-review-origin="suggestion" data-review-key="${escapeHtml(item.key)}" type="button">
-            <span class="material-symbols-outlined">play_arrow</span>开始复习
-          </button>
-          <button class="btn btn-outline btn-sm" data-review-action="cards" data-review-key="${escapeHtml(item.key)}" type="button">
-            <span class="material-symbols-outlined">collections_bookmark</span>看卡片
-          </button>
-        </div>
-        ${expanded ? renderImportPanel(item) : ""}
-      </article>
-    `;
-  }
-
-  function renderReviewRow(item) {
-    const expanded = STATE.activeKey === item.key && STATE.activeOrigin === "row";
+  function renderReviewRow(item, isToday = false) {
+    const expanded = STATE.activeKey === item.key && (STATE.activeOrigin === "row" || STATE.activeOrigin === "suggestion");
     const reason = item.primaryReason || item.summaryLine || "";
     return `
-      <article class="review-row ${expanded ? "active" : ""}" data-review-card data-review-key="${escapeHtml(item.key)}" style="--subject-color:${escapeHtml(item.subjectColor || "#864d61")}">
+      <article class="review-row ${expanded ? "active" : ""} ${isToday ? "review-row-today" : ""}" data-review-card data-review-key="${escapeHtml(item.key)}" style="--subject-color:${escapeHtml(item.subjectColor || "#864d61")}">
         <div class="review-row-main">
           <span class="chip ${item.subject} review-row-chip">${escapeHtml(item.subjectLabel)}</span>
+          ${isToday ? `<span class="review-today-badge">今日</span>` : ""}
           <div class="review-row-info">
             <strong>${escapeHtml(item.nodeLabel)}</strong>
             <span class="review-row-reason">${escapeHtml(reason)}</span>
           </div>
-          <button class="btn btn-soft btn-sm review-row-start" data-review-action="start" data-review-origin="row" data-review-key="${escapeHtml(item.key)}" type="button">
+          <button class="btn btn-soft btn-sm review-row-start" data-review-action="start" data-review-origin="${isToday ? "suggestion" : "row"}" data-review-key="${escapeHtml(item.key)}" type="button">
             <span class="material-symbols-outlined">play_arrow</span>开始
           </button>
         </div>
@@ -311,30 +220,12 @@
     const pack = window.MochiReviewEngine.generateNodeReviewPack(item);
     return `
       <div class="review-import-panel">
-        <ol class="review-steps">
-          <li class="review-step done">
-            <span class="review-step-num">1</span>
-            <span>复习材料已复制到剪贴板</span>
-          </li>
-          <li class="review-step">
-            <span class="review-step-num">2</span>
-            <span>先别急着粘贴，自己回想 20 秒：这个卡点到底卡在哪里？</span>
-          </li>
-          <li class="review-step">
-            <span class="review-step-num">3</span>
-            <span>打开「高考复习 AI 私教」→ 粘贴材料，让它出一道题</span>
-          </li>
-          <li class="review-step">
-            <span class="review-step-num">4</span>
-            <span>复习完成后，把 AI 最后输出的内容（含 MOCHI-RECORD）整段粘到下方</span>
-          </li>
-        </ol>
-        <div class="review-recall-card">
-          <span class="material-symbols-outlined">psychology_alt</span>
-          <p>先在脑子里试着说出解题入口，再看 AI 出题。想不出来也没关系，这一下才是有效复习的开始。</p>
-        </div>
+        <p class="review-panel-hint">
+          ✓ 材料已复制 · 先自己回想 20 秒，再去 AI 那里粘贴做题<br>
+          做完后，把 AI 最后输出的内容（含 MOCHI-RECORD）整段粘到下方
+        </p>
         <div class="review-import-inline">
-          <textarea id="review-input-${escapeHtml(item.key)}" data-review-input rows="2" placeholder="粘贴 AI 输出（只要包含 ---MOCHI-RECORD-START--- 那段即可）"></textarea>
+          <textarea id="review-input-${escapeHtml(item.key)}" data-review-input rows="3" placeholder="粘贴 AI 输出（只要包含 ---MOCHI-RECORD-START--- 那段即可）"></textarea>
           <button class="btn btn-primary" data-review-action="import" data-review-key="${escapeHtml(item.key)}" type="button">
             <span class="material-symbols-outlined">download_done</span>导入复习结果
           </button>
@@ -346,24 +237,6 @@
         <div class="review-import-result" data-review-result hidden></div>
       </div>
     `;
-  }
-
-  function renderTodayEmpty(pendingCount) {
-    if (pendingCount > 0) {
-      return `
-        <div class="review-empty review-today-empty">
-          <span class="material-symbols-outlined">task_alt</span>
-          <div>
-            <p>今天没有特别紧急的薄弱点，这是好事。</p>
-            <button class="btn btn-soft btn-sm" data-review-action="scroll-pending" type="button">
-              下面有 ${pendingCount} 项可以轻量回顾
-              <span class="material-symbols-outlined">arrow_downward</span>
-            </button>
-          </div>
-        </div>
-      `;
-    }
-    return `<div class="review-empty"><span class="material-symbols-outlined">task_alt</span><p>目前没有需要处理的薄弱点，继续导入新记录吧。</p></div>`;
   }
 
   function renderEmpty(text) {

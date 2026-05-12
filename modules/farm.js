@@ -217,7 +217,7 @@
 
   function refreshFarmSummary() {
     const view = document.getElementById("view");
-    if (view && view.querySelector(".farm-layout-v2")) renderFarm(view);
+    if (view && view.querySelector(".home-flow")) renderFarm(view);
     window.MochiPet?.renderMiniState?.();
   }
 
@@ -372,53 +372,56 @@
 
     container.innerHTML = `
       ${seasonBanner}
-      <div class="farm-layout-v2">
-        <div class="farm-focus-area">
-          ${window.MochiPet?.renderTimer?.(holiday) || ""}
-        </div>
-
-        <div class="farm-side-area">
-          <section class="card mini-farm-card">
-            <div class="mini-farm-header">
-              <span class="farm-level-badge">Lv.${farmLv.level} ${farmLv.name}</span>
-              <span class="farm-xp-hint">${nextLv ? `还需 ${nextLv.minHarvests - state.totalHarvests} 次收获` : "已达最高等级"}</span>
-            </div>
-            <div class="mini-farm-row">
-              ${SUBJECTS.map((subject) => renderMiniPlot(subject, state)).join("")}
-            </div>
-            <div class="mini-farm-xp-track">
-              <div class="mini-farm-xp-fill" style="width:${harvestPct}%"></div>
-            </div>
-          </section>
-          ${renderStreakBanner()}
-          ${holiday
-            ? `
-              <section class="card import-card">
-                <div class="import-header">
-                  <span class="material-symbols-outlined">upload_file</span>
-                  <div>
-                    <h3>导入学习记录</h3>
-                    <p class="import-header-hint">把 AI 家教输出的 MOCHI-RECORD 粘贴进来</p>
-                  </div>
+      <div class="home-flow">
+        ${renderStreakBanner()}
+        ${holiday
+          ? `
+            <section class="card import-card">
+              <div class="import-header">
+                <span class="material-symbols-outlined">upload_file</span>
+                <div>
+                  <h3>导入学习记录</h3>
+                  <p class="import-header-hint">把 AI 家教输出的 MOCHI-RECORD 粘贴进来</p>
                 </div>
-                <textarea id="record-paste" rows="3" placeholder="粘贴 MOCHI-RECORD 完整内容（START 到 END 整段）"></textarea>
-                <button class="btn btn-primary" data-action="parse-record" style="width:100%;margin-top:8px">
-                  <span class="material-symbols-outlined">auto_awesome</span>确认导入
-                </button>
-                <div id="upload-result" class="upload-result" hidden></div>
-              </section>
-            `
-            : `
-              <section class="card farm-hibernate-card">
-                <p class="farm-hibernate-icon">😴</p>
-                <p class="farm-hibernate-title">农场休眠中</p>
-                <p class="muted" style="font-size:13px">放假回来继续种植吧。</p>
-                <button class="btn btn-soft" data-action="set-holiday-mode" data-mode="holiday" style="margin-top:12px">今天想学习</button>
-              </section>
-            `
-          }
-          ${hasRecords ? renderTodayReviewCard() : (holiday ? renderGuideCard() : "")}
-        </div>
+              </div>
+              <textarea id="record-paste" rows="3" placeholder="粘贴 MOCHI-RECORD 完整内容（START 到 END 整段）"></textarea>
+              <button class="btn btn-primary" data-action="parse-record" style="width:100%;margin-top:8px">
+                <span class="material-symbols-outlined">auto_awesome</span>确认导入
+              </button>
+              <div id="upload-result" class="upload-result" hidden></div>
+            </section>
+          `
+          : `
+            <section class="card farm-hibernate-card">
+              <p class="farm-hibernate-icon">😴</p>
+              <p class="farm-hibernate-title">农场休眠中</p>
+              <p class="muted" style="font-size:13px">放假回来继续种植吧。</p>
+              <button class="btn btn-soft" data-action="set-holiday-mode" data-mode="holiday" style="margin-top:12px">今天想学习</button>
+            </section>
+          `
+        }
+        ${hasRecords ? renderTodayReviewCard() : (holiday ? renderGuideCard() : "")}
+        <section class="card mini-farm-card">
+          <div class="mini-farm-header">
+            <span class="farm-level-badge">Lv.${farmLv.level} ${farmLv.name}</span>
+            <span class="farm-xp-hint">${nextLv ? `还需 ${nextLv.minHarvests - state.totalHarvests} 次收获` : "已达最高等级"}</span>
+          </div>
+          <div class="mini-farm-row">
+            ${SUBJECTS.map((subject) => renderMiniPlot(subject, state)).join("")}
+          </div>
+          <div class="mini-farm-xp-track">
+            <div class="mini-farm-xp-fill" style="width:${harvestPct}%"></div>
+          </div>
+        </section>
+        ${holiday ? `
+        <details class="home-focus-details">
+          <summary class="home-focus-summary">
+            <span class="material-symbols-outlined">timer</span>
+            开始专注
+          </summary>
+          ${window.MochiPet?.renderTimer?.(holiday) || ""}
+        </details>
+        ` : ""}
       </div>
     `;
 

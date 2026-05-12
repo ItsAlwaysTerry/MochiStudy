@@ -38,6 +38,11 @@
    - V3.0：复习页待处理去重（排除今日建议条目） ✅
    - V3.0：今日建议卡片删掉「为什么今天」列 ✅
    - V3.0：renderDailyGoalDots 死代码已删除 ✅
+   - V3.1：首页单列布局，timer 折叠入 details，导入框升至第一位 ✅
+   - V3.1：复习页扁平化，删 filter bar，删三分区，改 renderFlatList ✅
+   - V3.1：日历从侧边栏导航删除，#schedule 重定向到赛季页 ✅
+   - V3.1：勋章导航徽章，lotteryTickets>0 时显示红色数字 ✅
+   - V3.1：复习导入面板 4步+回忆卡 → 2行提示+大 textarea ✅
 
 ---
 
