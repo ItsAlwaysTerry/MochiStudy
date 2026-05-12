@@ -1160,6 +1160,15 @@ button {
   padding-left: 38px;
 }
 
+.streak-banner-zero {
+  background: var(--surface);
+  border: 1.5px solid rgba(134, 77, 97, 0.15);
+}
+.streak-banner-zero .streak-fire-icon {
+  color: var(--muted);
+  font-variation-settings: "FILL" 0, "wght" 300, "GRAD" 0, "opsz" 24;
+}
+
 .import-card {
   padding: 16px 20px;
   border: 1.5px solid var(--primary-soft, rgba(155, 100, 130, 0.3));
@@ -1351,9 +1360,18 @@ button {
   font-weight: 800;
 }
 
-.home-review-reason {
+.home-review-pain {
+  margin: 0;
   font-size: 15px;
-  font-weight: 800;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.home-review-reason {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
 }
 
 .home-review-actions {

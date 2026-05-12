@@ -272,6 +272,7 @@
             <p>${escapeAttr(item.subjectLabel)} · ${escapeAttr(item.nodeLabel)}</p>
           </div>
         </div>
+        ${item.mainPainPoint ? `<p class="home-review-pain">${escapeAttr(item.mainPainPoint)}</p>` : ""}
         <p class="home-review-reason">${escapeAttr(item.primaryReason || item.summaryLine || "适合做一次轻量回顾。")}</p>
         <div class="home-review-actions">
           <button class="btn btn-primary btn-sm" data-home-review-action="start" data-review-key="${escapeAttr(item.key)}" type="button">
@@ -330,7 +331,19 @@
       streakText = "今天有学习";
       streakSub = `已导入 ${todayCount} 条记录`;
     } else {
-      return "";
+      const isHoliday = window.MochiApp?.isHolidayToday?.() ?? false;
+      if (!isHoliday || todayCount > 0) return "";
+      return `
+        <section class="card streak-banner streak-banner-zero">
+          <div class="streak-banner-row">
+            <span class="material-symbols-outlined streak-fire-icon">bedtime</span>
+            <div class="streak-banner-text">
+              <strong class="streak-num">今天还没开始</strong>
+              <span class="streak-sub">打一张就够了</span>
+            </div>
+          </div>
+        </section>
+      `;
     }
 
     let encouragement = "";
@@ -466,7 +479,7 @@
   }
 
   function escapeAttr(value) {
-    return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
+    return window.MochiApp?.escapeHtml?.(value) ?? String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
   }
 
   window.MochiFarm = {

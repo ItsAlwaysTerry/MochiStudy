@@ -4162,6 +4162,7 @@ ${record.originalQuestion || "暂无原题描述。"}
     calcSeasonTitle,
     calcStudyStreak,
     getTodayRecordCount,
+    escapeHtml,
   };
 
   init();
