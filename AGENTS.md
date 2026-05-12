@@ -351,3 +351,10 @@ v34 之后的改动：
 - `modules/farm.js` `renderStreakBanner()`：streak = 0 且为有效学习日、当天无记录时，显示"今天还没开始，打一张就够了"（月亮图标，subdued 样式），而非空白。此前空白对缺乏自信的用户正是最需要引导的时刻。
 - `modules/farm.js` `renderTodayReviewCard()`：在 `primaryReason` 上方新增 `mainPainPoint` 为主体文字（`.home-review-pain`），让用户首页即可看到卡点，无需点入复习页；`primaryReason` 降为辅助灰色小字。
 - `app.js` 将 `escapeHtml` 加入 `window.MochiApp` 导出；`farm.js` 的 `escapeAttr` 改为优先调用 `window.MochiApp.escapeHtml`，保留内联回退以防加载时序问题。
+
+### V1.8 主动回忆提示 + 导入反馈补强
+
+- `modules/reviewPage.js` `startReview()`：复制复习材料后的 inline message 和 toast 明确提示“可以粘贴给复习 AI”，并提醒先自己回想 20 秒，避免点击“开始复习”被误解为已经完成复习。
+- `modules/reviewPage.js` `renderImportPanel()`：复习步骤从 3 步调整为 4 步，新增主动回忆提示卡（`.review-recall-card`），在打开 AI 前先让学生尝试说出卡点。
+- `modules/reviewPage.js` 与 `app.js` 的导入失败提示补充说明必须同时包含 `---MOCHI-RECORD-START---` 和 `---MOCHI-RECORD-END---`，并指出缺失记录段时应让 AI 补上。
+- `modules/farm.js` 首页“今日复习”按钮文案由“开始复习”改为“复制材料”，更符合实际行为；`app.js` 打卡成功卡补充“已保存到学习档案，可以继续粘贴下一条”。

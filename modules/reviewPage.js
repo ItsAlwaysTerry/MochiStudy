@@ -129,10 +129,10 @@
     STATE.activeKey = item.key;
     STATE.activeOrigin = origin;
     STATE.message = copied
-      ? `已复制“${item.subjectLabel} · ${item.nodeLabel}”的复习材料。`
+      ? `已复制“${item.subjectLabel} · ${item.nodeLabel}”的复习材料。先自己回想 20 秒，再去 AI 那里粘贴。`
       : "复制失败，可以展开后手动复制复习材料。";
     render(container);
-    window.MochiApp?.toast?.(copied ? "复习材料已复制" : "复制失败，请手动选择文本");
+    window.MochiApp?.toast?.(copied ? "复习材料已复制，可以粘贴给复习 AI" : "复制失败，请手动选择文本");
   }
 
   function importReviewResult(container, button, item) {
@@ -144,7 +144,7 @@
     if (!result) return;
     result.hidden = false;
     if (!record) {
-      result.innerHTML = `<strong>没有找到 MOCHI-RECORD</strong><p class="muted">请粘贴包含 ---MOCHI-RECORD-START--- 和 ---MOCHI-RECORD-END--- 的完整结果。</p>`;
+      result.innerHTML = `<strong>没有找到 MOCHI-RECORD</strong><p class="muted">请粘贴 AI 最后输出的完整记录段，必须同时包含 ---MOCHI-RECORD-START--- 和 ---MOCHI-RECORD-END---。如果 AI 只给了解题过程，让它补上这段记录。</p>`;
       return;
     }
 
@@ -325,13 +325,21 @@
           </li>
           <li class="review-step">
             <span class="review-step-num">2</span>
-            <span>打开「高考复习 AI 私教」→ 粘贴材料，让它出一道题</span>
+            <span>先别急着粘贴，自己回想 20 秒：这个卡点到底卡在哪里？</span>
           </li>
           <li class="review-step">
             <span class="review-step-num">3</span>
+            <span>打开「高考复习 AI 私教」→ 粘贴材料，让它出一道题</span>
+          </li>
+          <li class="review-step">
+            <span class="review-step-num">4</span>
             <span>复习完成后，把 AI 最后输出的内容（含 MOCHI-RECORD）整段粘到下方</span>
           </li>
         </ol>
+        <div class="review-recall-card">
+          <span class="material-symbols-outlined">psychology_alt</span>
+          <p>先在脑子里试着说出解题入口，再看 AI 出题。想不出来也没关系，这一下才是有效复习的开始。</p>
+        </div>
         <div class="review-import-inline">
           <textarea id="review-input-${escapeHtml(item.key)}" data-review-input rows="2" placeholder="粘贴 AI 输出（只要包含 ---MOCHI-RECORD-START--- 那段即可）"></textarea>
           <button class="btn btn-primary" data-review-action="import" data-review-key="${escapeHtml(item.key)}" type="button">

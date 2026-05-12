@@ -3135,7 +3135,7 @@ ${record.originalQuestion || "暂无原题描述。"}
     const record = parseMochiRecord(textarea.value);
     result.hidden = false;
     if (!record) {
-      result.innerHTML = `<strong>没有找到 Mochi 记录块</strong><p class="muted">请确认文本里包含 ---MOCHI-RECORD-START--- 和 ---MOCHI-RECORD-END---。</p>`;
+      result.innerHTML = `<strong>没有找到 Mochi 记录块</strong><p class="muted">请把 AI 输出里从 ---MOCHI-RECORD-START--- 到 ---MOCHI-RECORD-END--- 的整段一起粘贴进来；如果少了开头或结尾，MochiStudy 就无法识别。</p>`;
       return;
     }
     const applied = applyMochiRecord(record);
@@ -3153,6 +3153,7 @@ ${record.originalQuestion || "暂无原题描述。"}
         <div class="checkin-success-icon">✓</div>
         <strong class="checkin-title">打卡成功！</strong>
         <p class="checkin-detail">${subject} · ${record.nodeLabel} · 1题 · ${starIcons}</p>
+        <p class="checkin-saved-msg">已保存到学习档案，可以继续粘贴下一条。</p>
         ${starMsg ? `<p class="checkin-star-msg">${starMsg}</p>` : ""}
         <div class="checkin-farm-bar">
           <div class="checkin-farm-track"><div class="checkin-farm-fill" style="width:${pct}%"></div></div>

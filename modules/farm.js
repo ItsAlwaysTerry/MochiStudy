@@ -276,7 +276,7 @@
         <p class="home-review-reason">${escapeAttr(item.primaryReason || item.summaryLine || "适合做一次轻量回顾。")}</p>
         <div class="home-review-actions">
           <button class="btn btn-primary btn-sm" data-home-review-action="start" data-review-key="${escapeAttr(item.key)}" type="button">
-            <span class="material-symbols-outlined">play_arrow</span>开始复习
+            <span class="material-symbols-outlined">content_copy</span>复制材料
           </button>
           <button class="btn btn-outline btn-sm" data-route="review" type="button">看全部</button>
         </div>
