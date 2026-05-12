@@ -3141,14 +3141,27 @@ ${record.originalQuestion || "暂无原题描述。"}
     const applied = applyMochiRecord(record);
     const subject = window.MochiKnowledge.SUBJECTS[record.subject]?.label || "数学";
     const starIcons = "★".repeat(record.stars) + "☆".repeat(3 - record.stars);
+    const farmState = readJSON("farm_state");
+    const plotCount = farmState?.plots?.[record.subject]?.recordCount || 0;
+    const harvestTarget = GAME_CONFIG.farm.harvestTarget || 15;
+    const pct = Math.min(100, Math.round((plotCount / harvestTarget) * 100));
+    const todayCount = getTodayRecordCount();
+    const starMsgMap = ["", "能找到卡点就是进步。", "做到这里就值了。", "完全做对，继续保持。"];
+    const starMsg = starMsgMap[record.stars] || "";
     result.innerHTML = `
       <div class="checkin-success">
         <div class="checkin-success-icon">✓</div>
         <strong class="checkin-title">打卡成功！</strong>
         <p class="checkin-detail">${subject} · ${record.nodeLabel} · 1题 · ${starIcons}</p>
-        <p class="checkin-rewards muted">${subject}地块成长中 🌱，已保存学习记录</p>
+        ${starMsg ? `<p class="checkin-star-msg">${starMsg}</p>` : ""}
+        <div class="checkin-farm-bar">
+          <div class="checkin-farm-track"><div class="checkin-farm-fill" style="width:${pct}%"></div></div>
+          <span class="checkin-farm-label">${subject}地块 ${plotCount}/${harvestTarget}</span>
+        </div>
+        ${todayCount >= 2 ? `<span class="checkin-today">今天已打卡 ${todayCount} 次</span>` : ""}
       </div>
     `;
+    sparkle(result, "★");
     textarea.value = "";
     window.MochiPet.renderMiniState();
     if (!document.body.classList.contains("focus-mode")) {

@@ -176,12 +176,18 @@
     textarea.value = "";
     STATE.activeKey = "";
     STATE.activeOrigin = "";
-    STATE.message = `已导入“${item.subjectLabel} · ${item.nodeLabel}”的复习结果。`;
+    const starMsgs = {
+      3: `”${item.nodeLabel}”做对了，暂时降权，继续保持。`,
+      2: `”${item.nodeLabel}”基本掌握，下次还会再出现。`,
+      1: `”${item.nodeLabel}”记录了卡点，下次重点照顾。`,
+    };
+    STATE.message = starMsgs[record.stars] || `已导入”${item.subjectLabel} · ${item.nodeLabel}”的复习结果。`;
     window.MochiApp?.toast?.("复习结果已导入");
     window.MochiPet?.renderMiniState?.();
     window.MochiFarm?.refreshFarmSummary?.();
     window.MochiCards?.refresh?.();
     render(container);
+    window.MochiApp?.sparkle?.(container, "✓");
   }
 
   function openRelatedCards(item) {
@@ -272,10 +278,6 @@
             <div>
               <small>为什么今天</small>
               <p>${escapeHtml(item.primaryReason)}</p>
-            </div>
-            <div>
-              <small>状态</small>
-              <p>${escapeHtml(item.summaryLine)}</p>
             </div>
           </div>
         </div>

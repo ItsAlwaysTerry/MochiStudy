@@ -4435,7 +4435,7 @@ body.focus-mode #view {
 
 .review-task-grid {
   display: grid;
-  grid-template-columns: minmax(180px, 1.2fr) minmax(220px, 1.4fr) minmax(160px, 1fr);
+  grid-template-columns: minmax(180px, 1.2fr) minmax(220px, 1.4fr);
   gap: 12px;
 }
 
@@ -5171,4 +5171,42 @@ body.focus-mode #view {
   font-size: 12px;
   margin: 0;
   letter-spacing: 0.3px;
+}
+.checkin-star-msg {
+  font-size: 13px;
+  color: var(--primary);
+  margin: 0;
+  font-style: italic;
+}
+.checkin-farm-bar {
+  width: 100%;
+  margin-top: 4px;
+}
+.checkin-farm-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-2, #eee);
+  overflow: hidden;
+}
+.checkin-farm-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--primary);
+  transition: width 0.4s ease;
+}
+.checkin-farm-label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 3px;
+  text-align: center;
+}
+.checkin-today {
+  display: inline-block;
+  font-size: 12px;
+  color: var(--primary);
+  background: rgba(134, 77, 97, 0.08);
+  border-radius: 12px;
+  padding: 2px 10px;
+  margin-top: 2px;
 }
