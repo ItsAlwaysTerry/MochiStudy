@@ -3141,7 +3141,7 @@ ${record.originalQuestion || "暂无原题描述。"}
     const applied = applyMochiRecord(record);
     const subject = window.MochiKnowledge.SUBJECTS[record.subject]?.label || "数学";
     const starIcons = "★".repeat(record.stars) + "☆".repeat(3 - record.stars);
-    const farmState = readJSON("farm_state");
+    const farmState = readJson("farm_state");
     const plotCount = farmState?.plots?.[record.subject]?.recordCount || 0;
     const harvestTarget = GAME_CONFIG.farm.harvestTarget || 15;
     const pct = Math.min(100, Math.round((plotCount / harvestTarget) * 100));

@@ -269,6 +269,13 @@ v34 之后的改动：
 - `modules/farm.js` `renderTodayReviewCard()`：新增 `mainPainPoint` 作为主体文字（`.home-review-pain`），用户在首页即可看到卡点；`primaryReason` 降为辅助灰色。
 - `app.js` 将 `escapeHtml` 加入 `window.MochiApp` 导出；`farm.js` 的 `escapeAttr` 改为优先调用 `window.MochiApp.escapeHtml`，消除重复。
 
+### V1.9 自我迭代修复：readJSON bug + 导入动线 + 主动回忆前缀
+
+- `app.js` `parsePastedRecordEl()`：修复 `readJSON` 拼写错误（应为 `readJson`），该 bug 导致打卡成功卡不显示、sparkle 不触发、textarea 不清空，记录本身正常保存不受影响。
+- `modules/farm.js` `renderStreakBanner()`：streak=0 兜底卡（"今天还没开始"）新增「去导入」按钮，点击滚动并 focus 导入框，解决死区问题。
+- `modules/farm.js` `renderTodayReviewCard()`：首页今日复习卡的 `mainPainPoint` 前加「还记得吗？」前缀（`.home-review-recall-hint`），从被动展示答案改为主动提取引导。
+- `modules/reviewPage.js` `startItem()`：从首页触发复习时的 message 补充「先自己回想 20 秒，再去 AI 那里粘贴」，与 `startReview()` 保持一致。
+
 ### V1.8 主动回忆提示 + 导入反馈补强
 
 - `modules/reviewPage.js` `startReview()`：复制复习材料后的 inline message 和 toast 明确提示“可以粘贴给复习 AI”，并提醒先自己回想 20 秒，避免点击“开始复习”被误解为已经完成复习。

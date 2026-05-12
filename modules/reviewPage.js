@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   const PENDING_VISIBLE_CAP = 4;
 
   const STATE = {
@@ -204,7 +204,7 @@
     STATE.activeKey = item.key;
     STATE.activeOrigin = origin;
     STATE.message = copied
-      ? `已复制“${item.subjectLabel} · ${item.nodeLabel}”的复习材料。`
+      ? `已复制”${item.subjectLabel} · ${item.nodeLabel}”的复习材料。先自己回想 20 秒，再去 AI 那里粘贴。`
       : "复制失败，可以展开后手动复制复习材料。";
     window.MochiApp?.navigate?.("review");
     if (STATE.container) render(STATE.container);

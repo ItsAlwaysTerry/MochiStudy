@@ -272,7 +272,7 @@
             <p>${escapeAttr(item.subjectLabel)} · ${escapeAttr(item.nodeLabel)}</p>
           </div>
         </div>
-        ${item.mainPainPoint ? `<p class="home-review-pain">${escapeAttr(item.mainPainPoint)}</p>` : ""}
+        ${item.mainPainPoint ? `<p class="home-review-pain"><span class="home-review-recall-hint">还记得吗？</span>${escapeAttr(item.mainPainPoint)}</p>` : ""}
         <p class="home-review-reason">${escapeAttr(item.primaryReason || item.summaryLine || "适合做一次轻量回顾。")}</p>
         <div class="home-review-actions">
           <button class="btn btn-primary btn-sm" data-home-review-action="start" data-review-key="${escapeAttr(item.key)}" type="button">
@@ -341,6 +341,7 @@
               <strong class="streak-num">今天还没开始</strong>
               <span class="streak-sub">打一张就够了</span>
             </div>
+            <button class="btn btn-soft btn-sm streak-zero-cta" data-action="scroll-to-import" type="button">去导入</button>
           </div>
         </section>
       `;
@@ -456,6 +457,15 @@
     });
     container.querySelectorAll("[data-home-review-action='start']").forEach((button) => {
       button.addEventListener("click", handleHomeReviewStart);
+    });
+    container.querySelectorAll("[data-action='scroll-to-import']").forEach((button) => {
+      button.addEventListener("click", () => {
+        const textarea = container.querySelector("#record-paste");
+        if (textarea) {
+          textarea.scrollIntoView({ behavior: "smooth", block: "center" });
+          setTimeout(() => textarea.focus(), 300);
+        }
+      });
     });
     window.MochiPet?.renderMiniState?.();
   }
