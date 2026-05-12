@@ -333,3 +333,21 @@ v34 之后的改动：
 - 移动端底部导航顺序调整为：首页 / 复习 / 档案 / 日历 / 设置，并将”日程”重命名为”日历”。
 - README、AGENTS、CLAUDE.md 补全 `study_node_summary`、`card_order`、`study_card_meta` 在 localStorage 表格中的缺漏。
 - Instruction/ 目录新增 plan-01 到 plan-04，记录本轮 UX 改进的问题分析、改动范围和设计原则。
+
+### V1.5 连续学习 Streak + 复习行重设计
+
+- `app.js` 新增 `calcStudyStreak()`：倒序遍历有效学习日计算连续打卡天数；新增 `getTodayRecordCount()`：统计今天已导入记录条数；均暴露到 `window.MochiApp`。
+- `modules/farm.js` 新增 `renderStreakBanner()`：streak ≥ 1 时渲染连续学习横幅（火焰图标、天数、当日条数、鼓励语）。
+- `modules/reviewPage.js` 复习行从七列 grid 重构为 flex 布局（`review-row-main`）；section 副标题文案改为低压力措辞。
+
+### V1.6 导入反馈增强 + 复习卡简化 + sparkle 接通
+
+- `parsePastedRecordEl`（`app.js`）：导入成功卡新增地块进度条（recordCount/harvestTarget）、按 stars 的鼓励语（1★→"能找到卡点就是进步。"，3★→"完全做对，继续保持。"）、今日累计次数，并调用 `sparkle(result, "★")`——sparkle 此前已定义但从未被调用。
+- `modules/reviewPage.js` `renderTodayTask()`：删除"状态"第三列，`review-task-grid` 改为两列（主要卡点 + 为什么今天）。
+- `modules/reviewPage.js` `importReviewResult()`：`STATE.message` 按 stars 区分结果（3→"做对了，暂时降权"，2→"基本掌握"，1→"记录了卡点"）；re-render 后调用 `window.MochiApp.sparkle(container, "✓")`。
+
+### V1.7 首页体验补全 + escapeHtml 统一
+
+- `modules/farm.js` `renderStreakBanner()`：streak = 0 且为有效学习日、当天无记录时，显示"今天还没开始，打一张就够了"（月亮图标，subdued 样式），而非空白。此前空白对缺乏自信的用户正是最需要引导的时刻。
+- `modules/farm.js` `renderTodayReviewCard()`：在 `primaryReason` 上方新增 `mainPainPoint` 为主体文字（`.home-review-pain`），让用户首页即可看到卡点，无需点入复习页；`primaryReason` 降为辅助灰色小字。
+- `app.js` 将 `escapeHtml` 加入 `window.MochiApp` 导出；`farm.js` 的 `escapeAttr` 改为优先调用 `window.MochiApp.escapeHtml`，保留内联回退以防加载时序问题。

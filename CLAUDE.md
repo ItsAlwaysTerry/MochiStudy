@@ -250,3 +250,21 @@ v34 之后的改动：
 - 专注结束提示音调用 `playFocusEndSound()`，由设置页 `focus_end_sound` 选择：不响 / 轻柔双音 / 小风铃 / 清脆短音；设定时间到点会提醒，自由专注没有到点提醒
 - 最终打磨版：休息卡片提示文字已修正，`pet.js` 的 deciding 占位卡片已删除，`exitFocusMode()` 加防重入保护，deciding 阶段根据专注时长显示鼓励语，休息提示文字字号已放大
 - 旧通知 key `notif_rest_enabled`、`notif_focus_enabled` 已废弃，不再使用
+
+### V1.5 连续学习 Streak + 复习行重设计
+
+- `app.js` 新增 `calcStudyStreak()`：倒序遍历有效学习日计算连续打卡天数；新增 `getTodayRecordCount()`：统计今天已导入记录条数；均暴露到 `window.MochiApp`。
+- `modules/farm.js` 新增 `renderStreakBanner()`：streak ≥ 1 时渲染连续学习横幅（火焰图标、天数、当日条数、鼓励语）。
+- `modules/reviewPage.js` 复习行从七列 grid 重构为 flex 布局；section 副标题文案改为低压力措辞。
+
+### V1.6 导入反馈增强 + 复习卡简化 + sparkle 接通
+
+- `parsePastedRecordEl`（`app.js`）：导入成功卡新增地块进度条（recordCount/harvestTarget）、按 stars 的鼓励语（1★→"能找到卡点就是进步。"，3★→"完全做对，继续保持。"）、今日累计次数，并调用 `sparkle(result, "★")`——sparkle 此前定义但从未调用。
+- `modules/reviewPage.js` `renderTodayTask()`：删除"状态"第三列，grid 改为两列。
+- `modules/reviewPage.js` `importReviewResult()`：`STATE.message` 按 stars 区分；re-render 后调用 `window.MochiApp.sparkle(container, "✓")`。
+
+### V1.7 首页体验补全 + escapeHtml 统一
+
+- `modules/farm.js` `renderStreakBanner()`：streak = 0 且为有效学习日无记录时显示"今天还没开始，打一张就够了"（月亮图标，subdued 样式），不再返回空白。
+- `modules/farm.js` `renderTodayReviewCard()`：新增 `mainPainPoint` 作为主体文字（`.home-review-pain`），用户在首页即可看到卡点；`primaryReason` 降为辅助灰色。
+- `app.js` 将 `escapeHtml` 加入 `window.MochiApp` 导出；`farm.js` 的 `escapeAttr` 改为优先调用 `window.MochiApp.escapeHtml`，消除重复。
