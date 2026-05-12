@@ -276,6 +276,15 @@ v34 之后的改动：
 - `modules/farm.js` + `style.css`：赛季横幅从多行 flex 卡片压缩为单行徽章（`.season-badge`），保留名称和倒计时，去掉日期范围——首页顶部视觉负担降低约 70%。
 - `modules/farm.js`：导入框 `rows="2"→"3"`，placeholder 从 40 字缩短为 18 字——导入框是首页核心操作，更大的输入区域配合简洁提示减少认知摩擦。
 
+### V3.0 80/20 学习体验优化
+
+- `modules/farm.js`：首页「今日复习」卡的 `mainPainPoint` 改为 `<details>/<summary>` 翻转，默认隐藏卡点，用户主动点击才展开，强制主动回忆。
+- `modules/farm.js`：赛季徽章（`.season-badge`）从 `<div>` 改为 `<button data-route="season">`，点击直接跳转赛季页。
+- `modules/farm.js`：删除 `renderDailyGoalDots` 死代码（V2.0 起无调用）。
+- `modules/reviewPage.js`：`filterItems()` 新增 `todaySuggestions` 参数，「待处理」列表不再重复显示今日建议里的条目。
+- `modules/reviewPage.js`：`renderTodayTask()` 删掉 `.review-task-grid` 两列，改为单行 `.review-task-pain`，「为什么今天」列下线。
+- `style.css`：新增 `.home-review-spoiler` 系列样式、`.review-task-pain`，删除无用 `.review-task-grid` 声明。
+
 ### V1.9 自我迭代修复：readJSON bug + 导入动线 + 主动回忆前缀
 
 - `app.js` `parsePastedRecordEl()`：修复 `readJSON` 拼写错误（应为 `readJson`），该 bug 导致打卡成功卡不显示、sparkle 不触发、textarea 不清空，记录本身正常保存不受影响。

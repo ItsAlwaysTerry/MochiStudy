@@ -33,6 +33,11 @@
    - V2.0：`daily-goal-compact` 区块已删除（与迷你农场重复） ✅
    - V2.0：赛季横幅已压缩为单行 `.season-badge` 徽章 ✅
    - V2.0：导入框已扩大（rows=3）且 placeholder 已缩短 ✅
+   - V3.0：首页复习卡 mainPainPoint 改为 details/summary 主动回忆翻转 ✅
+   - V3.0：赛季徽章改为可点击按钮，data-route="season" ✅
+   - V3.0：复习页待处理去重（排除今日建议条目） ✅
+   - V3.0：今日建议卡片删掉「为什么今天」列 ✅
+   - V3.0：renderDailyGoalDots 死代码已删除 ✅
 
 ---
 

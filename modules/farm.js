@@ -221,27 +221,6 @@
     window.MochiPet?.renderMiniState?.();
   }
 
-  function renderDailyGoalDots() {
-    const state = window.MochiApp?.getDailyTaskState?.() || {};
-    const today = new Date().toISOString().slice(0, 10);
-    const todayLogs = (window.MochiApp?.readStudyLogs?.() || []).filter((log) => String(log.date || "").slice(0, 10) === today);
-    const labels = { math: "数学", physics: "物理", chemistry: "化学" };
-    return SUBJECTS.map((subject) => {
-      const done = state[subject]?.completed;
-      const todayLog = done ? todayLogs.find((log) => log.subject === subject) : null;
-      const nodeLabel = todayLog?.nodeLabel || "";
-      return `
-        <span class="goal-dot ${done ? "done" : ""}">
-          <span class="material-symbols-outlined">${done ? "check_circle" : "radio_button_unchecked"}</span>
-          <span class="goal-dot-label">
-            <strong>${labels[subject] || subject}</strong>
-            ${nodeLabel ? `<em>${escapeAttr(nodeLabel)}</em>` : ""}
-          </span>
-        </span>
-      `;
-    }).join("");
-  }
-
   function renderTodayReviewCard() {
     const reviewState = window.MochiReviewEngine?.buildReviewState?.();
     const item = reviewState?.todaySuggestions?.[0];
@@ -272,7 +251,12 @@
             <p>${escapeAttr(item.subjectLabel)} · ${escapeAttr(item.nodeLabel)}</p>
           </div>
         </div>
-        ${item.mainPainPoint ? `<p class="home-review-pain"><span class="home-review-recall-hint">还记得吗？</span>${escapeAttr(item.mainPainPoint)}</p>` : ""}
+        ${item.mainPainPoint ? `
+        <details class="home-review-spoiler">
+          <summary class="home-review-recall-hint">还记得吗？先想一想，再展开看卡点</summary>
+          <p class="home-review-pain">${escapeAttr(item.mainPainPoint)}</p>
+        </details>
+        ` : ""}
         <p class="home-review-reason">${escapeAttr(item.primaryReason || item.summaryLine || "适合做一次轻量回顾。")}</p>
         <div class="home-review-actions">
           <button class="btn btn-primary btn-sm" data-home-review-action="start" data-review-key="${escapeAttr(item.key)}" type="button">
@@ -383,7 +367,7 @@
       const isEndingSoon = daysLeft <= 3 && daysLeft > 0;
       const icon = isEndingSoon ? "⚠️" : "🏆";
       const countdown = daysLeft === 0 ? "今天结束" : isEndingSoon ? `还剩 ${daysLeft} 天` : `${daysLeft} 天`;
-      return `<div class="season-badge${isEndingSoon ? " ending-soon" : ""}">${icon} ${escapeAttr(currentSeason.name)} · ${countdown}</div>`;
+      return `<button class="season-badge${isEndingSoon ? " ending-soon" : ""}" data-route="season" type="button">${icon} ${escapeAttr(currentSeason.name)} · ${countdown}</button>`;
     })() : "";
 
     container.innerHTML = `

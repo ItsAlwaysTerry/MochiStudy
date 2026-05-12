@@ -15,7 +15,7 @@
     STATE.container = container;
     bindContainer(container);
     const reviewState = window.MochiReviewEngine?.buildReviewState?.() || { items: [], todaySuggestions: [] };
-    const filteredItems = filterItems(reviewState.items);
+    const filteredItems = filterItems(reviewState.items, reviewState.todaySuggestions);
     const cooldownItems = filterCooldownItems(reviewState.items);
     container.innerHTML = `
       <div class="page-head review-head">
@@ -215,8 +215,10 @@
     return (window.MochiReviewEngine?.buildReviewState?.().items || []).find((item) => item.key === key);
   }
 
-  function filterItems(items) {
+  function filterItems(items, todaySuggestions) {
+    const skipKeys = new Set((todaySuggestions || []).map((s) => s.key));
     return items.filter((item) => {
+      if (skipKeys.has(item.key)) return false;
       if (STATE.subjectFilter !== "all" && item.subject !== STATE.subjectFilter) return false;
       return !["stable", "consolidating"].includes(item.status) && item.score > 0;
     });
@@ -270,16 +272,7 @@
             <strong>${escapeHtml(item.nodeLabel)}</strong>
             <em>${escapeHtml(item.statusLabel)}</em>
           </div>
-          <div class="review-task-grid">
-            <div>
-              <small>主要卡点</small>
-              <p>${escapeHtml(item.mainPainPoint || "没有明确卡点，适合轻量回顾。")}</p>
-            </div>
-            <div>
-              <small>为什么今天</small>
-              <p>${escapeHtml(item.primaryReason)}</p>
-            </div>
-          </div>
+          <p class="review-task-pain">${escapeHtml(item.mainPainPoint || "没有明确卡点，适合轻量回顾。")}</p>
         </div>
         <div class="review-actions">
           <button class="btn btn-primary btn-sm" data-review-action="start" data-review-origin="suggestion" data-review-key="${escapeHtml(item.key)}" type="button">
