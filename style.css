@@ -28,6 +28,13 @@
   --radius-card: 24px;
   --radius-small: 12px;
   --nav-width: 240px;
+  --study-reading-font: "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", sans-serif;
+  --study-reading-scale: 1;
+  --study-reading-13: 13px;
+  --study-reading-16: 16px;
+  --study-reading-17: 17px;
+  --study-reading-18: 18px;
+  --study-reading-math: 1.08em;
 }
 
 * {
@@ -115,6 +122,15 @@ button {
 
 #learn-content-pane .page-head {
   display: none;
+}
+
+#learn-content-pane,
+.review-table,
+.review-help,
+.archive-list,
+.study-card,
+.archive-node-digest {
+  font-family: var(--study-reading-font);
 }
 
 .material-symbols-outlined {
@@ -764,6 +780,32 @@ button {
   color: var(--text);
   background: var(--surface);
   font-weight: 800;
+}
+
+.settings-select-wide {
+  min-width: 220px;
+}
+
+.settings-reading-preview {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px solid rgba(213, 194, 198, 0.62);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.settings-reading-preview strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--primary);
+  font-weight: 900;
+}
+
+.settings-reading-preview p {
+  margin: 0;
+  color: var(--text);
+  font-weight: 750;
+  line-height: 1.65;
 }
 
 .toggle-switch {
@@ -4525,6 +4567,54 @@ body.focus-mode #view {
 
 .review-help p {
   margin: 0;
+}
+
+#learn-content-pane .review-row-info strong,
+#learn-content-pane .node-main strong,
+#learn-content-pane .digest-title-row strong {
+  font-size: var(--study-reading-17);
+  font-weight: 900;
+}
+
+#learn-content-pane .review-row-reason,
+#learn-content-pane .node-main small,
+#learn-content-pane .node-row .node-count,
+#learn-content-pane .node-row .node-review-count,
+#learn-content-pane .digest-grid small,
+#learn-content-pane .digest-note small,
+#learn-content-pane .card-meta,
+#learn-content-pane .card-meta-summary span,
+#learn-content-pane .card-question-toggle,
+#learn-content-pane .review-panel-hint,
+#learn-content-pane .review-help,
+#learn-content-pane .review-import-inline textarea,
+#learn-content-pane .review-pack-preview textarea {
+  font-size: var(--study-reading-13);
+}
+
+#learn-content-pane .study-card .card-painpoint,
+#learn-content-pane .digest-grid p,
+#learn-content-pane .digest-note p,
+#learn-content-pane .study-card .card-routine,
+#learn-content-pane .review-import-result {
+  font-size: var(--study-reading-16);
+  line-height: 1.68;
+  font-weight: 750;
+}
+
+#learn-content-pane .study-card .card-painpoint {
+  font-size: var(--study-reading-18);
+  font-weight: 800;
+}
+
+#learn-content-pane .card-question {
+  font-size: var(--study-reading-16);
+  line-height: 1.76;
+  font-weight: 750;
+}
+
+#learn-content-pane .math-inline {
+  font-size: var(--study-reading-math);
 }
 
 @media (max-width: 980px) {

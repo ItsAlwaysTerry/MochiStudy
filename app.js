@@ -107,7 +107,41 @@
   const CARD_ORDER_KEY = "card_order";
   const CARD_META_KEY = "study_card_meta";
   const NODE_SUMMARY_KEY = "study_node_summary";
+  const READING_FONT_KEY = "study_reading_font";
+  const READING_SIZE_KEY = "study_reading_size";
   const BACKUP_VERSION = "1.0";
+  const READING_FONT_OPTIONS = [
+    {
+      value: "soft-sans",
+      label: "暖圆清爽",
+      hint: "中文大方、边角柔和，适合日常复习。",
+      css: "\"Microsoft YaHei UI\", \"Microsoft YaHei\", \"PingFang SC\", \"Hiragino Sans GB\", \"Noto Sans SC\", sans-serif",
+    },
+    {
+      value: "modern-sans",
+      label: "现代阅读",
+      hint: "更像新系统字体，干净、开阔。",
+      css: "\"MiSans\", \"HarmonyOS Sans SC\", \"OPPO Sans\", \"PingFang SC\", \"Microsoft YaHei UI\", sans-serif",
+    },
+    {
+      value: "cute-kai",
+      label: "文楷可爱",
+      hint: "有一点手写感，中文更亲切。",
+      css: "\"LXGW WenKai Screen\", \"LXGW WenKai\", \"Kaiti SC\", \"KaiTi\", \"STKaiti\", \"Microsoft YaHei UI\", sans-serif",
+    },
+    {
+      value: "code-reading",
+      label: "代码阅读",
+      hint: "等宽、结构清楚，公式和符号更有秩序。",
+      css: "\"Maple Mono SC NF\", \"Maple Mono SC\", \"Sarasa Mono SC\", \"Cascadia Code\", \"JetBrains Mono\", \"Microsoft YaHei UI\", monospace",
+    },
+  ];
+  const READING_SIZE_OPTIONS = [
+    { value: "normal", label: "标准", scale: 1 },
+    { value: "comfortable", label: "舒适", scale: 1.08 },
+    { value: "large", label: "大字", scale: 1.18 },
+    { value: "extra-large", label: "超大", scale: 1.3 },
+  ];
   const MOCHI_RECORD_FIELDS = [
     "科目",
     "知识点",
@@ -174,6 +208,60 @@
 
   function writeJson(key, value) {
     localStorage.setItem(key, JSON.stringify(value));
+  }
+
+  function readingFontOption(value) {
+    return READING_FONT_OPTIONS.find((option) => option.value === value) || READING_FONT_OPTIONS[0];
+  }
+
+  function readingSizeOption(value) {
+    return READING_SIZE_OPTIONS.find((option) => option.value === value) || READING_SIZE_OPTIONS[1];
+  }
+
+  function readReadingPreferences() {
+    return {
+      font: readingFontOption(localStorage.getItem(READING_FONT_KEY) || "soft-sans"),
+      size: readingSizeOption(localStorage.getItem(READING_SIZE_KEY) || "comfortable"),
+    };
+  }
+
+  function applyReadingPreferences(preferences = readReadingPreferences()) {
+    const root = document.documentElement;
+    const scale = preferences.size.scale;
+    root.style.setProperty("--study-reading-font", preferences.font.css);
+    root.style.setProperty("--study-reading-scale", String(scale));
+    root.style.setProperty("--study-reading-13", `${Math.round(13 * scale)}px`);
+    root.style.setProperty("--study-reading-16", `${Math.round(16 * scale)}px`);
+    root.style.setProperty("--study-reading-17", `${Math.round(17 * scale)}px`);
+    root.style.setProperty("--study-reading-18", `${Math.round(18 * scale)}px`);
+    root.style.setProperty("--study-reading-math", `${(1.08 * scale).toFixed(2)}em`);
+    root.dataset.studyReadingFont = preferences.font.value;
+    root.dataset.studyReadingSize = preferences.size.value;
+  }
+
+  function readingOptionTags(options, selectedValue) {
+    return options.map((option) => (
+      `<option value="${escapeHtml(option.value)}" ${option.value === selectedValue ? "selected" : ""}>${escapeHtml(option.label)}</option>`
+    )).join("");
+  }
+
+  function updateReadingPreview(root = document) {
+    const preview = root.querySelector?.("[data-reading-preview]");
+    if (!preview) return;
+    const preferences = readReadingPreferences();
+    preview.style.fontFamily = preferences.font.css;
+    preview.style.fontSize = `${Math.round(16 * preferences.size.scale)}px`;
+    const label = preview.querySelector("[data-reading-current]");
+    if (label) label.textContent = `${preferences.font.label} · ${preferences.size.label}`;
+    const hint = preview.querySelector("[data-reading-hint]");
+    if (hint) hint.textContent = preferences.font.hint;
+  }
+
+  function setReadingPreference(key, value) {
+    if (key === "font") localStorage.setItem(READING_FONT_KEY, readingFontOption(value).value);
+    if (key === "size") localStorage.setItem(READING_SIZE_KEY, readingSizeOption(value).value);
+    applyReadingPreferences();
+    updateReadingPreview(document);
   }
 
   function setByPath(target, path, value) {
@@ -1040,8 +1128,13 @@
   }
 
   function navigate(routeId, updateHash = true) {
-    if (updateHash) location.hash = routeId;
-    else route(routeId);
+    if (!updateHash) {
+      route(routeId);
+      return;
+    }
+    const current = location.hash.replace("#", "") || "home";
+    if (current === routeId) route(routeId);
+    else location.hash = routeId;
   }
 
   function renderSeason(container) {
@@ -2600,6 +2693,7 @@
     const mode = holidayMode();
     const focusEndSound = localStorage.getItem("focus_end_sound") || "soft";
     const restReminderSound = localStorage.getItem("rest_reminder_sound") || "melody";
+    const readingPreferences = readReadingPreferences();
     container.innerHTML = `
       <div class="page-head">
         <div>
@@ -2608,6 +2702,32 @@
         </div>
       </div>
       <div class="grid schedule-grid">
+        <section class="card settings-section">
+          <h3>阅读外观</h3>
+          <div class="settings-row">
+            <div>
+              <strong>复习 / 学习档案字体</strong>
+              <p class="muted" style="font-size:13px;margin-top:2px">换复习队列、学习档案、卡片原题和复习材料里的阅读字体。</p>
+            </div>
+            <select id="reading-font-select" class="settings-select settings-select-wide" aria-label="复习和学习档案字体">
+              ${readingOptionTags(READING_FONT_OPTIONS, readingPreferences.font.value)}
+            </select>
+          </div>
+          <div class="settings-row">
+            <div>
+              <strong>阅读字号</strong>
+              <p class="muted" style="font-size:13px;margin-top:2px">只放大复习和学习档案里的正文，不影响导航和按钮布局。</p>
+            </div>
+            <select id="reading-size-select" class="settings-select settings-select-wide" aria-label="复习和学习档案字号">
+              ${readingOptionTags(READING_SIZE_OPTIONS, readingPreferences.size.value)}
+            </select>
+          </div>
+          <div class="settings-reading-preview" data-reading-preview>
+            <strong data-reading-current>${escapeHtml(readingPreferences.font.label)} · ${escapeHtml(readingPreferences.size.label)}</strong>
+            <p>例：函数图像的平移、受力分析、离子方程式。原题和卡点要一眼看清，字要圆一点、稳一点，也要够大。</p>
+            <p class="muted" data-reading-hint style="margin-top:6px">${escapeHtml(readingPreferences.font.hint)}</p>
+          </div>
+        </section>
         <section class="card settings-section">
           <h3>提醒设置</h3>
           <div class="settings-row">
@@ -2718,6 +2838,7 @@
         </section>
       </div>
     `;
+    updateReadingPreview(container);
   }
 
   function renderAchievements(container) {
@@ -3655,7 +3776,7 @@ ${record.originalQuestion || "暂无原题描述。"}
   }
 
   function allDataKeys() {
-    const fixed = ["mochi_state", "farm_state", STUDY_LOG_KEY, "focus_log", "achievement_state", "achievement_config", "lottery_config", "lottery_history", CURRENT_SEASON_KEY, SEASON_ARCHIVES_KEY, CARD_ORDER_KEY, CARD_META_KEY, NODE_SUMMARY_KEY, "admin_password", "api_config", HOLIDAYS_KEY, HOLIDAY_MODE_KEY, "mochi_debug_panel_open", "mochi_debug_float_collapsed", "mochi_debug_tab", "game_config", "sound_reminder_enabled", "focus_end_sound", "rest_reminder_sound"];
+    const fixed = ["mochi_state", "farm_state", STUDY_LOG_KEY, "focus_log", "achievement_state", "achievement_config", "lottery_config", "lottery_history", CURRENT_SEASON_KEY, SEASON_ARCHIVES_KEY, CARD_ORDER_KEY, CARD_META_KEY, NODE_SUMMARY_KEY, "admin_password", "api_config", HOLIDAYS_KEY, HOLIDAY_MODE_KEY, "mochi_debug_panel_open", "mochi_debug_float_collapsed", "mochi_debug_tab", "game_config", "sound_reminder_enabled", "focus_end_sound", "rest_reminder_sound", READING_FONT_KEY, READING_SIZE_KEY];
     const dynamic = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
       .filter((key) => key && isRetiredStorageKey(key));
     return [...new Set([...fixed, ...dynamic])];
@@ -4135,6 +4256,14 @@ ${record.originalQuestion || "暂无原题描述。"}
       localStorage.setItem("rest_reminder_sound", event.target.value || "melody");
       playRestReminderSound(event.target.value || "melody");
     }
+    if (event.target.id === "reading-font-select") {
+      setReadingPreference("font", event.target.value);
+      toast("阅读字体已更新");
+    }
+    if (event.target.id === "reading-size-select") {
+      setReadingPreference("size", event.target.value);
+      toast("阅读字号已更新");
+    }
   }
 
   function checkSeasonAutoRenew() {
@@ -4181,6 +4310,7 @@ ${record.originalQuestion || "暂无原题描述。"}
   }
 
   function init() {
+    applyReadingPreferences();
     window.MochiKnowledge.readState();
     window.MochiPet.renderMiniState();
     window.addEventListener("hashchange", () => route());

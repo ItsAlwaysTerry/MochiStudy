@@ -718,10 +718,8 @@
         event.stopPropagation();
         if (archiveActionButton.dataset.archiveAction === "go-review") {
           const key = archiveActionButton.dataset.reviewKey || "";
-          window.MochiApp?.navigate?.("review");
-          if (key) {
-            setTimeout(() => window.MochiReviewPage?.startItem?.(key, "suggestion"), 80);
-          }
+          if (key) window.MochiReviewPage?.startItem?.(key, "suggestion");
+          else window.MochiApp?.navigate?.("review");
         }
         return;
       }
