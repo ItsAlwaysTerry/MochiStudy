@@ -1585,7 +1585,16 @@
 
   function formatInlineMath(value) {
     let text = String(value || "");
-    text = text.replace(/\\cdot/g, "·").replace(/\\times/g, "×").replace(/\\leq/g, "≤").replace(/\\geq/g, "≥").replace(/\\neq/g, "≠");
+    text = text
+      .replace(/\\cdot/g, "·")
+      .replace(/\\times/g, "×")
+      .replace(/\\div/g, "÷")
+      .replace(/\\leq/g, "≤")
+      .replace(/\\geq/g, "≥")
+      .replace(/\\neq/g, "≠")
+      .replace(/\\left/g, "")
+      .replace(/\\right/g, "")
+      .replace(/\\,/g, " ");
     const symbols = {
       "\\sin": "sin",
       "\\cos": "cos",
@@ -1614,11 +1623,49 @@
     Object.entries(symbols).forEach(([source, target]) => {
       text = text.replaceAll(source, target);
     });
-    text = text.replace(/([A-Za-z0-9)]+)_\{([^{}]+)\}/g, "$1<sub>$2</sub>");
-    text = text.replace(/([A-Za-z0-9)]+)_([A-Za-z0-9]+)/g, "$1<sub>$2</sub>");
     text = text.replace(/([A-Za-z0-9)]+)\^\{([^{}]+)\}/g, "$1<sup>$2</sup>");
     text = text.replace(/([A-Za-z0-9)]+)\^([A-Za-z0-9]+)/g, "$1<sup>$2</sup>");
+    text = text.replace(/([A-Za-z0-9)]+)_\{([^{}]+)\}/g, "$1<sub>$2</sub>");
+    text = text.replace(/([A-Za-z0-9)]+)_([A-Za-z0-9]+)/g, "$1<sub>$2</sub>");
+    text = replaceMathCommand(text, "dfrac", 2, (top, bottom) => (
+      `<span class="math-frac"><span class="math-num">${top}</span><span class="math-den">${bottom}</span></span>`
+    ));
+    text = replaceMathCommand(text, "tfrac", 2, (top, bottom) => (
+      `<span class="math-frac"><span class="math-num">${top}</span><span class="math-den">${bottom}</span></span>`
+    ));
+    text = replaceMathCommand(text, "frac", 2, (top, bottom) => (
+      `<span class="math-frac"><span class="math-num">${top}</span><span class="math-den">${bottom}</span></span>`
+    ));
+    text = replaceMathCommand(text, "sqrt", 1, (radicand) => (
+      `<span class="math-sqrt"><span class="math-radicand">${radicand}</span></span>`
+    ));
+    text = replaceMathCommand(text, "dfrac", 2, (top, bottom) => (
+      `<span class="math-frac"><span class="math-num">${top}</span><span class="math-den">${bottom}</span></span>`
+    ));
+    text = replaceMathCommand(text, "tfrac", 2, (top, bottom) => (
+      `<span class="math-frac"><span class="math-num">${top}</span><span class="math-den">${bottom}</span></span>`
+    ));
+    text = replaceMathCommand(text, "frac", 2, (top, bottom) => (
+      `<span class="math-frac"><span class="math-num">${top}</span><span class="math-den">${bottom}</span></span>`
+    ));
+    text = text.replace(/\\?sqrt\s*([A-Za-z0-9]+)/g, `<span class="math-sqrt"><span class="math-radicand">$1</span></span>`);
     return text;
+  }
+
+  function replaceMathCommand(text, command, arity, render) {
+    const slash = "\\\\?";
+    const pattern = arity === 2
+      ? new RegExp(`${slash}${command}\\s*\\{([^{}]+)\\}\\s*\\{([^{}]+)\\}`, "g")
+      : new RegExp(`${slash}${command}\\s*\\{([^{}]+)\\}`, "g");
+    let next = text;
+    for (let i = 0; i < 8; i += 1) {
+      const replaced = arity === 2
+        ? next.replace(pattern, (_, first, second) => render(first, second))
+        : next.replace(pattern, (_, first) => render(first));
+      if (replaced === next) break;
+      next = replaced;
+    }
+    return next;
   }
 
   window.MochiCards = {

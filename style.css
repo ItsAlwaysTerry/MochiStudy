@@ -2902,6 +2902,48 @@ button {
   line-height: 0;
 }
 
+.math-frac {
+  display: inline-grid;
+  grid-template-rows: auto auto;
+  align-items: center;
+  justify-items: center;
+  min-width: 1.2em;
+  margin: 0 0.12em;
+  line-height: 1.05;
+  vertical-align: -0.35em;
+}
+
+.math-num {
+  width: 100%;
+  padding: 0 0.18em 0.08em;
+  border-bottom: 1px solid currentColor;
+  text-align: center;
+}
+
+.math-den {
+  padding: 0.08em 0.18em 0;
+  text-align: center;
+}
+
+.math-sqrt {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.02em;
+}
+
+.math-sqrt::before {
+  content: "√";
+  font-size: 1.08em;
+  line-height: 1;
+}
+
+.math-radicand {
+  display: inline-block;
+  padding: 0 0.12em 0 0.04em;
+  border-top: 1px solid currentColor;
+  line-height: 1.1;
+}
+
 .card-edit-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
