@@ -253,8 +253,8 @@
           <span class="chip ${item.subject} review-row-chip">${escapeHtml(item.subjectLabel)}</span>
           ${isToday ? `<span class="review-today-badge">今日</span>` : ""}
           <div class="review-row-info">
-            <strong>${escapeHtml(item.nodeLabel)}</strong>
-            <span class="review-row-reason">${escapeHtml(reason)}</span>
+            <strong>${formatRichText(item.nodeLabel)}</strong>
+            <span class="review-row-reason">${formatRichText(reason)}</span>
           </div>
           <button class="btn btn-soft btn-sm review-row-start" data-review-action="start" data-review-origin="${isToday ? "suggestion" : "row"}" data-review-key="${escapeHtml(item.key)}" type="button">
             <span class="material-symbols-outlined">play_arrow</span>开始
@@ -322,6 +322,54 @@
 
   function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
+  }
+
+  function formatRichText(value) {
+    const escaped = escapeHtml(value).replace(/＄/g, "$");
+    return escaped.replace(/\$([^$\n]+)\$/g, (_, formula) => `<span class="math-inline">${formatInlineMath(formula)}</span>`);
+  }
+
+  function formatInlineMath(value) {
+    let text = String(value || "");
+    text = text
+      .replace(/\\cdot/g, "·")
+      .replace(/\\times/g, "×")
+      .replace(/\\leq/g, "≤")
+      .replace(/\\geq/g, "≥")
+      .replace(/\\neq/g, "≠");
+    const symbols = {
+      "\\sin": "sin",
+      "\\cos": "cos",
+      "\\tan": "tan",
+      "\\ln": "ln",
+      "\\log": "log",
+      "\\rightleftharpoons": "⇌",
+      "\\alpha": "α",
+      "\\beta": "β",
+      "\\gamma": "γ",
+      "\\Gamma": "Γ",
+      "\\delta": "δ",
+      "\\Delta": "Δ",
+      "\\epsilon": "ε",
+      "\\theta": "θ",
+      "\\lambda": "λ",
+      "\\mu": "μ",
+      "\\pi": "π",
+      "\\rho": "ρ",
+      "\\sigma": "σ",
+      "\\omega": "ω",
+      "\\Omega": "Ω",
+      "\\phi": "φ",
+      "\\Phi": "Φ",
+    };
+    Object.entries(symbols).forEach(([source, target]) => {
+      text = text.replaceAll(source, target);
+    });
+    text = text.replace(/([A-Za-z0-9)]+)_\{([^{}]+)\}/g, "$1<sub>$2</sub>");
+    text = text.replace(/([A-Za-z0-9)]+)_([A-Za-z0-9]+)/g, "$1<sub>$2</sub>");
+    text = text.replace(/([A-Za-z0-9)]+)\^\{([^{}]+)\}/g, "$1<sup>$2</sup>");
+    text = text.replace(/([A-Za-z0-9)]+)\^([A-Za-z0-9]+)/g, "$1<sup>$2</sup>");
+    return text;
   }
 
   window.MochiReviewPage = { render, startItem, copyItemPack, importItemByKey };

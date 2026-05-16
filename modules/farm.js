@@ -242,9 +242,7 @@
         `;
       }
       const hasAnyReview = (reviewState?.items || []).some((i) => i.reviewCount > 0);
-      const calmText = hasAnyReview
-        ? "近期复习过的知识点都在巩固中，今天可以专心做新题。"
-        : "还没有复习过任何知识点，先从学习档案里找一个开始。";
+      const calmText = hasAnyReview ? "暂无到期复习" : "暂无复习卡";
       const today = new Date().toISOString().slice(0, 10);
       const nextDue = (reviewState?.items || [])
         .filter((i) => i.nextReviewDate && i.nextReviewDate > today)
@@ -253,7 +251,7 @@
       if (nextDue) {
         const diff = Math.ceil((new Date(`${nextDue.nextReviewDate}T12:00:00`) - new Date()) / 86400000);
         const diffLabel = diff === 1 ? "明天" : `${diff} 天后`;
-        nextDueHint = `<p class="home-review-next-due">下一个到期：${escapeAttr(nextDue.nodeLabel)} · ${diffLabel}</p>`;
+        nextDueHint = `<p class="home-review-next-due">下一个到期：${formatRichText(nextDue.nodeLabel)} · ${diffLabel}</p>`;
       }
       return `
         <section class="card home-review-card calm">
@@ -265,7 +263,7 @@
             </div>
           </div>
           ${nextDueHint}
-          <button class="btn btn-soft btn-sm" data-route="review" type="button">看复习页</button>
+          <button class="btn btn-soft btn-sm" data-route="review" type="button">复习队列</button>
         </section>
       `;
     }
@@ -276,15 +274,10 @@
           <span class="material-symbols-outlined">rate_review</span>
           <div>
             <h3>今日复习</h3>
-            <p>${escapeAttr(item.subjectLabel)} · ${escapeAttr(item.nodeLabel)}</p>
+            <p>${escapeAttr(item.subjectLabel)} · ${formatRichText(item.nodeLabel)}</p>
           </div>
         </div>
-        ${item.mainPainPoint ? `
-        <details class="home-review-spoiler"${isActive ? " open" : ""}>
-          <summary class="home-review-recall-hint">还记得吗？先想一想，再展开看卡点</summary>
-          <p class="home-review-pain">${escapeAttr(item.mainPainPoint)}</p>
-        </details>
-        ` : ""}
+        ${item.mainPainPoint ? `<p class="home-review-pain">${formatRichText(item.mainPainPoint)}</p>` : ""}
         ${isActive ? `
         <div class="home-review-import">
           ${HOME_REVIEW_STATE.importError ? `<p class="home-review-msg home-review-msg-error">${escapeAttr(HOME_REVIEW_STATE.importError)}</p>` : ""}
@@ -292,7 +285,7 @@
             <p class="home-review-msg home-review-msg-success">${escapeAttr(HOME_REVIEW_STATE.importResult)}</p>
             <button class="btn btn-soft btn-sm" data-home-review-action="dismiss" type="button" style="margin-top:6px">继续</button>
           ` : `
-            <p class="home-review-import-hint">材料已复制 · 先在脑子里回想 20 秒，再去 AI 粘贴做题</p>
+            <p class="home-review-import-hint">粘贴 AI 输出，导入结果</p>
             <textarea id="home-review-paste" rows="3" placeholder="粘贴 AI 输出（含 MOCHI-RECORD 那段即可）" style="width:100%;box-sizing:border-box;margin-top:8px"></textarea>
             <button class="btn btn-primary btn-sm" data-home-review-action="import" data-review-key="${escapeAttr(item.key)}" style="width:100%;margin-top:6px" type="button">
               <span class="material-symbols-outlined">download_done</span>导入复习结果
@@ -302,9 +295,9 @@
         ` : `
         <div class="home-review-actions">
           <button class="btn btn-primary btn-sm" data-home-review-action="start" data-review-key="${escapeAttr(item.key)}" type="button">
-            <span class="material-symbols-outlined">content_copy</span>复制材料
+            <span class="material-symbols-outlined">content_copy</span>开始复习
           </button>
-          <button class="btn btn-outline btn-sm" data-route="review" type="button">看全部</button>
+          <button class="btn btn-outline btn-sm" data-route="review" type="button">全部</button>
         </div>
         `}
       </section>
@@ -331,16 +324,17 @@
   function renderGuideCard() {
     return `
       <section class="card home-guide-card">
-        <div class="home-guide-head">
-          <span class="material-symbols-outlined">school</span>
-          <h3>怎么开始？</h3>
-        </div>
-        <ol class="home-guide-steps">
-          <li>打开 <strong>AI 私教</strong>，做一道题</li>
-          <li>AI 输出 MOCHI-RECORD → <strong>复制</strong></li>
-          <li>粘贴到下面的导入框 → <strong>导入</strong></li>
-        </ol>
-        <p class="muted home-guide-note">导入第一条记录后，学习档案和农场就会动起来。</p>
+        <details class="home-help-details">
+          <summary>
+            <span class="material-symbols-outlined">school</span>
+            第一次用？查看步骤
+          </summary>
+          <ol class="home-guide-steps">
+            <li>打开 <strong>AI 私教</strong>，做一道题</li>
+            <li>复制 AI 输出的 MOCHI-RECORD</li>
+            <li>粘贴到导入框，点确认导入</li>
+          </ol>
+        </details>
       </section>
     `;
   }
@@ -349,47 +343,22 @@
     const streak = window.MochiApp?.calcStudyStreak?.() || 0;
     const todayCount = window.MochiApp?.getTodayRecordCount?.() || 0;
 
-    let streakText = "";
-    let streakSub = "";
-    if (streak >= 2) {
-      streakText = `连续 ${streak} 天`;
-      streakSub = todayCount > 0 ? `今天已导入 ${todayCount} 条` : "今天还没有记录";
-    } else if (streak === 1) {
-      streakText = "今天有学习";
-      streakSub = `已导入 ${todayCount} 条记录`;
-    } else {
-      const isHoliday = window.MochiApp?.isHolidayToday?.() ?? false;
-      if (!isHoliday || todayCount > 0) return "";
-      return `
-        <section class="card streak-banner streak-banner-zero">
-          <div class="streak-banner-row">
-            <span class="material-symbols-outlined streak-fire-icon">bedtime</span>
-            <div class="streak-banner-text">
-              <strong class="streak-num">今天还没开始</strong>
-              <span class="streak-sub">打一张就够了</span>
-            </div>
-            <button class="btn btn-soft btn-sm streak-zero-cta" data-action="scroll-to-import" type="button">去导入</button>
-          </div>
-        </section>
-      `;
-    }
-
-    let encouragement = "";
-    if (streak >= 14) encouragement = "两周不间断，这是真的厉害。";
-    else if (streak >= 7) encouragement = "一周连续打卡，状态很稳。";
-    else if (streak >= 3) encouragement = "连续好几天了，保持住。";
-    else if (streak >= 2) encouragement = "连续两天，好的开始。";
+    const streakSub = streak >= 2
+      ? `连续 ${streak} 天`
+      : todayCount > 0
+        ? "今天已经开始了"
+        : "导入一条就开始生长";
 
     return `
-      <section class="card streak-banner">
+      <section class="card streak-banner ${todayCount > 0 ? "" : "streak-banner-zero"}">
         <div class="streak-banner-row">
-          <span class="material-symbols-outlined streak-fire-icon">local_fire_department</span>
+          <span class="material-symbols-outlined streak-fire-icon">${todayCount > 0 ? "local_fire_department" : "bedtime"}</span>
           <div class="streak-banner-text">
-            <strong class="streak-num">${escapeAttr(streakText)}</strong>
+            <strong class="streak-num">今天已导入 ${todayCount} 条记录</strong>
             <span class="streak-sub">${escapeAttr(streakSub)}</span>
           </div>
+          ${todayCount > 0 ? "" : `<button class="btn btn-soft btn-sm streak-zero-cta" data-action="scroll-to-import" type="button">去导入</button>`}
         </div>
-        ${encouragement ? `<p class="streak-encourage">${escapeAttr(encouragement)}</p>` : ""}
       </section>
     `;
   }
@@ -416,55 +385,52 @@
     container.innerHTML = `
       ${seasonBanner}
       <div class="home-flow">
-        ${renderStreakBanner()}
-        ${holiday
-          ? `
-            <section class="card import-card">
-              <div class="import-header">
-                <span class="material-symbols-outlined">upload_file</span>
-                <div>
-                  <h3>导入学习记录</h3>
-                  <p class="import-header-hint">把 AI 家教输出的 MOCHI-RECORD 粘贴进来</p>
+        <div class="home-left-stack">
+          ${renderStreakBanner()}
+          ${holiday
+            ? `
+              <section class="card import-card home-import-card">
+                <div class="import-header">
+                  <span class="material-symbols-outlined">upload_file</span>
+                  <div>
+                    <h3>导入学习记录</h3>
+                  </div>
                 </div>
-              </div>
-              <textarea id="record-paste" rows="3" placeholder="粘贴 MOCHI-RECORD 完整内容（START 到 END 整段）"></textarea>
-              <button class="btn btn-primary" data-action="parse-record" style="width:100%;margin-top:8px">
-                <span class="material-symbols-outlined">auto_awesome</span>确认导入
-              </button>
-              <div id="upload-result" class="upload-result" hidden></div>
-            </section>
-          `
-          : `
-            <section class="card farm-hibernate-card">
-              <p class="farm-hibernate-icon">😴</p>
-              <p class="farm-hibernate-title">农场休眠中</p>
-              <p class="muted" style="font-size:13px">放假回来继续种植吧。</p>
-              <button class="btn btn-soft" data-action="set-holiday-mode" data-mode="holiday" style="margin-top:12px">今天想学习</button>
-            </section>
-          `
-        }
-        ${hasRecords ? renderTodayReviewCard() : (holiday ? renderGuideCard() : "")}
-        <section class="card mini-farm-card">
-          <div class="mini-farm-header">
-            <span class="farm-level-badge">Lv.${farmLv.level} ${farmLv.name}</span>
-            <span class="farm-xp-hint">${nextLv ? `还需 ${nextLv.minHarvests - state.totalHarvests} 次收获` : "已达最高等级"}</span>
+                <textarea id="record-paste" rows="3" placeholder="粘贴 MOCHI-RECORD"></textarea>
+                <button class="btn btn-primary" data-action="parse-record" style="width:100%;margin-top:8px">
+                  <span class="material-symbols-outlined">auto_awesome</span>确认导入
+                </button>
+                <div id="upload-result" class="upload-result" hidden></div>
+              </section>
+            `
+            : `
+              <section class="card farm-hibernate-card">
+                <p class="farm-hibernate-icon">😴</p>
+                <p class="farm-hibernate-title">农场休眠中</p>
+                <p class="muted" style="font-size:13px">放假回来继续种植吧。</p>
+                <button class="btn btn-soft" data-action="set-holiday-mode" data-mode="holiday" style="margin-top:12px">今天想学习</button>
+              </section>
+            `
+          }
+          ${hasRecords ? renderTodayReviewCard() : (holiday ? renderGuideCard() : "")}
+        </div>
+        <div class="home-right-stack">
+          <section class="card mini-farm-card">
+            <div class="mini-farm-header">
+              <span class="farm-level-badge">Lv.${farmLv.level} ${farmLv.name}</span>
+              <span class="farm-xp-hint">${nextLv ? `还需 ${nextLv.minHarvests - state.totalHarvests} 次收获` : "已达最高等级"}</span>
+            </div>
+            <div class="mini-farm-row">
+              ${SUBJECTS.map((subject) => renderMiniPlot(subject, state)).join("")}
+            </div>
+            <div class="mini-farm-xp-track">
+              <div class="mini-farm-xp-fill" style="width:${harvestPct}%"></div>
+            </div>
+          </section>
+          <div class="home-focus-panel">
+            ${window.MochiPet?.renderTimer?.(holiday) || ""}
           </div>
-          <div class="mini-farm-row">
-            ${SUBJECTS.map((subject) => renderMiniPlot(subject, state)).join("")}
-          </div>
-          <div class="mini-farm-xp-track">
-            <div class="mini-farm-xp-fill" style="width:${harvestPct}%"></div>
-          </div>
-        </section>
-        ${holiday ? `
-        <details class="home-focus-details">
-          <summary class="home-focus-summary">
-            <span class="material-symbols-outlined">timer</span>
-            开始专注
-          </summary>
-          ${window.MochiPet?.renderTimer?.(holiday) || ""}
-        </details>
-        ` : ""}
+        </div>
       </div>
     `;
 
@@ -541,6 +507,54 @@
 
   function escapeAttr(value) {
     return window.MochiApp?.escapeHtml?.(value) ?? String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
+  }
+
+  function formatRichText(value) {
+    const escaped = escapeAttr(value).replace(/＄/g, "$");
+    return escaped.replace(/\$([^$\n]+)\$/g, (_, formula) => `<span class="math-inline">${formatInlineMath(formula)}</span>`);
+  }
+
+  function formatInlineMath(value) {
+    let text = String(value || "");
+    text = text
+      .replace(/\\cdot/g, "·")
+      .replace(/\\times/g, "×")
+      .replace(/\\leq/g, "≤")
+      .replace(/\\geq/g, "≥")
+      .replace(/\\neq/g, "≠");
+    const symbols = {
+      "\\sin": "sin",
+      "\\cos": "cos",
+      "\\tan": "tan",
+      "\\ln": "ln",
+      "\\log": "log",
+      "\\rightleftharpoons": "⇌",
+      "\\alpha": "α",
+      "\\beta": "β",
+      "\\gamma": "γ",
+      "\\Gamma": "Γ",
+      "\\delta": "δ",
+      "\\Delta": "Δ",
+      "\\epsilon": "ε",
+      "\\theta": "θ",
+      "\\lambda": "λ",
+      "\\mu": "μ",
+      "\\pi": "π",
+      "\\rho": "ρ",
+      "\\sigma": "σ",
+      "\\omega": "ω",
+      "\\Omega": "Ω",
+      "\\phi": "φ",
+      "\\Phi": "Φ",
+    };
+    Object.entries(symbols).forEach(([source, target]) => {
+      text = text.replaceAll(source, target);
+    });
+    text = text.replace(/([A-Za-z0-9)]+)_\{([^{}]+)\}/g, "$1<sub>$2</sub>");
+    text = text.replace(/([A-Za-z0-9)]+)_([A-Za-z0-9]+)/g, "$1<sub>$2</sub>");
+    text = text.replace(/([A-Za-z0-9)]+)\^\{([^{}]+)\}/g, "$1<sup>$2</sup>");
+    text = text.replace(/([A-Za-z0-9)]+)\^([A-Za-z0-9]+)/g, "$1<sup>$2</sup>");
+    return text;
   }
 
   window.MochiFarm = {

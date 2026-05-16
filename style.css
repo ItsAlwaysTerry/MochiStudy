@@ -1215,11 +1215,11 @@ button {
 }
 
 .streak-banner {
-  padding: 12px 16px;
+  padding: 10px 14px;
   background: linear-gradient(135deg, rgba(255, 183, 77, 0.18), rgba(134, 77, 97, 0.10)), var(--surface);
   border: 1.5px solid rgba(255, 183, 77, 0.35);
   display: grid;
-  gap: 4px;
+  gap: 0;
 }
 
 .streak-banner-row {
@@ -1238,12 +1238,14 @@ button {
 .streak-banner-text {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 0;
+  flex: 1;
+  min-width: 0;
 }
 
 .streak-num {
   font-family: "Plus Jakarta Sans", sans-serif;
-  font-size: 20px;
+  font-size: 18px;
   color: var(--text);
   line-height: 1.2;
 }
@@ -1271,26 +1273,27 @@ button {
 }
 
 .import-card {
-  padding: 16px 20px;
+  padding: 16px 18px;
   border: 1.5px solid var(--primary-soft, rgba(155, 100, 130, 0.3));
 }
 
 .import-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
   color: var(--primary);
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .import-header h3 {
   margin: 0;
   line-height: 1.3;
+  font-size: 22px;
 }
 
 .import-header-hint {
   margin: 2px 0 0;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--muted);
   line-height: 1.4;
@@ -1300,11 +1303,13 @@ button {
   width: 100%;
   border: 1.5px solid var(--primary-container);
   border-radius: 12px;
-  padding: 10px 14px;
+  min-height: 72px;
+  padding: 10px 12px;
   color: var(--text);
   background: var(--surface);
   font-family: inherit;
-  font-size: 13px;
+  font-size: 15px;
+  line-height: 1.55;
   resize: vertical;
 }
 
@@ -1314,9 +1319,24 @@ button {
 
 .home-guide-card {
   display: grid;
-  gap: 10px;
-  padding: 14px 16px;
+  gap: 0;
+  padding: 12px 16px;
   border-left: 5px solid var(--primary-soft, rgba(155, 100, 130, 0.35));
+}
+
+.home-help-details summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+  color: var(--primary);
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.home-help-details summary::-webkit-details-marker {
+  display: none;
 }
 
 .home-guide-head {
@@ -1327,21 +1347,21 @@ button {
 }
 
 .home-guide-head .material-symbols-outlined {
-  font-size: 22px;
+  font-size: 26px;
 }
 
 .home-guide-head h3 {
   margin: 0;
-  font-size: 17px;
+  font-size: 20px;
 }
 
 .home-guide-steps {
-  margin: 0;
+  margin: 10px 0 0;
   padding-left: 20px;
   display: grid;
-  gap: 6px;
+  gap: 4px;
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.42;
 }
 
 .home-guide-steps strong {
@@ -1350,12 +1370,12 @@ button {
 
 .home-guide-note {
   margin: 0;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .home-review-card {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   padding: 14px 16px;
   border-left: 5px solid var(--subject-color, var(--primary));
 }
@@ -1366,7 +1386,7 @@ button {
 
 .home-review-head {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr);
+  grid-template-columns: 36px minmax(0, 1fr);
   gap: 10px;
   align-items: center;
 }
@@ -1374,17 +1394,17 @@ button {
 .home-review-head > .material-symbols-outlined {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 8px;
   color: var(--subject-color, var(--primary));
   background: var(--surface-mid);
-  font-size: 20px;
+  font-size: 21px;
 }
 
 .home-review-head h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: 20px;
 }
 
 .home-review-head p,
@@ -1403,7 +1423,12 @@ button {
   margin: 0;
   font-size: 15px;
   color: var(--text);
-  line-height: 1.5;
+  font-weight: 800;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .home-review-next-due {
@@ -1453,7 +1478,7 @@ button {
 }
 
 .home-review-import {
-  margin-top: 12px;
+  margin-top: 4px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -2618,6 +2643,12 @@ button {
   box-shadow: 0 6px 18px rgba(134, 77, 97, 0.08);
 }
 
+.study-card.dragging {
+  opacity: 0.58;
+  transform: scale(0.99);
+  box-shadow: 0 14px 34px rgba(134, 77, 97, 0.18);
+}
+
 .study-card:active {
   transform: scale(0.98);
 }
@@ -2661,6 +2692,14 @@ button {
 
 .card-action-btn.danger:hover {
   color: #9f314f;
+}
+
+.card-drag-handle {
+  cursor: grab;
+}
+
+.card-drag-handle:active {
+  cursor: grabbing;
 }
 
 .card-action-btn .material-symbols-outlined {
@@ -4813,12 +4852,95 @@ body.focus-mode #view {
 }
 
 .home-flow {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 0.92fr);
+  align-items: start;
   gap: 16px;
-  max-width: 600px;
+  max-width: 1180px;
   margin: 0 auto;
   width: 100%;
+}
+
+.home-left-stack,
+.home-right-stack {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.home-focus-panel {
+  display: grid;
+  gap: 0;
+}
+
+.home-focus-title {
+  display: none;
+}
+
+.home-focus-title .material-symbols-outlined {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  color: #fff;
+  background: var(--primary);
+  font-size: 24px;
+}
+
+.home-focus-title h3 {
+  margin: 0;
+  color: var(--primary);
+  font-size: 24px;
+}
+
+.home-focus-title p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.home-focus-panel .timer-setup-card,
+.home-focus-panel .timer-focus-card,
+.home-focus-panel .timer-rest-card {
+  min-height: 0;
+  padding: 16px 18px;
+}
+
+.home-focus-panel .timer-setup-header h3 {
+  font-size: 22px;
+}
+
+.home-focus-panel .timer-goal-wrap label,
+.home-focus-panel .timer-setup-field label {
+  font-size: 13px;
+}
+
+.home-focus-panel .timer-goal-wrap input {
+  min-height: 40px;
+  font-size: 15px;
+}
+
+.home-focus-panel .timer-mode-btn {
+  min-height: 40px;
+  font-size: 14px;
+}
+
+.home-focus-panel .timer-ring-wrap,
+.home-focus-panel .timer-ring {
+  width: 140px;
+  height: 140px;
+}
+
+.home-focus-panel .timer-time {
+  font-size: 30px;
+}
+
+.home-focus-panel .timer-label {
+  font-size: 13px;
 }
 
 .home-focus-details {
@@ -4861,17 +4983,17 @@ body.focus-mode #view {
 
 .farm-level-badge {
   color: var(--tertiary);
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
 }
 
 .farm-xp-hint {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .mini-farm-card {
-  padding: 12px 16px;
+  padding: 16px 18px;
 }
 
 .mini-farm-header {
@@ -4923,13 +5045,13 @@ body.focus-mode #view {
 
 .mini-plot-label {
   color: var(--surface);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
 }
 
 .mini-plot-count {
   color: rgba(255, 249, 240, 0.72);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -4987,6 +5109,39 @@ body.focus-mode #view {
   color: var(--tertiary);
   font-size: 26px;
   box-shadow: var(--soft-shadow);
+}
+
+@media (max-width: 980px) {
+  .home-flow {
+    grid-template-columns: 1fr;
+    max-width: 680px;
+    gap: 6px;
+  }
+
+  .home-left-stack,
+  .home-right-stack {
+    gap: 6px;
+  }
+}
+
+@media (max-width: 700px) {
+  .home-flow {
+    gap: 6px;
+  }
+
+  .streak-num {
+    font-size: 16px;
+  }
+
+  .home-focus-panel .timer-ring-wrap,
+  .home-focus-panel .timer-ring {
+    width: 130px;
+    height: 130px;
+  }
+
+  .home-focus-panel .timer-time {
+    font-size: 28px;
+  }
 }
 
 @media (max-width: 700px) {

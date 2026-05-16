@@ -2129,6 +2129,7 @@
       ${renderAdminTitleSection()}
       ${renderAdminLotterySection()}
       ${renderAdminCalendarSection()}
+      ${renderAdminSampleDataSection()}
       ${renderAdminDataSection()}
       ${renderAdminPasswordSection()}
     `;
@@ -2358,6 +2359,166 @@
     }
     cells += `</div>`;
     return cells;
+  }
+
+  function sampleNode(subject, label) {
+    const nodes = window.MochiKnowledge?.SUBJECTS?.[subject]?.nodes || [];
+    return nodes.find((node) => node.label === label) || nodes[0] || { id: "", label };
+  }
+
+  function sampleDate(daysAgo) {
+    return dateKeyFromDate(addDays(parseDateAtNoon(todayKey()), -Number(daysAgo || 0)));
+  }
+
+  function buildSampleCards() {
+    const rows = [
+      {
+        id: "sample_lesson_physics_electric_1",
+        daysAgo: 9,
+        subject: "physics",
+        nodeLabel: "电场",
+        stars: 1,
+        painPoint: "电量$q$公式中$\\Phi$的计算容易把物理量和几何面积混在一起。",
+        originalQuestion: "匀强电场中面积为$S$的平面与电场方向夹角为$\\theta$，求电通量$\\Phi$。",
+        routine: "第一步：先画法线方向\n第二步：用$\\Phi=ES\\cos\\theta$判断角度\n第三步：再联系$q=It$核对单位",
+        meta: { source: "lesson", errorType: "公式含义混淆", tags: ["电场", "公式辨析"], confidence: 2, timeSpentMinutes: 18 },
+      },
+      {
+        id: "sample_review_physics_electric_1",
+        daysAgo: 4,
+        subject: "physics",
+        nodeLabel: "电场",
+        stars: 2,
+        painPoint: "复习时能写出$\\Phi$，但容易把夹角取反。",
+        originalQuestion: "复习题：同一电场中，平面旋转后$\\Phi$如何变化？",
+        routine: "第一步：标出平面法线\n第二步：找法线和电场的夹角\n第三步：代入余弦判断变大还是变小",
+        meta: { source: "review", reviewResult: "看提示做对", stuckStep: "夹角对象判断不稳", keyInsight: "电通量看法线，不看平面本身", tags: ["复习", "电通量"], confidence: 3, timeSpentMinutes: 12 },
+      },
+      {
+        id: "sample_quiz_math_function_1",
+        daysAgo: 2,
+        subject: "math",
+        nodeLabel: "函数",
+        stars: 2,
+        painPoint: "看到$f(x+a)$时会忘记先整体替换$x$。",
+        originalQuestion: "已知$f(x)=x^2-2x$，求$f(x+1)-f(x)$。",
+        routine: "第一步：把$x+1$整体代入\n第二步：展开后再合并同类项",
+        meta: { source: "quiz", reviewResult: "小测部分做对", errorType: "代换顺序不稳", tags: ["函数代换"], confidence: 3, timeSpentMinutes: 9 },
+      },
+      {
+        id: "sample_lesson_math_derivative_1",
+        daysAgo: 6,
+        subject: "math",
+        nodeLabel: "导数",
+        stars: 1,
+        painPoint: "导数符号和单调区间对应关系不够熟。",
+        originalQuestion: "讨论函数$f(x)=x^3-3x$的单调区间。",
+        routine: "第一步：求$f'(x)$\n第二步：解$f'(x)>0$和$f'(x)<0$\n第三步：按区间写结论",
+        meta: { source: "lesson", errorType: "符号区间", tags: ["导数", "单调性"], confidence: 2, timeSpentMinutes: 16 },
+      },
+      {
+        id: "sample_review_chem_equilibrium_1",
+        daysAgo: 3,
+        subject: "chemistry",
+        nodeLabel: "化学平衡",
+        stars: 2,
+        painPoint: "压强变化时会漏看气体系数和。",
+        originalQuestion: "恒温下改变压强，判断$N_2+3H_2\\rightleftharpoons2NH_3$平衡移动方向。",
+        routine: "第一步：只比较气体系数和\n第二步：增压向气体系数小的一侧移动",
+        meta: { source: "review", reviewResult: "基本掌握", stuckStep: "气体系数比较慢", tags: ["化学平衡"], confidence: 3, timeSpentMinutes: 11 },
+      },
+      {
+        id: "sample_lesson_chem_redox_1",
+        daysAgo: 1,
+        subject: "chemistry",
+        nodeLabel: "氧化还原反应",
+        stars: 3,
+        painPoint: "这次能稳定用化合价升降判断氧化剂。",
+        originalQuestion: "判断反应中氧化剂和还原剂。",
+        routine: "第一步：标化合价\n第二步：升失氧化，降得还原\n第三步：回到物质名称作答",
+        meta: { source: "lesson", keyInsight: "先标价再判断，不凭感觉", tags: ["氧化还原"], confidence: 4, timeSpentMinutes: 10 },
+      },
+      {
+        id: "sample_quiz_physics_kinematics_1",
+        daysAgo: 0,
+        subject: "physics",
+        nodeLabel: "运动学",
+        stars: 2,
+        painPoint: "追及题没有先统一正方向。",
+        originalQuestion: "甲乙同向运动，已知$v_0$和$a$，求相遇时间。",
+        routine: "第一步：统一正方向\n第二步：分别写位移表达式\n第三步：令位移差等于初始距离",
+        meta: { source: "quiz", reviewResult: "独立做对一半", errorType: "建模慢", tags: ["追及相遇"], confidence: 3, timeSpentMinutes: 14 },
+      },
+    ];
+
+    return rows.map((row) => {
+      const node = sampleNode(row.subject, row.nodeLabel);
+      return {
+        log: {
+          id: row.id,
+          date: sampleDate(row.daysAgo),
+          subject: row.subject,
+          nodeId: node.id,
+          nodeLabel: node.label,
+          questionsCompleted: 1,
+          stars: row.stars,
+          painPoint: row.painPoint,
+          originalQuestion: row.originalQuestion,
+          routine: row.routine,
+        },
+        meta: row.meta,
+      };
+    });
+  }
+
+  function sampleCardCount() {
+    return readStudyLogs().filter((log) => String(log.id || "").startsWith("sample_")).length;
+  }
+
+  function clearSampleCards() {
+    const sampleIds = new Set(readStudyLogs().filter((log) => String(log.id || "").startsWith("sample_")).map((log) => log.id));
+    writeStudyLogs(readStudyLogs().filter((log) => !sampleIds.has(log.id)));
+    const meta = readStudyCardMeta();
+    sampleIds.forEach((id) => delete meta[id]);
+    writeStudyCardMeta(meta);
+    window.MochiCards?.refresh?.();
+    checkAndGrantAchievements();
+  }
+
+  function importSampleCards() {
+    clearSampleCards();
+    const samples = buildSampleCards();
+    writeStudyLogs([...samples.map((item) => item.log), ...readStudyLogs()]);
+    samples.forEach((item) => setStudyCardMeta(item.log.id, item.meta));
+    const farmState = window.MochiFarm?.readState?.() || {};
+    farmState.plots = farmState.plots || {};
+    ["math", "physics", "chemistry"].forEach((subject) => {
+      const count = samples.filter((item) => item.log.subject === subject).length;
+      farmState.plots[subject] = farmState.plots[subject] || {};
+      farmState.plots[subject].recordCount = Math.max(Number(farmState.plots[subject].recordCount || 0), count);
+    });
+    farmState.xp = Math.max(Number(farmState.xp || 0), samples.length * 3);
+    window.MochiFarm?.saveState?.(farmState);
+    checkAndGrantAchievements();
+    window.MochiCards?.refresh?.();
+    refreshVisibleRoute();
+    renderDebugPanel();
+  }
+
+  function renderAdminSampleDataSection() {
+    return `
+      <section class="admin-section">
+        <h3>默认测试卡片</h3>
+        <p class="muted admin-help">一键导入学习、复习、小测三类样例卡片，包含多科目、多星级和公式文本，方便新版本直接检查首页、学习档案和复习队列排版。</p>
+        <div class="admin-row">
+          <span>当前样例卡片：<strong>${sampleCardCount()}</strong> 张</span>
+        </div>
+        <div class="admin-row-actions">
+          <button class="btn btn-primary btn-sm" data-admin-action="import-sample-cards" type="button">导入/刷新测试卡片</button>
+          <button class="btn btn-soft btn-sm" data-admin-action="clear-sample-cards" type="button">清除测试卡片</button>
+        </div>
+      </section>
+    `;
   }
 
   function renderAdminDataSection() {
@@ -2632,6 +2793,19 @@
       }
       if (action === "save-data-adjust") {
         saveAdminDataAdjust(overlay);
+        return;
+      }
+      if (action === "import-sample-cards") {
+        importSampleCards();
+        refreshAdminPanel(overlay);
+        toast("默认测试卡片已导入");
+        return;
+      }
+      if (action === "clear-sample-cards") {
+        clearSampleCards();
+        refreshAdminPanel(overlay);
+        refreshVisibleRoute();
+        toast("测试卡片已清除");
         return;
       }
       if (action === "save-password") {
@@ -3951,6 +4125,14 @@ ${record.originalQuestion || "暂无原题描述。"}
               <button data-action="debug-reset-achievements" type="button">清勋章</button>
             </div>
           </div>
+          <div class="debug-float-row debug-total-row debug-sample-row">
+            <span>样例</span>
+            <strong>${sampleCardCount()} 张</strong>
+            <div class="debug-float-actions">
+              <button data-action="debug-import-sample-cards" type="button">导入测试卡片</button>
+              <button data-action="debug-clear-sample-cards" type="button">清样例</button>
+            </div>
+          </div>
         `}
       </div>
     `;
@@ -4106,6 +4288,19 @@ ${record.originalQuestion || "暂无原题描述。"}
         localStorage.removeItem("achievement_state");
         debugRefreshFarm();
         if (currentRoute() === "achievements") renderAchievements(view);
+        return;
+      }
+      if (name === "debug-import-sample-cards") {
+        importSampleCards();
+        debugRefreshFarm();
+        toast("默认测试卡片已导入");
+        return;
+      }
+      if (name === "debug-clear-sample-cards") {
+        clearSampleCards();
+        debugRefreshFarm();
+        refreshVisibleRoute();
+        toast("测试卡片已清除");
         return;
       }
       if (name === "debug-save-config") {

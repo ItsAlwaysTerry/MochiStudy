@@ -6,6 +6,7 @@
     highlightNodeId: "",
     historyExpanded: false,
     expandedCards: new Map(),
+    draggingCardId: "",
     container: null,
   };
   const DEFAULT_CARDS_CONFIG = { masteredMinRecent: 2, dormantDays: 30 };
@@ -452,7 +453,9 @@
         ` : ""}
         <details class="archive-history-details"${STATE.historyExpanded ? " open" : ""}>
           <summary>${cardsLabel}</summary>
-          <div class="study-card-list">${summary.entries.map((log, index) => renderStudyCard(log, subjectKey, index, summary.node.label)).join("")}</div>
+          <div class="study-card-list" data-card-list data-card-list-subject="${escapeHtml(subjectKey)}" data-card-list-node-label="${escapeHtml(summary.node.label)}">
+            ${summary.entries.map((log, index) => renderStudyCard(log, subjectKey, index, summary.node.label)).join("")}
+          </div>
         </details>
       </div>
     `;
@@ -484,6 +487,12 @@
             </div>
             <div class="card-head-actions">
               <div class="card-stars-badge ${starClass}">${stars(starCount)}</div>
+              <button class="card-action-btn card-drag-handle" data-card-action="drag" draggable="true" type="button" title="拖动排序" aria-label="拖动排序">
+                <span class="material-symbols-outlined">drag_indicator</span>
+              </button>
+              <button class="card-action-btn danger" data-card-action="delete" type="button" title="删除卡片" aria-label="删除卡片">
+                <span class="material-symbols-outlined">delete</span>
+              </button>
             </div>
           </div>
           ${painPointHtml(log)}
@@ -603,7 +612,7 @@
     return `
       <div class="card-meta-summary">
         ${rows.map(([label, value]) => `
-          <span><strong>${escapeHtml(label)}：</strong>${escapeHtml(value)}</span>
+          <span><strong>${escapeHtml(label)}：</strong>${formatRichText(value)}</span>
         `).join("")}
       </div>
     `;
@@ -691,6 +700,19 @@
     localStorage.setItem(CARD_ORDER_KEY, JSON.stringify(order || {}));
   }
 
+  function saveCardOrderFromList(list) {
+    if (!list) return;
+    const subject = list.dataset.cardListSubject || STATE.activeSubject || "math";
+    const nodeLabel = list.dataset.cardListNodeLabel || "";
+    if (!nodeLabel) return;
+    const ids = [...list.querySelectorAll(".study-card[data-card-id]")]
+      .map((card) => card.dataset.cardId)
+      .filter(Boolean);
+    const order = readCardOrder();
+    order[cardOrderKey(subject, nodeLabel)] = ids;
+    saveCardOrder(order);
+  }
+
   function removeFromAllOrders(cardIdValue) {
     const order = readCardOrder();
     let changed = false;
@@ -712,6 +734,44 @@
         STATE.historyExpanded = event.target.open;
       }
     }, true);
+    container.addEventListener("dragstart", (event) => {
+      const handle = event.target.closest("[data-card-action='drag']");
+      if (!handle) return;
+      const card = handle.closest(".study-card[data-card-id]");
+      if (!card) return;
+      STATE.draggingCardId = card.dataset.cardId || "";
+      card.classList.add("dragging");
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", STATE.draggingCardId);
+    });
+    container.addEventListener("dragover", (event) => {
+      const overCard = event.target.closest(".study-card[data-card-id]");
+      const dragged = container.querySelector(".study-card.dragging");
+      if (!overCard || !dragged || overCard === dragged) return;
+      const list = overCard.closest("[data-card-list]");
+      if (!list || dragged.closest("[data-card-list]") !== list) return;
+      event.preventDefault();
+      const rect = overCard.getBoundingClientRect();
+      const placeAfter = event.clientY > rect.top + rect.height / 2;
+      list.insertBefore(dragged, placeAfter ? overCard.nextSibling : overCard);
+    });
+    container.addEventListener("drop", (event) => {
+      const dragged = container.querySelector(".study-card.dragging");
+      const list = dragged?.closest("[data-card-list]");
+      if (!dragged || !list) return;
+      event.preventDefault();
+      saveCardOrderFromList(list);
+      dragged.classList.remove("dragging");
+      STATE.draggingCardId = "";
+      window.MochiApp?.toast?.("卡片顺序已保存");
+    });
+    container.addEventListener("dragend", () => {
+      const dragged = container.querySelector(".study-card.dragging");
+      const list = dragged?.closest("[data-card-list]");
+      if (list) saveCardOrderFromList(list);
+      dragged?.classList.remove("dragging");
+      STATE.draggingCardId = "";
+    });
     container.addEventListener("click", (event) => {
       const archiveActionButton = event.target.closest("[data-archive-action]");
       if (archiveActionButton) {
@@ -751,6 +811,15 @@
       if (card) {
         const id = card.dataset.cardId;
         const action = event.target.closest("[data-card-action]")?.dataset.cardAction;
+        if (action === "delete") {
+          event.stopPropagation();
+          deleteCard(card);
+          return;
+        }
+        if (action === "drag") {
+          event.stopPropagation();
+          return;
+        }
         if (action === "toggle-routine" || (!action && event.target.closest(".card-front"))) {
           if (event.target.closest(".card-question-area") || event.target.closest(".card-head-actions")) return;
           const current = STATE.expandedCards.get(id);
@@ -1510,13 +1579,41 @@
   }
 
   function formatRichText(value) {
-    const escaped = escapeHtml(value);
+    const escaped = escapeHtml(value).replace(/＄/g, "$");
     return escaped.replace(/\$([^$\n]+)\$/g, (_, formula) => `<span class="math-inline">${formatInlineMath(formula)}</span>`);
   }
 
   function formatInlineMath(value) {
     let text = String(value || "");
     text = text.replace(/\\cdot/g, "·").replace(/\\times/g, "×").replace(/\\leq/g, "≤").replace(/\\geq/g, "≥").replace(/\\neq/g, "≠");
+    const symbols = {
+      "\\sin": "sin",
+      "\\cos": "cos",
+      "\\tan": "tan",
+      "\\ln": "ln",
+      "\\log": "log",
+      "\\rightleftharpoons": "⇌",
+      "\\alpha": "α",
+      "\\beta": "β",
+      "\\gamma": "γ",
+      "\\Gamma": "Γ",
+      "\\delta": "δ",
+      "\\Delta": "Δ",
+      "\\epsilon": "ε",
+      "\\theta": "θ",
+      "\\lambda": "λ",
+      "\\mu": "μ",
+      "\\pi": "π",
+      "\\rho": "ρ",
+      "\\sigma": "σ",
+      "\\omega": "ω",
+      "\\Omega": "Ω",
+      "\\phi": "φ",
+      "\\Phi": "Φ",
+    };
+    Object.entries(symbols).forEach(([source, target]) => {
+      text = text.replaceAll(source, target);
+    });
     text = text.replace(/([A-Za-z0-9)]+)_\{([^{}]+)\}/g, "$1<sub>$2</sub>");
     text = text.replace(/([A-Za-z0-9)]+)_([A-Za-z0-9]+)/g, "$1<sub>$2</sub>");
     text = text.replace(/([A-Za-z0-9)]+)\^\{([^{}]+)\}/g, "$1<sup>$2</sup>");
