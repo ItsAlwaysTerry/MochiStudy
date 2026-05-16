@@ -9,6 +9,7 @@
     harvestXP: 20,
     levelMinHarvests: [0, 3, 8, 18, 35],
   };
+  const HOME_REVIEW_STATE = { activeKey: "", importResult: "", importError: "" };
 
   const SUBJECT_CROP_DEFS = {
     math: {
@@ -177,6 +178,7 @@
     state.plots[subject].harvestCount += 1;
     state.plots[subject].recordCount = 0;
     const saved = saveState(state);
+    window.MochiApp?.checkAndGrantAchievements?.();
     const nextLevel = getFarmLevel(saved.totalHarvests);
     const levelText = nextLevel.level > beforeLevel.level ? ` 农场升级！Lv.${nextLevel.level} ${nextLevel.name}，地块焕然一新 ✨` : "";
     return {
@@ -216,22 +218,90 @@
 
   function refreshFarmSummary() {
     const view = document.getElementById("view");
-    if (view && view.querySelector(".farm-layout-v2")) renderFarm(view);
+    if (view && view.querySelector(".home-flow")) renderFarm(view);
     window.MochiPet?.renderMiniState?.();
   }
 
-  function renderDailyGoalDots() {
-    const state = window.MochiApp?.getDailyTaskState?.() || {};
-    const labels = { math: "数学", physics: "物理", chemistry: "化学" };
-    return SUBJECTS.map((subject) => {
-      const done = state[subject]?.completed;
+  function renderTodayReviewCard() {
+    const reviewState = window.MochiReviewEngine?.buildReviewState?.();
+    const item = reviewState?.todaySuggestions?.[0];
+    if (!item) {
+      if (HOME_REVIEW_STATE.importResult) {
+        return `
+          <section class="card home-review-card calm">
+            <div class="home-review-head">
+              <span class="material-symbols-outlined">rate_review</span>
+              <div>
+                <h3>今日复习</h3>
+                <p>复习结果已保存。</p>
+              </div>
+            </div>
+            <p class="home-review-msg home-review-msg-success">${escapeAttr(HOME_REVIEW_STATE.importResult)}</p>
+            <button class="btn btn-soft btn-sm" data-home-review-action="dismiss" type="button">继续</button>
+          </section>
+        `;
+      }
+      const hasAnyReview = (reviewState?.items || []).some((i) => i.reviewCount > 0);
+      const calmText = hasAnyReview ? "暂无到期复习" : "暂无复习卡";
+      const today = new Date().toISOString().slice(0, 10);
+      const nextDue = (reviewState?.items || [])
+        .filter((i) => i.nextReviewDate && i.nextReviewDate > today)
+        .sort((a, b) => a.nextReviewDate.localeCompare(b.nextReviewDate))[0];
+      let nextDueHint = "";
+      if (nextDue) {
+        const diff = Math.ceil((new Date(`${nextDue.nextReviewDate}T12:00:00`) - new Date()) / 86400000);
+        const diffLabel = diff === 1 ? "明天" : `${diff} 天后`;
+        nextDueHint = `<p class="home-review-next-due">下一个到期：${formatRichText(nextDue.nodeLabel)} · ${diffLabel}</p>`;
+      }
       return `
-        <span class="goal-dot ${done ? "done" : ""}">
-          <span class="material-symbols-outlined">${done ? "check_circle" : "radio_button_unchecked"}</span>
-          <span>${labels[subject] || subject}</span>
-        </span>
+        <section class="card home-review-card calm">
+          <div class="home-review-head">
+            <span class="material-symbols-outlined">rate_review</span>
+            <div>
+              <h3>今日复习</h3>
+              <p>${calmText}</p>
+            </div>
+          </div>
+          ${nextDueHint}
+          <button class="btn btn-soft btn-sm" data-route="review" type="button">复习队列</button>
+        </section>
       `;
-    }).join("");
+    }
+    const isActive = HOME_REVIEW_STATE.activeKey === item.key;
+    return `
+      <section class="card home-review-card" style="--subject-color:${escapeAttr(item.subjectColor || "#864d61")}">
+        <div class="home-review-head">
+          <span class="material-symbols-outlined">rate_review</span>
+          <div>
+            <h3>今日复习</h3>
+            <p>${escapeAttr(item.subjectLabel)} · ${formatRichText(item.nodeLabel)}</p>
+          </div>
+        </div>
+        ${item.mainPainPoint ? `<p class="home-review-pain">${formatRichText(item.mainPainPoint)}</p>` : ""}
+        ${isActive ? `
+        <div class="home-review-import">
+          ${HOME_REVIEW_STATE.importError ? `<p class="home-review-msg home-review-msg-error">${escapeAttr(HOME_REVIEW_STATE.importError)}</p>` : ""}
+          ${HOME_REVIEW_STATE.importResult ? `
+            <p class="home-review-msg home-review-msg-success">${escapeAttr(HOME_REVIEW_STATE.importResult)}</p>
+            <button class="btn btn-soft btn-sm" data-home-review-action="dismiss" type="button" style="margin-top:6px">继续</button>
+          ` : `
+            <p class="home-review-import-hint">粘贴 AI 输出，导入结果</p>
+            <textarea id="home-review-paste" rows="3" placeholder="粘贴 AI 输出（含 MOCHI-RECORD 那段即可）" style="width:100%;box-sizing:border-box;margin-top:8px"></textarea>
+            <button class="btn btn-primary btn-sm" data-home-review-action="import" data-review-key="${escapeAttr(item.key)}" style="width:100%;margin-top:6px" type="button">
+              <span class="material-symbols-outlined">download_done</span>导入复习结果
+            </button>
+          `}
+        </div>
+        ` : `
+        <div class="home-review-actions">
+          <button class="btn btn-primary btn-sm" data-home-review-action="start" data-review-key="${escapeAttr(item.key)}" type="button">
+            <span class="material-symbols-outlined">content_copy</span>开始复习
+          </button>
+          <button class="btn btn-outline btn-sm" data-route="review" type="button">全部</button>
+        </div>
+        `}
+      </section>
+    `;
   }
 
   function renderMiniPlot(subject, state) {
@@ -251,48 +321,82 @@
     `;
   }
 
+  function renderGuideCard() {
+    return `
+      <section class="card home-guide-card">
+        <details class="home-help-details">
+          <summary>
+            <span class="material-symbols-outlined">school</span>
+            第一次用？查看步骤
+          </summary>
+          <ol class="home-guide-steps">
+            <li>打开 <strong>AI 私教</strong>，做一道题</li>
+            <li>复制 AI 输出的 MOCHI-RECORD</li>
+            <li>粘贴到导入框，点确认导入</li>
+          </ol>
+        </details>
+      </section>
+    `;
+  }
+
+  function renderStreakBanner() {
+    const streak = window.MochiApp?.calcStudyStreak?.() || 0;
+    const todayCount = window.MochiApp?.getTodayRecordCount?.() || 0;
+
+    const streakSub = streak >= 2
+      ? `连续 ${streak} 天`
+      : todayCount > 0
+        ? "今天已经开始了"
+        : "导入一条就开始生长";
+
+    return `
+      <section class="card streak-banner ${todayCount > 0 ? "" : "streak-banner-zero"}">
+        <div class="streak-banner-row">
+          <span class="material-symbols-outlined streak-fire-icon">${todayCount > 0 ? "local_fire_department" : "bedtime"}</span>
+          <div class="streak-banner-text">
+            <strong class="streak-num">今天已导入 ${todayCount} 条记录</strong>
+            <span class="streak-sub">${escapeAttr(streakSub)}</span>
+          </div>
+          ${todayCount > 0 ? "" : `<button class="btn btn-soft btn-sm streak-zero-cta" data-action="scroll-to-import" type="button">去导入</button>`}
+        </div>
+      </section>
+    `;
+  }
+
   function renderFarm(container) {
     const state = readState();
     const farmLv = getFarmLevel(state.totalHarvests);
     const nextLv = farmLevels().find((item) => item.minHarvests > state.totalHarvests);
     const harvestPct = calcHarvestPercent(state.totalHarvests, nextLv);
     const holiday = window.MochiApp?.isHolidayToday?.() ?? true;
+    const hasRecords = (window.MochiApp?.readStudyLogs?.() || []).length > 0;
+
+    const currentSeason = window.MochiApp?.loadCurrentSeason?.();
+    const seasonBanner = (currentSeason?.status === "active") ? (() => {
+      const today = new Date();
+      const end = new Date(`${currentSeason.endDate}T12:00:00`);
+      const daysLeft = Math.max(0, Math.ceil((end - today) / (1000 * 60 * 60 * 24)));
+      const isEndingSoon = daysLeft <= 3 && daysLeft > 0;
+      const icon = isEndingSoon ? "⚠️" : "🏆";
+      const countdown = daysLeft === 0 ? "今天结束" : isEndingSoon ? `还剩 ${daysLeft} 天` : `${daysLeft} 天`;
+      return `<button class="season-badge${isEndingSoon ? " ending-soon" : ""}" data-route="season" type="button">${icon} ${escapeAttr(currentSeason.name)} · ${countdown}</button>`;
+    })() : "";
 
     container.innerHTML = `
-      <div class="farm-layout-v2">
-        <div class="farm-focus-area">
-          ${window.MochiPet?.renderTimer?.(holiday) || ""}
-        </div>
-
-        <div class="farm-side-area">
-          <section class="card mini-farm-card">
-            <div class="mini-farm-header">
-              <span class="farm-level-badge">Lv.${farmLv.level} ${farmLv.name}</span>
-              <span class="farm-xp-hint">${nextLv ? `还需 ${nextLv.minHarvests - state.totalHarvests} 次收获` : "已达最高等级"}</span>
-            </div>
-            <div class="mini-farm-row">
-              ${SUBJECTS.map((subject) => renderMiniPlot(subject, state)).join("")}
-            </div>
-            <div class="mini-farm-xp-track">
-              <div class="mini-farm-xp-fill" style="width:${harvestPct}%"></div>
-            </div>
-          </section>
-          ${holiday ? `
-            <section class="card daily-goal-compact">
-              <div class="daily-goal-row">
-                <span class="daily-goal-label">今日</span>
-                ${renderDailyGoalDots()}
-              </div>
-            </section>
-          ` : ""}
+      ${seasonBanner}
+      <div class="home-flow">
+        <div class="home-left-stack">
+          ${renderStreakBanner()}
           ${holiday
             ? `
-              <section class="card import-card">
+              <section class="card import-card home-import-card">
                 <div class="import-header">
                   <span class="material-symbols-outlined">upload_file</span>
-                  <h3>导入学习记录</h3>
+                  <div>
+                    <h3>导入学习记录</h3>
+                  </div>
                 </div>
-                <textarea id="record-paste" rows="2" placeholder="粘贴 MOCHI-RECORD-START 到 MOCHI-RECORD-END 之间的内容"></textarea>
+                <textarea id="record-paste" rows="3" placeholder="粘贴 MOCHI-RECORD"></textarea>
                 <button class="btn btn-primary" data-action="parse-record" style="width:100%;margin-top:8px">
                   <span class="material-symbols-outlined">auto_awesome</span>确认导入
                 </button>
@@ -308,6 +412,24 @@
               </section>
             `
           }
+          ${hasRecords ? renderTodayReviewCard() : (holiday ? renderGuideCard() : "")}
+        </div>
+        <div class="home-right-stack">
+          <section class="card mini-farm-card">
+            <div class="mini-farm-header">
+              <span class="farm-level-badge">Lv.${farmLv.level} ${farmLv.name}</span>
+              <span class="farm-xp-hint">${nextLv ? `还需 ${nextLv.minHarvests - state.totalHarvests} 次收获` : "已达最高等级"}</span>
+            </div>
+            <div class="mini-farm-row">
+              ${SUBJECTS.map((subject) => renderMiniPlot(subject, state)).join("")}
+            </div>
+            <div class="mini-farm-xp-track">
+              <div class="mini-farm-xp-fill" style="width:${harvestPct}%"></div>
+            </div>
+          </section>
+          <div class="home-focus-panel">
+            ${window.MochiPet?.renderTimer?.(holiday) || ""}
+          </div>
         </div>
       </div>
     `;
@@ -315,7 +437,60 @@
     container.querySelectorAll("[data-farm-action]").forEach((button) => {
       button.addEventListener("click", handleFarmAction);
     });
+    container.querySelectorAll("[data-home-review-action]").forEach((button) => {
+      button.addEventListener("click", handleHomeReviewStart);
+    });
+    container.querySelectorAll("[data-action='scroll-to-import']").forEach((button) => {
+      button.addEventListener("click", () => {
+        const textarea = container.querySelector("#record-paste");
+        if (textarea) {
+          textarea.scrollIntoView({ behavior: "smooth", block: "center" });
+          setTimeout(() => textarea.focus(), 300);
+        }
+      });
+    });
     window.MochiPet?.renderMiniState?.();
+  }
+
+  async function handleHomeReviewStart(event) {
+    const action = event.currentTarget.dataset.homeReviewAction;
+    const key = event.currentTarget.dataset.reviewKey || "";
+
+    if (action === "start") {
+      const copied = await window.MochiReviewPage?.copyItemPack?.(key);
+      HOME_REVIEW_STATE.activeKey = key;
+      HOME_REVIEW_STATE.importResult = "";
+      HOME_REVIEW_STATE.importError = "";
+      window.MochiApp?.toast?.(copied ? "复习材料已复制，先自己回想 20 秒" : "复制失败，请手动获取材料");
+    } else if (action === "import") {
+      const textarea = document.getElementById("home-review-paste");
+      const text = textarea?.value || "";
+      window.MochiReviewPage?.importItemByKey?.(key, text, {
+        onSuccess(msg) {
+          HOME_REVIEW_STATE.importResult = msg;
+          HOME_REVIEW_STATE.importError = "";
+          const view = document.getElementById("view");
+          if (view && view.querySelector(".home-flow")) {
+            renderFarm(view);
+            window.MochiApp?.sparkle?.(view, "✓");
+          }
+        },
+        onError(msg) {
+          HOME_REVIEW_STATE.importError = msg;
+          HOME_REVIEW_STATE.importResult = "";
+          const view = document.getElementById("view");
+          if (view && view.querySelector(".home-flow")) renderFarm(view);
+        },
+      });
+      return;
+    } else if (action === "dismiss") {
+      HOME_REVIEW_STATE.activeKey = "";
+      HOME_REVIEW_STATE.importResult = "";
+      HOME_REVIEW_STATE.importError = "";
+    }
+
+    const view = document.getElementById("view");
+    if (view && view.querySelector(".home-flow")) renderFarm(view);
   }
 
   function handleFarmAction(event) {
@@ -331,7 +506,97 @@
   }
 
   function escapeAttr(value) {
-    return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
+    return window.MochiApp?.escapeHtml?.(value) ?? String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
+  }
+
+  function formatRichText(value) {
+    const escaped = escapeAttr(value).replace(/＄/g, "$");
+    return escaped.replace(/\$([^$\n]+)\$/g, (_, formula) => `<span class="math-inline">${formatInlineMath(formula)}</span>`);
+  }
+
+  function formatInlineMath(value) {
+    let text = String(value || "");
+    text = text
+      .replace(/\\cdot/g, "·")
+      .replace(/\\times/g, "×")
+      .replace(/\\div/g, "÷")
+      .replace(/\\leq/g, "≤")
+      .replace(/\\geq/g, "≥")
+      .replace(/\\neq/g, "≠")
+      .replace(/\\left/g, "")
+      .replace(/\\right/g, "")
+      .replace(/\\,/g, " ");
+    const symbols = {
+      "\\sin": "sin",
+      "\\cos": "cos",
+      "\\tan": "tan",
+      "\\ln": "ln",
+      "\\log": "log",
+      "\\rightleftharpoons": "⇌",
+      "\\alpha": "α",
+      "\\beta": "β",
+      "\\gamma": "γ",
+      "\\Gamma": "Γ",
+      "\\delta": "δ",
+      "\\Delta": "Δ",
+      "\\epsilon": "ε",
+      "\\theta": "θ",
+      "\\lambda": "λ",
+      "\\mu": "μ",
+      "\\pi": "π",
+      "\\rho": "ρ",
+      "\\sigma": "σ",
+      "\\omega": "ω",
+      "\\Omega": "Ω",
+      "\\phi": "φ",
+      "\\Phi": "Φ",
+    };
+    Object.entries(symbols).forEach(([source, target]) => {
+      text = text.replaceAll(source, target);
+    });
+    text = text.replace(/([A-Za-z0-9)]+)\^\{([^{}]+)\}/g, "$1<sup>$2</sup>");
+    text = text.replace(/([A-Za-z0-9)]+)\^([A-Za-z0-9]+)/g, "$1<sup>$2</sup>");
+    text = text.replace(/([A-Za-z0-9)]+)_\{([^{}]+)\}/g, "$1<sub>$2</sub>");
+    text = text.replace(/([A-Za-z0-9)]+)_([A-Za-z0-9]+)/g, "$1<sub>$2</sub>");
+    text = replaceMathCommand(text, "dfrac", 2, (top, bottom) => (
+      `<span class="math-frac"><span class="math-num">${top}</span><span class="math-den">${bottom}</span></span>`
+    ));
+    text = replaceMathCommand(text, "tfrac", 2, (top, bottom) => (
+      `<span class="math-frac"><span class="math-num">${top}</span><span class="math-den">${bottom}</span></span>`
+    ));
+    text = replaceMathCommand(text, "frac", 2, (top, bottom) => (
+      `<span class="math-frac"><span class="math-num">${top}</span><span class="math-den">${bottom}</span></span>`
+    ));
+    text = replaceMathCommand(text, "sqrt", 1, (radicand) => (
+      `<span class="math-sqrt"><span class="math-radicand">${radicand}</span></span>`
+    ));
+    text = replaceMathCommand(text, "dfrac", 2, (top, bottom) => (
+      `<span class="math-frac"><span class="math-num">${top}</span><span class="math-den">${bottom}</span></span>`
+    ));
+    text = replaceMathCommand(text, "tfrac", 2, (top, bottom) => (
+      `<span class="math-frac"><span class="math-num">${top}</span><span class="math-den">${bottom}</span></span>`
+    ));
+    text = replaceMathCommand(text, "frac", 2, (top, bottom) => (
+      `<span class="math-frac"><span class="math-num">${top}</span><span class="math-den">${bottom}</span></span>`
+    ));
+    text = text.replace(/\\?sqrt\s*([A-Za-z0-9]+)/g, `<span class="math-sqrt"><span class="math-radicand">$1</span></span>`);
+    return text;
+  }
+
+  function replaceMathCommand(text, command, arity, render) {
+    const slash = "\\\\?";
+    const pattern = arity === 2
+      ? new RegExp(`${slash}${command}\\s*\\{([^{}]+)\\}\\s*\\{([^{}]+)\\}`, "g")
+      : new RegExp(`${slash}${command}\\s*\\{([^{}]+)\\}`, "g");
+    let next = text;
+    for (let i = 0; i < 8; i += 1) {
+      const replaced = arity === 2
+        ? next.replace(pattern, (_, first, second) => render(first, second))
+        : next.replace(pattern, (_, first) => render(first));
+      if (replaced === next) break;
+      next = replaced;
+    }
+    return next;
   }
 
   window.MochiFarm = {
@@ -343,6 +608,7 @@
     readState,
     saveState,
     getFarmLevel,
+    getCurrentLevel: () => getFarmLevel(readState().totalHarvests),
     getCropDef,
     addResources,
     addSubjectRecord,

@@ -28,6 +28,9 @@
       heatLevel2: 2,
       heatLevel3: 4,
     },
+    season: {
+      titleThresholds: [0, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66, 78, 91, 105, 120, 140],
+    },
   };
 
   function isPlainObject(value) {
@@ -55,71 +58,127 @@
 
   const GAME_CONFIG = loadGameConfig();
 
-  // ═══════════════════════════════════════════════════
-  // 勋章配置 — 修改这里来调整勋章内容和难度
-  // type 说明：
-  //   tiered   = 分段式（同一成就多个等级，永远有下一级）
-  //   weekly   = 每周重置（每周可以重新挑战）
-  //   holiday  = 每个假期重置（每次放假重新挑战）
-  //   total    = 永久累计（一次性）
-  // ═══════════════════════════════════════════════════
-  const ACHIEVEMENT_DEFS = [
-    { id: "questions", type: "tiered", group: "刷题达人", metric: "totalQuestions", tiers: [
-      { level: 1, label: "初出茅庐", desc: "累计完成 20 题", icon: "📝", target: 20, color: "#ffb7ce" },
-      { level: 2, label: "勤奋练习", desc: "累计完成 50 题", icon: "✏️", target: 50, color: "#ff85b3" },
-      { level: 3, label: "百题达人", desc: "累计完成 100 题", icon: "🖊️", target: 100, color: "#864d61" },
-      { level: 4, label: "题海无边", desc: "累计完成 300 题", icon: "📚", target: 300, color: "#5a3040" },
-      { level: 5, label: "高考战士", desc: "累计完成 500 题", icon: "🏆", target: 500, color: "#FFD700" },
-    ] },
-    { id: "nodes", type: "tiered", group: "知识点亮", metric: "totalNodes", tiers: [
-      { level: 1, label: "第一步", desc: "点亮 3 个知识点", icon: "🌱", target: 3, color: "#9bdaa5" },
-      { level: 2, label: "初窥门径", desc: "点亮 8 个知识点", icon: "🌿", target: 8, color: "#50b070" },
-      { level: 3, label: "小有所成", desc: "点亮 15 个知识点", icon: "🌳", target: 15, color: "#2f6a3f" },
-      { level: 4, label: "融会贯通", desc: "点亮全部 26 个知识点", icon: "🌲", target: 26, color: "#FFD700" },
-    ] },
-    { id: "mastered_nodes", type: "tiered", group: "精通达人", metric: "masteredNodes", tiers: [
-      { level: 1, label: "初窥门径", desc: "精通 1 个知识点（连续2次3星）", icon: "🌟", target: 1, color: "#fdd6a7" },
-      { level: 2, label: "小有所成", desc: "精通 3 个知识点", icon: "💫", target: 3, color: "#f3a953" },
-      { level: 3, label: "融会贯通", desc: "精通 8 个知识点", icon: "✨", target: 8, color: "#e07020" },
-      { level: 4, label: "高考无敌", desc: "精通 15 个知识点", icon: "👑", target: 15, color: "#FFD700" },
-    ] },
-    { id: "focus", type: "tiered", group: "专注达人", metric: "totalFocusMinutes", tiers: [
-      { level: 1, label: "初尝专注", desc: "累计专注 1 小时", icon: "⏱️", target: 60, color: "#c5c2f0" },
-      { level: 2, label: "专注成习", desc: "累计专注 5 小时", icon: "⏰", target: 300, color: "#8a87d0" },
-      { level: 3, label: "深度学习", desc: "累计专注 20 小时", icon: "🎯", target: 1200, color: "#4a4580" },
-      { level: 4, label: "专注大师", desc: "累计专注 50 小时", icon: "🔮", target: 3000, color: "#FFD700" },
-    ] },
-    { id: "stars", type: "tiered", group: "满星收集", metric: "threeStarCount", tiers: [
-      { level: 1, label: "首个满星", desc: "首次获得 3 星评级", icon: "⭐", target: 1, color: "#ffb7ce" },
-      { level: 2, label: "五星好评", desc: "累计 5 次 3 星", icon: "🌟", target: 5, color: "#ff85b3" },
-      { level: 3, label: "星光熠熠", desc: "累计 20 次 3 星", icon: "✨", target: 20, color: "#FFD700" },
-      { level: 4, label: "满星传说", desc: "累计 50 次 3 星", icon: "💫", target: 50, color: "#FFD700" },
-    ] },
-    { id: "week_q", type: "weekly", group: "每周挑战", metric: "weekQuestions", label: "本周刷题王", desc: "本周完成 30 题", icon: "🏅", target: 30, color: "#fdd6a7" },
-    { id: "week_focus", type: "weekly", group: "每周挑战", metric: "weekFocusMinutes", label: "本周专注王", desc: "本周专注 5 小时", icon: "🎖️", target: 300, color: "#fdd6a7" },
-    { id: "holiday_q", type: "holiday", group: "假期冲刺", metric: "holidayQuestions", label: "假期刷题冠军", desc: "本次假期完成 100 题", icon: "🥇", target: 100, color: "#ff85b3" },
-    { id: "holiday_focus", type: "holiday", group: "假期冲刺", metric: "holidayFocusMinutes", label: "假期专注冠军", desc: "本次假期专注 20 小时", icon: "🏆", target: 1200, color: "#ff85b3" },
-    { id: "streak_3", type: "total", group: "坚持打卡", metric: "maxStreakDays", label: "三天不倦", desc: "连续学习 3 天", icon: "🔥", target: 3, color: "#fdd6a7" },
-    { id: "streak_7", type: "total", group: "坚持打卡", metric: "maxStreakDays", label: "一周坚持", desc: "连续学习 7 天", icon: "🔥🔥", target: 7, color: "#f3a953" },
-    { id: "streak_14", type: "total", group: "坚持打卡", metric: "maxStreakDays", label: "两周不断", desc: "连续学习 14 天", icon: "⚡", target: 14, color: "#e07020" },
-    { id: "streak_21", type: "total", group: "坚持打卡", metric: "maxStreakDays", label: "三周传说", desc: "连续学习 21 天", icon: "👑", target: 21, color: "#FFD700" },
-    { id: "first_harvest", type: "total", group: "农场成就", metric: "totalHarvests", label: "第一次收获", desc: "让一块地的作物成熟并收获", icon: "🌾", target: 1, color: "#fdd6a7" },
-    { id: "full_farm", type: "total", group: "农场成就", metric: "allSubjectHarvested", label: "满园春色", desc: "三个科目都收获过至少一次", icon: "🏡", target: 1, color: "#f3a953" },
-    { id: "comeback", type: "total", group: "农场成就", metric: "comebackCount", label: "起死回生", desc: "某科目从荒芜重新长到成熟", icon: "🌱", target: 1, color: "#50b070" },
-    { id: "balanced_week", type: "weekly", group: "均衡发展", metric: "weekBalanced", label: "全科出动", desc: "本周三个科目都有学习记录", icon: "⚖️", target: 1, color: "#9bdaa5" },
-    { id: "balanced_streak", type: "tiered", group: "均衡发展", metric: "balancedWeeks", tiers: [
-      { level: 1, label: "初见均衡", desc: "连续2周三科都有记录", icon: "🌙", target: 2, color: "#9bdaa5" },
-      { level: 2, label: "稳定发展", desc: "连续4周三科都有记录", icon: "🌙🌙", target: 4, color: "#50b070" },
-      { level: 3, label: "全科霸主", desc: "连续8周三科都有记录", icon: "👑", target: 8, color: "#FFD700" },
-    ] },
-  ];
+  function loadAdminConfig() {
+    return GAME_CONFIG;
+  }
+
+  const ACHIEVEMENT_CONFIG_DEFAULTS = {
+    small: {
+      focusHours: 2,
+      studyDays: 3,
+      recordCount: 10,
+      balancedWeeks: 1,
+      harvests: 3,
+    },
+    big: {
+      nodeRecords: 20,
+      totalRecords: 50,
+      focusHours: 10,
+      farmLevelStep: 3,
+      studyDays: 20,
+    },
+    lottery: {
+      smallPerDraw: 5,
+      bigPerDraw: 1,
+    },
+  };
+  const LOTTERY_CONFIG_DEFAULTS = {
+    items: [
+      { id: 1, label: "妈妈做一顿好吃的", type: "reward", weight: 15, color: "#f5c518" },
+      { id: 2, label: "买一个喜欢的文具", type: "reward", weight: 15, color: "#f5c518" },
+      { id: 3, label: "看一集喜欢的综艺", type: "reward", weight: 10, color: "#50b070" },
+      { id: 4, label: "和朋友出去玩一下午", type: "bigReward", weight: 5, color: "#e07020" },
+      { id: 5, label: "买一本喜欢的书", type: "reward", weight: 10, color: "#f5c518" },
+      { id: 6, label: "今天可以晚睡1小时", type: "reward", weight: 10, color: "#50b070" },
+      { id: 7, label: "抄写课文一篇", type: "punish", weight: 10, color: "#9c27b0" },
+      { id: 8, label: "做30个深蹲", type: "punish", weight: 10, color: "#9c27b0" },
+      { id: 9, label: "给妈妈洗碗三天", type: "punish", weight: 10, color: "#9c27b0" },
+      { id: 10, label: "早起背10个单词", type: "punish", weight: 5, color: "#2196f3" },
+    ],
+  };
   const view = document.getElementById("view");
   const modalRoot = document.getElementById("modal-root");
   const toastRoot = document.getElementById("toast-root");
   const STUDY_LOG_KEY = "study_log";
   const HOLIDAYS_KEY = "school_holidays";
   const HOLIDAY_MODE_KEY = "holiday_mode_override";
+  const CURRENT_SEASON_KEY = "current_season";
+  const SEASON_ARCHIVES_KEY = "season_archives";
+  const CARD_ORDER_KEY = "card_order";
+  const CARD_META_KEY = "study_card_meta";
+  const NODE_SUMMARY_KEY = "study_node_summary";
+  const READING_FONT_KEY = "study_reading_font";
+  const READING_SIZE_KEY = "study_reading_size";
   const BACKUP_VERSION = "1.0";
+  const READING_FONT_OPTIONS = [
+    {
+      value: "soft-sans",
+      label: "暖圆清爽",
+      hint: "中文大方、边角柔和，适合日常复习。",
+      css: "\"Microsoft YaHei UI\", \"Microsoft YaHei\", \"PingFang SC\", \"Hiragino Sans GB\", \"Noto Sans SC\", sans-serif",
+    },
+    {
+      value: "modern-sans",
+      label: "现代阅读",
+      hint: "更像新系统字体，干净、开阔。",
+      css: "\"MiSans\", \"HarmonyOS Sans SC\", \"OPPO Sans\", \"PingFang SC\", \"Microsoft YaHei UI\", sans-serif",
+    },
+    {
+      value: "cute-kai",
+      label: "文楷可爱",
+      hint: "有一点手写感，中文更亲切。",
+      css: "\"LXGW WenKai Screen\", \"LXGW WenKai\", \"Kaiti SC\", \"KaiTi\", \"STKaiti\", \"Microsoft YaHei UI\", sans-serif",
+    },
+    {
+      value: "code-reading",
+      label: "代码阅读",
+      hint: "等宽、结构清楚，公式和符号更有秩序。",
+      css: "\"Maple Mono SC NF\", \"Maple Mono SC\", \"Sarasa Mono SC\", \"Cascadia Code\", \"JetBrains Mono\", \"Microsoft YaHei UI\", monospace",
+    },
+  ];
+  const READING_SIZE_OPTIONS = [
+    { value: "normal", label: "标准", scale: 1 },
+    { value: "comfortable", label: "舒适", scale: 1.08 },
+    { value: "large", label: "大字", scale: 1.18 },
+    { value: "extra-large", label: "超大", scale: 1.3 },
+  ];
+  const MOCHI_RECORD_FIELDS = [
+    "科目",
+    "知识点",
+    "完成题数",
+    "掌握星级",
+    "卡点记录",
+    "原题",
+    "今日套路",
+    "学习日期",
+    "学习来源",
+    "复习结果",
+    "错误类型",
+    "卡住步骤",
+    "关键突破",
+    "题型标签",
+    "信心分",
+    "耗时分钟",
+    "关联记录",
+  ];
+  const SEASON_TITLES = [
+    { level: 1, label: "癞蛤蟆" },
+    { level: 2, label: "咸鱼王" },
+    { level: 3, label: "学困生本人" },
+    { level: 4, label: "边缘人" },
+    { level: 5, label: "普通人" },
+    { level: 6, label: "小镇做题家" },
+    { level: 7, label: "卷王预备役" },
+    { level: 8, label: "隐藏大佬" },
+    { level: 9, label: "学神候选" },
+    { level: 10, label: "小镇答题王" },
+    { level: 11, label: "省状元" },
+    { level: 12, label: "学阀" },
+    { level: 13, label: "武则天" },
+    { level: 14, label: "始皇帝" },
+    { level: 15, label: "宇宙第一卷王" },
+    { level: 16, label: "高考之神" },
+  ];
   const DEFAULT_HOLIDAYS = [
     { id: "h1", label: "2025暑假", start: "2025-07-13", end: "2025-08-01" },
     { id: "h2", label: "2025国庆", start: "2025-10-01", end: "2025-10-07" },
@@ -133,6 +192,7 @@
     physics: {},
     chemistry: {},
   };
+  let adminCalendarCursor = new Date();
 
   function todayKey() {
     return new Date().toISOString().slice(0, 10);
@@ -148,6 +208,60 @@
 
   function writeJson(key, value) {
     localStorage.setItem(key, JSON.stringify(value));
+  }
+
+  function readingFontOption(value) {
+    return READING_FONT_OPTIONS.find((option) => option.value === value) || READING_FONT_OPTIONS[0];
+  }
+
+  function readingSizeOption(value) {
+    return READING_SIZE_OPTIONS.find((option) => option.value === value) || READING_SIZE_OPTIONS[1];
+  }
+
+  function readReadingPreferences() {
+    return {
+      font: readingFontOption(localStorage.getItem(READING_FONT_KEY) || "soft-sans"),
+      size: readingSizeOption(localStorage.getItem(READING_SIZE_KEY) || "comfortable"),
+    };
+  }
+
+  function applyReadingPreferences(preferences = readReadingPreferences()) {
+    const root = document.documentElement;
+    const scale = preferences.size.scale;
+    root.style.setProperty("--study-reading-font", preferences.font.css);
+    root.style.setProperty("--study-reading-scale", String(scale));
+    root.style.setProperty("--study-reading-13", `${Math.round(13 * scale)}px`);
+    root.style.setProperty("--study-reading-16", `${Math.round(16 * scale)}px`);
+    root.style.setProperty("--study-reading-17", `${Math.round(17 * scale)}px`);
+    root.style.setProperty("--study-reading-18", `${Math.round(18 * scale)}px`);
+    root.style.setProperty("--study-reading-math", `${(1.08 * scale).toFixed(2)}em`);
+    root.dataset.studyReadingFont = preferences.font.value;
+    root.dataset.studyReadingSize = preferences.size.value;
+  }
+
+  function readingOptionTags(options, selectedValue) {
+    return options.map((option) => (
+      `<option value="${escapeHtml(option.value)}" ${option.value === selectedValue ? "selected" : ""}>${escapeHtml(option.label)}</option>`
+    )).join("");
+  }
+
+  function updateReadingPreview(root = document) {
+    const preview = root.querySelector?.("[data-reading-preview]");
+    if (!preview) return;
+    const preferences = readReadingPreferences();
+    preview.style.fontFamily = preferences.font.css;
+    preview.style.fontSize = `${Math.round(16 * preferences.size.scale)}px`;
+    const label = preview.querySelector("[data-reading-current]");
+    if (label) label.textContent = `${preferences.font.label} · ${preferences.size.label}`;
+    const hint = preview.querySelector("[data-reading-hint]");
+    if (hint) hint.textContent = preferences.font.hint;
+  }
+
+  function setReadingPreference(key, value) {
+    if (key === "font") localStorage.setItem(READING_FONT_KEY, readingFontOption(value).value);
+    if (key === "size") localStorage.setItem(READING_SIZE_KEY, readingSizeOption(value).value);
+    applyReadingPreferences();
+    updateReadingPreview(document);
   }
 
   function setByPath(target, path, value) {
@@ -227,11 +341,55 @@
 
   function readStudyLogs() {
     const logs = readJson(STUDY_LOG_KEY, []);
-    return Array.isArray(logs) ? logs.sort((a, b) => new Date(b.date) - new Date(a.date)) : [];
+    return Array.isArray(logs)
+      ? logs
+        .map((log) => ({ ...log, originalQuestion: String(log.originalQuestion || "") }))
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+      : [];
   }
 
   function writeStudyLogs(logs) {
     writeJson(STUDY_LOG_KEY, logs);
+  }
+
+  function readStudyCardMeta() {
+    const meta = readJson(CARD_META_KEY, {});
+    return meta && typeof meta === "object" && !Array.isArray(meta) ? meta : {};
+  }
+
+  function writeStudyCardMeta(meta) {
+    writeJson(CARD_META_KEY, meta && typeof meta === "object" && !Array.isArray(meta) ? meta : {});
+  }
+
+  function hasMeaningfulCardMeta(meta) {
+    if (!meta || typeof meta !== "object") return false;
+    return Boolean(
+      (meta.source && meta.source !== "lesson") ||
+      meta.reviewResult ||
+      meta.errorType ||
+      meta.stuckStep ||
+      meta.keyInsight ||
+      (Array.isArray(meta.tags) && meta.tags.length) ||
+      meta.confidence ||
+      meta.timeSpentMinutes ||
+      (Array.isArray(meta.sourceRecordIds) && meta.sourceRecordIds.length)
+    );
+  }
+
+  function setStudyCardMeta(logId, meta) {
+    if (!logId) return;
+    const allMeta = readStudyCardMeta();
+    const next = normalizeCardMeta(meta || {});
+    if (hasMeaningfulCardMeta(next)) allMeta[logId] = next;
+    else delete allMeta[logId];
+    writeStudyCardMeta(allMeta);
+  }
+
+  function removeStudyCardMeta(logId) {
+    if (!logId) return;
+    const allMeta = readStudyCardMeta();
+    delete allMeta[logId];
+    writeStudyCardMeta(allMeta);
   }
 
   function taskSettings() {
@@ -298,18 +456,172 @@
     return ["math", "physics", "chemistry"].every((subject) => subjects.has(subject));
   }
 
-  function calcBalancedWeeks(studyLogs) {
-    let count = 0;
-    let monday = new Date(`${weekStartKey()}T12:00:00`);
-    for (let i = 0; i < 52; i += 1) {
-      const start = monday.toISOString().slice(0, 10);
-      const end = addDays(monday, 6).toISOString().slice(0, 10);
-      const weekLogs = studyLogs.filter((log) => log.date >= start && log.date <= end);
-      if (!hasAllSubjects(weekLogs)) break;
-      count += 1;
-      monday = addDays(monday, -7);
+  function getWeekKey(dateValue) {
+    return weekStartKey(new Date(`${String(dateValue || todayKey()).slice(0, 10)}T12:00:00`));
+  }
+
+  function parseDateAtNoon(dateValue) {
+    return new Date(`${String(dateValue || todayKey()).slice(0, 10)}T12:00:00`);
+  }
+
+  function dateKeyFromDate(date) {
+    return date.toISOString().slice(0, 10);
+  }
+
+  function dateDiffDays(startDate, endDate) {
+    return Math.round((parseDateAtNoon(endDate) - parseDateAtNoon(startDate)) / 86400000);
+  }
+
+  function dateInRange(date, startDate, endDate) {
+    const value = String(date || "").slice(0, 10);
+    return value && value >= startDate && value <= endDate;
+  }
+
+  function loadCurrentSeason() {
+    const season = readJson(CURRENT_SEASON_KEY, null);
+    return season && typeof season === "object" ? season : null;
+  }
+
+  function saveCurrentSeason(season) {
+    if (!season) localStorage.removeItem(CURRENT_SEASON_KEY);
+    else writeJson(CURRENT_SEASON_KEY, season);
+  }
+
+  function loadSeasonArchives() {
+    const archives = readJson(SEASON_ARCHIVES_KEY, []);
+    return Array.isArray(archives) ? archives.sort((a, b) => String(b.endDate || "").localeCompare(String(a.endDate || ""))) : [];
+  }
+
+  function saveSeasonArchives(archives) {
+    writeJson(SEASON_ARCHIVES_KEY, Array.isArray(archives) ? archives : []);
+  }
+
+  function nextSeasonId(current = loadCurrentSeason(), archives = loadSeasonArchives()) {
+    const ids = [...archives, current].filter(Boolean).map((season) => String(season.id || ""));
+    const maxNum = ids.reduce((max, id) => Math.max(max, Number(id.replace(/^S/i, "")) || 0), 0);
+    return `S${maxNum + 1}`;
+  }
+
+  function calcSeasonTitle(recordCount, cfg = loadAdminConfig()) {
+    const thresholds = Array.isArray(cfg?.season?.titleThresholds) && cfg.season.titleThresholds.length
+      ? cfg.season.titleThresholds
+      : GAME_CONFIG_DEFAULTS.season.titleThresholds;
+    let level = 1;
+    for (let i = thresholds.length - 1; i >= 0; i -= 1) {
+      if (Number(recordCount || 0) >= Number(thresholds[i] || 0)) {
+        level = i + 1;
+        break;
+      }
     }
-    return count;
+    return SEASON_TITLES[Math.min(level, SEASON_TITLES.length) - 1] || SEASON_TITLES[0];
+  }
+
+  function logsForSeason(season) {
+    if (!season?.startDate || !season?.endDate) return [];
+    return readStudyLogs().filter((log) => dateInRange(log.date, season.startDate, season.endDate));
+  }
+
+  function focusLogsForSeason(season) {
+    if (!season?.startDate || !season?.endDate) return [];
+    return readFocusLogs().filter((log) => dateInRange(log.date, season.startDate, season.endDate));
+  }
+
+  function emptySubjectCounts() {
+    return { math: 0, physics: 0, chemistry: 0 };
+  }
+
+  function countBySubject(logs) {
+    return logs.reduce((counts, log) => {
+      if (counts[log.subject] !== undefined) counts[log.subject] += 1;
+      return counts;
+    }, emptySubjectCounts());
+  }
+
+  function coveredNodesBySubject(logs) {
+    const sets = { math: new Set(), physics: new Set(), chemistry: new Set() };
+    logs.forEach((log) => {
+      if (sets[log.subject] && log.nodeLabel) sets[log.subject].add(log.nodeLabel);
+    });
+    return {
+      math: sets.math.size,
+      physics: sets.physics.size,
+      chemistry: sets.chemistry.size,
+    };
+  }
+
+  function dailyRecordsForSeason(logs, startDate, endDate) {
+    const counts = {};
+    const cursor = parseDateAtNoon(startDate);
+    const end = parseDateAtNoon(endDate);
+    while (cursor <= end) {
+      counts[dateKeyFromDate(cursor)] = 0;
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    logs.forEach((log) => {
+      const date = String(log.date || "").slice(0, 10);
+      if (date) counts[date] = (counts[date] || 0) + 1;
+    });
+    return counts;
+  }
+
+  function weeklyRecordsForSeason(logs, focusLogs) {
+    const weekMap = {};
+    logs.forEach((log) => {
+      const week = getWeekKey(log.date);
+      if (!weekMap[week]) weekMap[week] = { week, records: 0, focusMinutes: 0 };
+      weekMap[week].records += 1;
+    });
+    focusLogs.forEach((log) => {
+      const week = getWeekKey(log.date);
+      if (!weekMap[week]) weekMap[week] = { week, records: 0, focusMinutes: 0 };
+      weekMap[week].focusMinutes += Number(log.duration || 0);
+    });
+    return Object.values(weekMap).sort((a, b) => a.week.localeCompare(b.week));
+  }
+
+  function buildSeasonSnapshot(season, logs = logsForSeason(season), focusLogs = focusLogsForSeason(season), cfg = loadAdminConfig()) {
+    const subjectRecords = countBySubject(logs);
+    const totalRecords = logs.length;
+    const focusOnly = focusLogs.filter((log) => (!log.type || log.type === "focus") && log.completed !== false);
+    const totalFocusMinutes = focusOnly.reduce((sum, log) => sum + Number(log.duration || 0), 0);
+    const validStudyDays = [...new Set(logs.map((log) => String(log.date || "").slice(0, 10)).filter(Boolean))]
+      .filter((date) => isHolidayToday(date)).length;
+    const farmState = window.MochiFarm?.readState?.() || {};
+    const farmHarvests = Number(farmState.totalHarvests || 0);
+    const farmLevel = window.MochiFarm?.getFarmLevel?.(farmHarvests)?.level || 1;
+    const achievements = loadAchievementState();
+    const avgRecords = Math.round(totalRecords / 3);
+    return {
+      totalRecords,
+      totalFocusMinutes,
+      validStudyDays,
+      subjectRecords,
+      coveredNodes: coveredNodesBySubject(logs),
+      totalSmallBadges: Number(achievements.totalSmall || 0),
+      totalBigBadges: Number(achievements.totalBig || 0),
+      farmHarvests,
+      farmLevel,
+      dailyRecords: dailyRecordsForSeason(logs, season.startDate, season.endDate),
+      weeklyRecords: weeklyRecordsForSeason(logs, focusOnly),
+      titles: {
+        math: calcSeasonTitle(subjectRecords.math, cfg),
+        physics: calcSeasonTitle(subjectRecords.physics, cfg),
+        chemistry: calcSeasonTitle(subjectRecords.chemistry, cfg),
+        overall: calcSeasonTitle(avgRecords, cfg),
+      },
+    };
+  }
+
+  function calcBalancedWeeks(studyLogs) {
+    const weekMap = {};
+    studyLogs.forEach((log) => {
+      const date = String(log.date || "").slice(0, 10);
+      if (!date) return;
+      const weekKey = getWeekKey(date);
+      weekMap[weekKey] = weekMap[weekKey] || new Set();
+      weekMap[weekKey].add(log.subject);
+    });
+    return Object.values(weekMap).filter((subjects) => subjects.size >= 3).length;
   }
 
   function validDayGap(prevDate, nextDate) {
@@ -339,89 +651,446 @@
     }, 0);
   }
 
-  function calcAchievementMetrics() {
-    const studyLogsRaw = readJson(STUDY_LOG_KEY, []);
-    const focusLogsRaw = readJson("focus_log", []);
-    const studyLogs = Array.isArray(studyLogsRaw) ? studyLogsRaw : [];
-    const focusLogs = Array.isArray(focusLogsRaw) ? focusLogsRaw : [];
-    const petState = window.MochiPet.readState();
-    const farmState = window.MochiFarm?.readState?.() || {};
-    const nodes = window.MochiKnowledge.readState();
+  function calcStudyStreak() {
+    const logs = readStudyLogs();
+    const studiedDates = new Set(
+      logs.map((log) => String(log.date || "").slice(0, 10)).filter(Boolean)
+    );
     const today = todayKey();
-    const monday = weekStartKey();
-    const currentHolidayStart = (() => {
-      const holiday = getHolidays().find((item) => today >= item.start && today <= item.end);
-      return holiday ? holiday.start : monday;
-    })();
-    const weekStudyLogs = studyLogs.filter((log) => log.date >= monday);
-    const weekFocusLogs = focusLogs.filter((log) => log.date >= monday && log.type === "focus" && log.completed);
-    const holidayStudyLogs = studyLogs.filter((log) => log.date >= currentHolidayStart);
-    const holidayFocusLogs = focusLogs.filter((log) => log.date >= currentHolidayStart && log.type === "focus" && log.completed);
-    const allFocusLogs = focusLogs.filter((log) => log.type === "focus" && log.completed);
-    const farmPlots = farmState.plots || {};
+    const cursor = new Date(`${today}T12:00:00`);
+    let streak = 0;
+    for (let i = 0; i < 365; i += 1) {
+      const dateKey = cursor.toISOString().slice(0, 10);
+      if (isHolidayToday(dateKey)) {
+        if (studiedDates.has(dateKey)) {
+          streak += 1;
+        } else if (dateKey !== today) {
+          break;
+        }
+      }
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return streak;
+  }
+
+  function getTodayRecordCount() {
+    const today = todayKey();
+    return readStudyLogs().filter((log) => String(log.date || "").slice(0, 10) === today).length;
+  }
+
+  function loadAchievementConfig() {
+    try {
+      const saved = JSON.parse(localStorage.getItem("achievement_config") || "{}");
+      return deepMerge(ACHIEVEMENT_CONFIG_DEFAULTS, saved);
+    } catch {
+      return deepMerge(ACHIEVEMENT_CONFIG_DEFAULTS, {});
+    }
+  }
+
+  function saveAchievementConfig(config) {
+    localStorage.setItem("achievement_config", JSON.stringify(config));
+  }
+
+  function updateAchievementConfig(path, value) {
+    const config = loadAchievementConfig();
+    setByPath(config, path, value);
+    saveAchievementConfig(config);
+    return config;
+  }
+
+  function defaultAchievementState() {
     return {
-      totalQuestions: studyLogs.reduce((sum, log) => sum + Number(log.questionsCompleted || 0), 0),
-      totalNodes: Object.values(nodes).filter((node) => node.status !== "untouched").length,
-      masteredNodes: Object.values(nodes).filter((node) => node.status === "mastered").length,
-      totalFocusMinutes: allFocusLogs.reduce((sum, log) => sum + Number(log.duration || 0), 0),
-      threeStarCount: studyLogs.filter((log) => Number(log.stars) === 3).length,
-      weekQuestions: weekStudyLogs.reduce((sum, log) => sum + Number(log.questionsCompleted || 0), 0),
-      weekFocusMinutes: weekFocusLogs.reduce((sum, log) => sum + Number(log.duration || 0), 0),
-      weekNodes: new Set(weekStudyLogs.map((log) => log.nodeId).filter(Boolean)).size,
-      holidayQuestions: holidayStudyLogs.reduce((sum, log) => sum + Number(log.questionsCompleted || 0), 0),
-      holidayFocusMinutes: holidayFocusLogs.reduce((sum, log) => sum + Number(log.duration || 0), 0),
-      streakDays: petState.streakDays || 0,
-      maxStreakDays: petState.maxStreakDays || petState.streakDays || 0,
-      totalHarvests: farmState.totalHarvests || 0,
-      allSubjectHarvested: ["math", "physics", "chemistry"].every((subject) => Number(farmPlots[subject]?.harvestCount || 0) > 0) ? 1 : 0,
-      comebackCount: calcComebackCount(studyLogs),
-      weekBalanced: hasAllSubjects(weekStudyLogs) ? 1 : 0,
-      balancedWeeks: calcBalancedWeeks(studyLogs),
+      small: { focusHours: 0, studyDays: 0, recordCount: 0, balancedWeeks: 0, harvests: 0 },
+      big: { totalRecords: 0, focusHours: 0, farmLevel: 0, studyDays: 0, nodeRecords: 0 },
+      totalSmall: 0,
+      totalBig: 0,
+      lotteryTickets: 0,
+      usedLotteryCount: 0,
+      carriedLotteryDraws: 0,
     };
   }
 
-  function getUnlockedAchievements() {
-    const metrics = calcAchievementMetrics();
-    const result = [];
-    ACHIEVEMENT_DEFS.forEach((definition) => {
-      if (definition.type === "tiered") {
-        let currentLevel = 0;
-        definition.tiers.forEach((tier) => {
-          if ((metrics[definition.metric] || 0) >= tier.target) currentLevel = tier.level;
-        });
-        const nextTier = definition.tiers.find((tier) => tier.level === currentLevel + 1);
-        const currentTier = definition.tiers.find((tier) => tier.level === currentLevel);
-        result.push({
-          id: definition.id,
-          group: definition.group,
-          type: "tiered",
-          currentLevel,
-          totalLevels: definition.tiers.length,
-          currentTier,
-          nextTier,
-          current: metrics[definition.metric] || 0,
-          metric: definition.metric,
-          unlocked: currentLevel > 0,
-          maxed: currentLevel === definition.tiers.length,
-        });
-      } else {
-        result.push({
-          ...definition,
-          current: metrics[definition.metric] || 0,
-          unlocked: (metrics[definition.metric] || 0) >= definition.target,
-        });
+  function loadAchievementState() {
+    const saved = readJson("achievement_state", {});
+    const base = defaultAchievementState();
+    return {
+      ...base,
+      ...(saved || {}),
+      small: { ...base.small, ...(saved?.small || {}) },
+      big: { ...base.big, ...(saved?.big || {}) },
+      recentNew: {
+        small: { ...(saved?.recentNew?.small || {}) },
+        big: { ...(saved?.recentNew?.big || {}) },
+      },
+      totalSmall: Number(saved?.totalSmall || 0),
+      totalBig: Number(saved?.totalBig || 0),
+      lotteryTickets: Number(saved?.lotteryTickets || 0),
+      usedLotteryCount: Number(saved?.usedLotteryCount || 0),
+      carriedLotteryDraws: Number(saved?.carriedLotteryDraws || 0),
+    };
+  }
+
+  function saveAchievementState(state) {
+    writeJson("achievement_state", state);
+    return state;
+  }
+
+  function readFocusLogs() {
+    const focusLogs = readJson("focus_log", []);
+    return Array.isArray(focusLogs) ? focusLogs : [];
+  }
+
+  function safeThreshold(value) {
+    return Math.max(1, Number(value || 1));
+  }
+
+  function calcNodeRecordBadges(logs, threshold) {
+    const nodeCounts = {};
+    logs.forEach((log) => {
+      const key = `${log.subject}:${log.nodeLabel}`;
+      nodeCounts[key] = (nodeCounts[key] || 0) + 1;
+    });
+    return Object.values(nodeCounts).reduce((sum, count) => sum + Math.floor(count / safeThreshold(threshold)), 0);
+  }
+
+  function calcAchievements() {
+    const cfg = loadAchievementConfig();
+    const logs = readStudyLogs();
+    const farmState = window.MochiFarm?.readState?.() || {};
+    const farmLevel = window.MochiFarm?.getFarmLevel?.(farmState.totalHarvests || 0)?.level || 1;
+    const focusLogs = readFocusLogs().filter((log) => log.type === "focus" && log.completed);
+    const validDays = [...new Set(logs.map((log) => String(log.date || "").slice(0, 10)).filter(Boolean))]
+      .filter((date) => {
+        const day = new Date(`${date}T12:00:00`).getDay();
+        if (day === 0 || day === 6) return true;
+        return getHolidays().some((h) => date >= h.start && date <= h.end);
+      });
+    const focusMinutes = focusLogs.reduce((sum, log) => sum + Number(log.duration || 0), 0);
+
+    return {
+      small: {
+        focusHours: Math.floor((focusMinutes / 60) / safeThreshold(cfg.small.focusHours)),
+        studyDays: Math.floor(validDays.length / safeThreshold(cfg.small.studyDays)),
+        recordCount: Math.floor(logs.length / safeThreshold(cfg.small.recordCount)),
+        balancedWeeks: Math.floor(calcBalancedWeeks(logs) / safeThreshold(cfg.small.balancedWeeks)),
+        harvests: Math.floor(Number(farmState.totalHarvests || 0) / safeThreshold(cfg.small.harvests)),
+      },
+      big: {
+        nodeRecords: calcNodeRecordBadges(logs, cfg.big.nodeRecords),
+        totalRecords: Math.floor(logs.length / safeThreshold(cfg.big.totalRecords)),
+        focusHours: Math.floor((focusMinutes / 60) / safeThreshold(cfg.big.focusHours)),
+        farmLevel: Math.floor((Math.max(1, farmLevel) - 1) / safeThreshold(cfg.big.farmLevelStep)),
+        studyDays: Math.floor(validDays.length / safeThreshold(cfg.big.studyDays)),
+      },
+    };
+  }
+
+  function recalcLotteryTickets(state, cfg = loadAchievementConfig()) {
+    const earnedFromSmall = Math.floor(Number(state.totalSmall || 0) / safeThreshold(cfg.lottery.smallPerDraw));
+    const earnedFromBig = Math.floor(Number(state.totalBig || 0) / safeThreshold(cfg.lottery.bigPerDraw));
+    state.lotteryTickets = Math.max(0, Number(state.carriedLotteryDraws || 0) + earnedFromSmall + earnedFromBig - Number(state.usedLotteryCount || 0));
+    return state;
+  }
+
+  function checkAndGrantAchievements() {
+    const cfg = loadAchievementConfig();
+    const earned = calcAchievements();
+    const state = loadAchievementState();
+    const newBadges = [];
+    const recentNew = { small: {}, big: {} };
+
+    Object.entries(earned.small).forEach(([key, total]) => {
+      const already = Number(state.small[key] || 0);
+      const newCount = total - already;
+      if (newCount > 0) {
+        state.small[key] = total;
+        state.totalSmall = Number(state.totalSmall || 0) + newCount;
+        recentNew.small[key] = newCount;
+        newBadges.push({ type: "small", key, count: newCount });
       }
     });
-    return result;
+
+    Object.entries(earned.big).forEach(([key, total]) => {
+      const already = Number(state.big[key] || 0);
+      const newCount = total - already;
+      if (newCount > 0) {
+        state.big[key] = total;
+        state.totalBig = Number(state.totalBig || 0) + newCount;
+        recentNew.big[key] = newCount;
+        newBadges.push({ type: "big", key, count: newCount });
+      }
+    });
+
+    if (newBadges.length > 0) state.recentNew = recentNew;
+    recalcLotteryTickets(state, cfg);
+    saveAchievementState(state);
+
+    if (newBadges.length > 0) {
+      const smallCount = newBadges.filter((badge) => badge.type === "small").reduce((sum, badge) => sum + badge.count, 0);
+      const bigCount = newBadges.filter((badge) => badge.type === "big").reduce((sum, badge) => sum + badge.count, 0);
+      let message = "";
+      if (bigCount > 0) message += `获得大勋章 x${bigCount}！`;
+      if (smallCount > 0) message += `${message ? " " : ""}获得小勋章 x${smallCount}！`;
+      if (state.lotteryTickets > 0) message += ` 当前可抽奖 ${state.lotteryTickets} 次`;
+      toast(message);
+    }
+
+    updateNavBadge();
+    return newBadges;
+  }
+
+  function getUnlockedAchievements() {
+    return calcAchievements();
+  }
+
+  function loadLotteryConfig() {
+    try {
+      const saved = JSON.parse(localStorage.getItem("lottery_config") || "{}");
+      const items = Array.isArray(saved.items) ? saved.items.filter((item) => Number(item.weight || 0) > 0) : [];
+      return items.length ? { items } : { items: LOTTERY_CONFIG_DEFAULTS.items.map((item) => ({ ...item })) };
+    } catch {
+      return { items: LOTTERY_CONFIG_DEFAULTS.items.map((item) => ({ ...item })) };
+    }
+  }
+
+  function showLotteryOverlay() {
+    const overlay = document.getElementById("lottery-overlay");
+    if (!overlay) return;
+    overlay.hidden = false;
+    overlay.innerHTML = renderLotteryWheel();
+    bindLotteryOverlay(overlay);
+  }
+
+  function hideLotteryOverlay() {
+    const overlay = document.getElementById("lottery-overlay");
+    if (!overlay) return;
+    overlay.hidden = true;
+    overlay.innerHTML = "";
+  }
+
+  function renderLotteryWheel() {
+    const state = loadAchievementState();
+    return `
+      <div class="lottery-inner">
+        <div class="lottery-header">
+          <button class="lottery-close-btn" data-action="close-lottery" type="button" aria-label="关闭抽奖">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+          <h2 class="lottery-title">抽奖转盘</h2>
+          <p class="lottery-tickets-hint">剩余 ${state.lotteryTickets || 0} 次机会</p>
+        </div>
+        <div class="lottery-wheel-wrap">
+          <div class="lottery-pointer">▼</div>
+          <canvas id="lottery-canvas" width="320" height="320"></canvas>
+        </div>
+        <div id="lottery-result" class="lottery-result" hidden></div>
+        <button class="btn btn-primary lottery-spin-btn" id="lottery-spin-btn" data-action="spin-lottery" type="button" ${(state.lotteryTickets || 0) <= 0 ? "disabled" : ""}>
+          <span class="material-symbols-outlined">casino</span>
+          开始抽奖
+        </button>
+      </div>
+    `;
+  }
+
+  function bindLotteryOverlay(overlay) {
+    drawWheel((_wheelCurrentAngleDeg * Math.PI) / 180);
+    overlay.onclick = (event) => {
+      const action = event.target.closest("[data-action]")?.dataset.action;
+      if (action === "close-lottery") {
+        hideLotteryOverlay();
+        return;
+      }
+      if (action === "spin-lottery") {
+        spinWheel();
+      }
+    };
+  }
+
+  function drawWheel(rotationAngle) {
+    const canvas = document.getElementById("lottery-canvas");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const items = loadLotteryConfig().items;
+    const totalWeight = items.reduce((sum, item) => sum + Number(item.weight || 0), 0);
+    if (!items.length || totalWeight <= 0) return;
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const radius = cx - 8;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    let startAngle = rotationAngle;
+    items.forEach((item) => {
+      const sliceAngle = (Number(item.weight || 0) / totalWeight) * 2 * Math.PI;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, radius, startAngle, startAngle + sliceAngle);
+      ctx.closePath();
+      ctx.fillStyle = item.color || "#864d61";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.3)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(startAngle + sliceAngle / 2);
+      ctx.textAlign = "right";
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 13px sans-serif";
+      ctx.shadowColor = "rgba(0,0,0,0.4)";
+      ctx.shadowBlur = 3;
+      const label = String(item.label || "");
+      const text = label.length > 8 ? `${label.slice(0, 8)}...` : label;
+      ctx.fillText(text, radius - 12, 5);
+      ctx.restore();
+
+      startAngle += sliceAngle;
+    });
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, 24, 0, 2 * Math.PI);
+    ctx.fillStyle = "#1e1220";
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx, cy, 18, 0, 2 * Math.PI);
+    ctx.fillStyle = "#864d61";
+    ctx.fill();
+  }
+
+  function selectLotteryItem(items) {
+    const totalWeight = items.reduce((sum, item) => sum + Number(item.weight || 0), 0);
+    let rand = Math.random() * totalWeight;
+    for (let index = 0; index < items.length; index += 1) {
+      rand -= Number(items[index].weight || 0);
+      if (rand <= 0) return index;
+    }
+    return Math.max(0, items.length - 1);
+  }
+
+  function spinWheel() {
+    const state = loadAchievementState();
+    if ((state.lotteryTickets || 0) <= 0) return;
+    const spinButton = document.getElementById("lottery-spin-btn");
+    if (spinButton) spinButton.disabled = true;
+    const items = loadLotteryConfig().items;
+    const totalWeight = items.reduce((sum, item) => sum + Number(item.weight || 0), 0);
+    if (!items.length || totalWeight <= 0) return;
+    const selectedIndex = selectLotteryItem(items);
+    let angleSum = 0;
+    for (let index = 0; index < selectedIndex; index += 1) {
+      angleSum += (Number(items[index].weight || 0) / totalWeight) * 360;
+    }
+    const sliceAngle = (Number(items[selectedIndex].weight || 0) / totalWeight) * 360;
+    const targetAngle = angleSum + sliceAngle / 2;
+    const spinDeg = 360 * 5 + ((360 - targetAngle + 270) % 360);
+    const startAngle = _wheelCurrentAngleDeg;
+    const endAngle = startAngle + spinDeg;
+    const duration = 4000;
+    const start = performance.now();
+    const ease = (t) => 1 - ((1 - t) ** 3);
+    const animate = (now) => {
+      const progress = Math.min((now - start) / duration, 1);
+      const current = startAngle + ease(progress) * spinDeg;
+      drawWheel((current * Math.PI) / 180);
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        _wheelCurrentAngleDeg = endAngle % 360;
+        onSpinEnd(items[selectedIndex]);
+      }
+    };
+    requestAnimationFrame(animate);
+  }
+
+  function onSpinEnd(item) {
+    const state = loadAchievementState();
+    state.lotteryTickets = Math.max(0, Number(state.lotteryTickets || 0) - 1);
+    state.usedLotteryCount = Number(state.usedLotteryCount || 0) + 1;
+    saveAchievementState(state);
+    saveLotteryHistory(item);
+
+    const resultEl = document.getElementById("lottery-result");
+    if (resultEl) {
+      const typeLabel = item.type === "bigReward" ? "大奖" : item.type === "reward" ? "奖励" : "任务";
+      resultEl.hidden = false;
+      resultEl.innerHTML = `
+        <div class="lottery-result-inner">
+          <p class="lottery-result-label">恭喜获得</p>
+          <p class="lottery-result-item" style="color:${item.color || "#fff"}">${escapeHtml(item.label || "")}</p>
+          <p class="lottery-result-type">${typeLabel}</p>
+        </div>
+      `;
+    }
+
+    const hint = document.querySelector(".lottery-tickets-hint");
+    if (hint) hint.textContent = `剩余 ${state.lotteryTickets} 次机会`;
+    const spinButton = document.getElementById("lottery-spin-btn");
+    if (spinButton) {
+      spinButton.innerHTML = state.lotteryTickets > 0 ? "再抽一次" : "没有机会了";
+      spinButton.disabled = state.lotteryTickets <= 0;
+    }
+    updateNavBadge();
+    if (currentRoute() === "achievements") renderAchievements(document.getElementById("view"));
+  }
+
+  function saveLotteryHistory(item) {
+    try {
+      const history = JSON.parse(localStorage.getItem("lottery_history") || "[]");
+      history.unshift({
+        date: todayKey(),
+        label: item.label,
+        type: item.type,
+      });
+      localStorage.setItem("lottery_history", JSON.stringify(history.slice(0, 50)));
+    } catch {
+      // Lottery history is optional.
+    }
+  }
+
+  let learnActiveTab = "review";
+
+  function renderLearn(container, tab) {
+    if (!tab) learnActiveTab = "review";
+    else if (tab === "review" || tab === "map") learnActiveTab = tab;
+    container.innerHTML = `
+      <div class="learn-tab-bar">
+        <button class="learn-tab-btn ${learnActiveTab === "review" ? "active" : ""}" data-action="learn-tab" data-tab="review" type="button">
+          <span class="material-symbols-outlined">rate_review</span>复习队列
+        </button>
+        <button class="learn-tab-btn ${learnActiveTab === "map" ? "active" : ""}" data-action="learn-tab" data-tab="map" type="button">
+          <span class="material-symbols-outlined">collections_bookmark</span>学习档案
+        </button>
+      </div>
+      <div id="learn-content-pane"></div>
+    `;
+    const pane = container.querySelector("#learn-content-pane");
+    if (learnActiveTab === "review") {
+      window.MochiReviewPage?.render?.(pane);
+    } else {
+      window.MochiCards?.render?.(pane);
+    }
+    container.querySelectorAll("[data-action='learn-tab']").forEach((button) => {
+      button.addEventListener("click", () => {
+        renderLearn(container, button.dataset.tab || "review");
+      });
+    });
   }
 
   function route(routeName) {
-    const routeId = routeName || location.hash.replace("#", "") || "home";
+    const rawRouteId = routeName || location.hash.replace("#", "") || "home";
+    const routeId = rawRouteId === "schedule" ? "season" : rawRouteId;
+    if (rawRouteId === "schedule" && location.hash === "#schedule") {
+      history.replaceState(null, "", "#season");
+    }
     setActive(routeId);
     if (routeId === "home") window.MochiFarm?.renderFarm?.(view);
-    else if (routeId === "schedule") window.MochiCalendar.renderSchedule(view);
-    else if (routeId === "map") window.MochiCards.render(view);
+    else if (routeId === "schedule") renderSeason(view);
+    else if (routeId === "learn") renderLearn(view);
+    else if (routeId === "review") renderLearn(view, "review");
+    else if (routeId === "map") renderLearn(view, "map");
     else if (routeId === "achievements") renderAchievements(view);
+    else if (routeId === "season") renderSeason(view);
     else if (routeId === "settings") renderSettings(view);
     else window.MochiFarm?.renderFarm?.(view);
     window.MochiPet.renderMiniState();
@@ -431,16 +1100,1766 @@
     return location.hash.replace("#", "") || "home";
   }
 
+  function updateNavBadge() {
+    const tickets = loadAchievementState().lotteryTickets || 0;
+    document.querySelectorAll('[data-route="achievements"]').forEach((btn) => {
+      let badge = btn.querySelector(".nav-lottery-badge");
+      if (tickets > 0) {
+        if (!badge) {
+          badge = document.createElement("span");
+          badge.className = "nav-lottery-badge";
+          btn.appendChild(badge);
+        }
+        badge.textContent = tickets;
+      } else if (badge) {
+        badge.remove();
+      }
+    });
+  }
+
   function setActive(routeId) {
+    const isLearnRoute = routeId === "review" || routeId === "map" || routeId === "learn";
     document.querySelectorAll("[data-route]").forEach((el) => {
-      el.classList.toggle("active", el.dataset.route === routeId);
+      const match = el.dataset.route === routeId || (el.dataset.route === "learn" && isLearnRoute);
+      el.classList.toggle("active", match);
     });
     document.querySelector(".side-nav")?.classList.remove("open");
+    updateNavBadge();
   }
 
   function navigate(routeId, updateHash = true) {
-    if (updateHash) location.hash = routeId;
-    else route(routeId);
+    if (!updateHash) {
+      route(routeId);
+      return;
+    }
+    const current = location.hash.replace("#", "") || "home";
+    if (current === routeId) route(routeId);
+    else location.hash = routeId;
+  }
+
+  function renderSeason(container) {
+    const current = loadCurrentSeason();
+    const archives = loadSeasonArchives();
+    container.innerHTML = `
+      <div class="page-head">
+        <div>
+          <h2>赛季</h2>
+          <p>把一段学习周期收束成报告、称号和可回看的历史。</p>
+        </div>
+      </div>
+
+      ${current ? renderCurrentSeason(current) : renderNoSeason()}
+
+      ${archives.length > 0 ? `
+        <section class="card season-archive-card">
+          <h3>历史赛季</h3>
+          <div class="season-archive-list">
+            ${archives.map((season) => renderSeasonArchiveRow(season)).join("")}
+          </div>
+        </section>
+      ` : ""}
+    `;
+    bindChartWidget(container);
+  }
+
+  function renderNoSeason() {
+    const logs = readStudyLogs();
+    const focusLogs = readFocusLogs();
+    const totalRecords = logs.length;
+    const studyDays = new Set(logs.map((log) => String(log.date || "").slice(0, 10)).filter(Boolean)).size;
+    const focusMinutes = focusLogs.reduce((sum, log) => sum + Number(log.duration || 0), 0);
+    const focusHours = Math.floor(focusMinutes / 60);
+    const subjectLabels = { math: "数学", physics: "物理", chemistry: "化学" };
+    const subjectCounts = { math: 0, physics: 0, chemistry: 0 };
+    logs.forEach((log) => {
+      if (log.subject in subjectCounts) subjectCounts[log.subject] += 1;
+    });
+    const hasData = totalRecords > 0;
+    return `
+      <section class="card season-empty">
+        <div class="season-empty-head">
+          <span class="material-symbols-outlined">emoji_events</span>
+          <div>
+            <h3>还没有开启赛季</h3>
+            <p class="muted">赛季期间可以看倒计时、称号和热力图。赛季管理在<a href="?admin=1" style="color:var(--primary);margin-left:4px">管理后台</a>。</p>
+          </div>
+        </div>
+        ${hasData ? `
+        <div class="season-empty-stats">
+          <div class="stat-mini">
+            <span class="stat-mini-num">${totalRecords}</span>
+            <span class="stat-mini-label">累计记录</span>
+          </div>
+          <div class="stat-mini">
+            <span class="stat-mini-num">${studyDays}</span>
+            <span class="stat-mini-label">学习天数</span>
+          </div>
+          <div class="stat-mini">
+            <span class="stat-mini-num">${focusHours}</span>
+            <span class="stat-mini-label">专注小时</span>
+          </div>
+          ${Object.entries(subjectCounts).map(([subject, count]) => `
+          <div class="stat-mini">
+            <span class="stat-mini-num">${count}</span>
+            <span class="stat-mini-label">${subjectLabels[subject]}</span>
+          </div>
+          `).join("")}
+        </div>
+        ` : `<p class="muted" style="margin-top:16px">还没有任何学习记录，先去首页导入第一条吧。</p>`}
+      </section>
+    `;
+  }
+
+  function renderCurrentSeason(season) {
+    const allLogs = readStudyLogs();
+    const seasonLogs = allLogs.filter((l) => dateInRange(l.date, season.startDate, season.endDate));
+    const allFocusLogs = readFocusLogs();
+    const seasonFocusLogs = allFocusLogs.filter(
+      (l) => dateInRange(l.date, season.startDate, season.endDate)
+    );
+
+    const today = new Date();
+    const endDate = new Date(`${season.endDate}T12:00:00`);
+    const startDate = new Date(`${season.startDate}T12:00:00`);
+    const daysLeft = Math.max(0, Math.ceil((endDate - today) / (1000 * 60 * 60 * 24)));
+    const totalDays = Math.max(1, Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)));
+    const pct = Math.min(100, Math.round(((totalDays - daysLeft) / totalDays) * 100));
+
+    const totalRecords = seasonLogs.length;
+    const totalFocusMins = seasonFocusLogs.reduce((s, l) => s + Number(l.duration || 0), 0);
+    const validDays = [...new Set(seasonLogs.map((l) => String(l.date || "").slice(0, 10)))].length;
+
+    const subjectCounts = {
+      math:      seasonLogs.filter((l) => l.subject === "math").length,
+      physics:   seasonLogs.filter((l) => l.subject === "physics").length,
+      chemistry: seasonLogs.filter((l) => l.subject === "chemistry").length,
+    };
+
+    const cfg = loadAdminConfig();
+    const mathTitle    = calcSeasonTitle(subjectCounts.math, cfg);
+    const physicsTitle = calcSeasonTitle(subjectCounts.physics, cfg);
+    const chemTitle    = calcSeasonTitle(subjectCounts.chemistry, cfg);
+    const overallTitle = calcSeasonTitle(Math.round(totalRecords / 3), cfg);
+
+    return `
+      <section class="card season-current-card">
+        <div class="season-header">
+          <div>
+            <h3 class="season-name">${escapeHtml(season.name || "未命名赛季")}</h3>
+            <p class="season-dates muted">${escapeHtml(season.startDate || "")} — ${escapeHtml(season.endDate || "")}</p>
+          </div>
+          <div class="season-countdown">
+            <span class="season-days-left">${daysLeft}</span>
+            <span class="muted" style="font-size:12px">天后结束</span>
+          </div>
+        </div>
+
+        <div class="season-progress-wrap">
+          <div class="season-progress-track">
+            <div class="season-progress-fill" style="width:${pct}%"></div>
+          </div>
+          <span class="muted" style="font-size:11px">${pct}%</span>
+        </div>
+
+        <div class="season-stats-row">
+          <div class="season-stat">
+            <span class="season-stat-num">${totalRecords}</span>
+            <span class="season-stat-label">条记录</span>
+          </div>
+          <div class="season-stat">
+            <span class="season-stat-num">${Math.round((totalFocusMins / 60) * 10) / 10}</span>
+            <span class="season-stat-label">小时专注</span>
+          </div>
+          <div class="season-stat">
+            <span class="season-stat-num">${validDays}</span>
+            <span class="season-stat-label">学习天数</span>
+          </div>
+        </div>
+
+        <div class="season-titles-row">
+          <div class="season-title-item math">
+            <span class="season-title-subject">数学</span>
+            <span class="season-title-label">Lv${mathTitle.level} ${escapeHtml(mathTitle.label)}</span>
+          </div>
+          <div class="season-title-item physics">
+            <span class="season-title-subject">物理</span>
+            <span class="season-title-label">Lv${physicsTitle.level} ${escapeHtml(physicsTitle.label)}</span>
+          </div>
+          <div class="season-title-item chemistry">
+            <span class="season-title-subject">化学</span>
+            <span class="season-title-label">Lv${chemTitle.level} ${escapeHtml(chemTitle.label)}</span>
+          </div>
+        </div>
+
+        <div class="season-overall-title">
+          总称号：<strong>Lv${overallTitle.level} ${escapeHtml(overallTitle.label)}</strong>
+        </div>
+
+        <div class="season-chart-section">
+          ${renderChartWidget(allLogs)}
+        </div>
+
+        <div class="season-actions">
+          <button class="btn btn-soft btn-sm" data-action="export-season-report"
+            data-season-id="${escapeHtml(season.id || "")}">
+            <span class="material-symbols-outlined">download</span>
+            导出赛季报告
+          </button>
+        </div>
+      </section>
+    `;
+  }
+
+  function seasonProgress(season) {
+    const today = todayKey();
+    const totalDays = Math.max(1, dateDiffDays(season.startDate, season.endDate) + 1);
+    const elapsed = Math.min(totalDays, Math.max(0, dateDiffDays(season.startDate, today) + 1));
+    const daysLeft = season.status === "ended" ? 0 : Math.max(0, dateDiffDays(today, season.endDate));
+    return {
+      totalDays,
+      elapsed,
+      daysLeft,
+      pct: Math.min(100, Math.max(0, Math.round((elapsed / totalDays) * 100))),
+    };
+  }
+
+  function renderSeasonSnapshotCard(season, snapshot, options = {}) {
+    const progress = seasonProgress(season);
+    const statusText = season.status === "ended" ? "已结束" : "进行中";
+    const overall = snapshot.titles?.overall || calcSeasonTitle(0);
+    return `
+      <section class="card season-current-card">
+        <div class="season-header">
+          <div>
+            <div class="season-name-row">
+              <h3 class="season-name">${escapeHtml(season.name || "未命名赛季")}</h3>
+              <span class="season-status ${season.status === "ended" ? "ended" : "active"}">${statusText}</span>
+            </div>
+            <p class="season-dates muted">${escapeHtml(season.startDate || "")} - ${escapeHtml(season.endDate || "")}</p>
+          </div>
+          <div class="season-countdown">
+            <span class="season-days-left">${progress.daysLeft}</span>
+            <span class="muted">天后结束</span>
+          </div>
+        </div>
+
+        <div class="season-progress-wrap" aria-label="赛季进度">
+          <div class="season-progress-track">
+            <div class="season-progress-fill" style="width:${progress.pct}%"></div>
+          </div>
+          <span class="muted">${progress.pct}%</span>
+        </div>
+
+        <div class="season-stats-row">
+          <div class="season-stat">
+            <span class="season-stat-num">${snapshot.totalRecords || 0}</span>
+            <span class="season-stat-label">条记录</span>
+          </div>
+          <div class="season-stat">
+            <span class="season-stat-num">${Math.round((Number(snapshot.totalFocusMinutes || 0) / 60) * 10) / 10}</span>
+            <span class="season-stat-label">小时专注</span>
+          </div>
+          <div class="season-stat">
+            <span class="season-stat-num">${snapshot.validStudyDays || 0}</span>
+            <span class="season-stat-label">有效学习日</span>
+          </div>
+        </div>
+
+        <div class="season-titles-row">
+          ${renderSeasonTitleItem("math", "数学", snapshot.titles?.math)}
+          ${renderSeasonTitleItem("physics", "物理", snapshot.titles?.physics)}
+          ${renderSeasonTitleItem("chemistry", "化学", snapshot.titles?.chemistry)}
+        </div>
+        <div class="season-overall-title">
+          总称号：<strong>Lv${overall.level} ${escapeHtml(overall.label)}</strong>
+        </div>
+
+        <div class="season-viz-block">
+          <p class="muted">本赛季学习热力图</p>
+          ${renderSeasonHeatmap(snapshot.dailyRecords || {}, season.startDate, season.endDate)}
+        </div>
+
+        <div class="season-viz-block">
+          <p class="muted">每周学习趋势</p>
+          ${renderSeasonChart(snapshot.weeklyRecords || [])}
+        </div>
+
+        ${options.current ? `
+          <div class="season-actions">
+            <button class="btn btn-primary" data-action="export-season-report">
+              <span class="material-symbols-outlined">download</span>
+              导出赛季报告
+            </button>
+          </div>
+        ` : ""}
+      </section>
+    `;
+  }
+
+  function renderSeasonTitleItem(subject, label, title) {
+    const safeTitle = title || calcSeasonTitle(0);
+    return `
+      <div class="season-title-item ${subject}">
+        <span class="season-title-subject">${label}</span>
+        <span class="season-title-label">Lv${safeTitle.level} ${escapeHtml(safeTitle.label)}</span>
+      </div>
+    `;
+  }
+
+  function renderSeasonHeatmap(dailyRecords, startDate, endDate) {
+    const dates = [];
+    const cursor = parseDateAtNoon(startDate);
+    const end = parseDateAtNoon(endDate);
+    while (cursor <= end) {
+      dates.push(dateKeyFromDate(cursor));
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    const cellSize = 12;
+    const gap = 3;
+    const cols = Math.max(1, Math.ceil(dates.length / 7));
+    const width = cols * (cellSize + gap);
+    const height = 7 * (cellSize + gap);
+    const cells = dates.map((date, index) => {
+      const col = Math.floor(index / 7);
+      const row = index % 7;
+      const count = Number(dailyRecords[date] || 0);
+      const opacity = count === 0 ? 0.14 : count <= 2 ? 0.38 : count <= 4 ? 0.68 : 1;
+      return `<rect x="${col * (cellSize + gap)}" y="${row * (cellSize + gap)}" width="${cellSize}" height="${cellSize}" rx="3" fill="var(--primary)" opacity="${opacity}"><title>${date}: ${count}条记录</title></rect>`;
+    }).join("");
+    return `<div class="season-heatmap-scroll"><svg width="${width}" height="${height}" role="img" aria-label="赛季每日学习记录热力图">${cells}</svg></div>`;
+  }
+
+  function renderSeasonWeeklyChart(logs) {
+    if (!logs || logs.length === 0) {
+      return `<p class="muted season-empty-chart">数据还不够，继续学习后会显示趋势图</p>`;
+    }
+    const weekMap = {};
+    logs.forEach((l) => {
+      const w = getWeekKey(l.date);
+      weekMap[w] = (weekMap[w] || 0) + 1;
+    });
+    const weeks = Object.keys(weekMap).sort();
+    if (weeks.length === 0) {
+      return `<p class="muted season-empty-chart">数据还不够，继续学习后会显示趋势图</p>`;
+    }
+    const maxVal = Math.max(...weeks.map((w) => weekMap[w]), 1);
+    const W = 280;
+    const H = 80;
+    const PAD = 16;
+    const innerW = W - PAD * 2;
+    const pts = weeks.map((w, i) => ({
+      x: weeks.length === 1 ? W / 2 : PAD + (i / (weeks.length - 1)) * innerW,
+      y: H - (weekMap[w] / maxVal) * H,
+      w,
+      val: weekMap[w],
+    }));
+    const polyline = pts.length >= 2 ? pts.map((p) => `${p.x},${p.y}`).join(" ") : "";
+    const dots = pts.map((p) => `
+      <circle cx="${p.x}" cy="${p.y}" r="4" fill="var(--primary)"/>
+      <text x="${p.x}" y="${p.y - 8}" text-anchor="middle" fill="var(--on-surface)" font-size="10" opacity="0.7">${p.val}</text>
+    `).join("");
+    const labels = pts.map((p) => `
+      <text x="${p.x}" y="${H + 16}" text-anchor="middle" fill="rgba(255,255,255,0.3)" font-size="9">W${p.w.slice(-2)}</text>
+    `).join("");
+    return `
+      <svg width="${W}" height="${H + 24}" viewBox="0 0 ${W} ${H + 24}" style="max-width:100%;overflow:visible">
+        ${polyline ? `<polyline points="${polyline}" fill="none" stroke="var(--primary)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>` : ""}
+        ${dots}
+        ${labels}
+      </svg>
+    `;
+  }
+
+  function renderSeasonChart(weeklyRecords) {
+    const weeks = (weeklyRecords || []).filter((item) => item && (Number(item.records || 0) > 0 || Number(item.focusMinutes || 0) > 0));
+    if (weeks.length < 2) return `<p class="muted season-chart-empty">数据还不够，继续学习后会显示趋势图</p>`;
+    const maxRecords = Math.max(...weeks.map((week) => Number(week.records || 0)), 1);
+    const width = 320;
+    const height = 88;
+    const points = weeks.map((week, index) => {
+      const x = (index / (weeks.length - 1)) * width;
+      const y = height - (Number(week.records || 0) / maxRecords) * height;
+      return `${x},${y}`;
+    }).join(" ");
+    const labels = weeks.map((week, index) => {
+      const x = (index / (weeks.length - 1)) * width;
+      const y = height - (Number(week.records || 0) / maxRecords) * height;
+      return `<circle cx="${x}" cy="${y}" r="4" fill="var(--primary)"><title>${week.week}: ${week.records || 0}条记录</title></circle><text x="${x}" y="${height + 18}" text-anchor="middle" fill="var(--muted)" font-size="10">${String(week.week || "").slice(5)}</text>`;
+    }).join("");
+    return `
+      <div class="season-chart-scroll">
+        <svg width="${width}" height="${height + 24}" role="img" aria-label="赛季每周学习记录趋势图">
+          <polyline points="${points}" fill="none" stroke="var(--primary)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"></polyline>
+          ${labels}
+        </svg>
+      </div>
+    `;
+  }
+
+  // ── Interactive Chart Widget ─────────────────────────────────────────────
+
+  function getChartDateRange(allLogs, days, offset) {
+    const today = parseDateAtNoon(todayKey());
+    if (days === 0) {
+      const dates = (allLogs || []).map((l) => String(l.date || "").slice(0, 10)).filter(Boolean).sort();
+      const startKey = dates.length ? dates[0] : dateKeyFromDate(today);
+      const endKey = dateKeyFromDate(today);
+      return { startKey, endKey, canGoBack: false, canGoForward: false };
+    }
+    const endDate = new Date(today);
+    endDate.setDate(endDate.getDate() - offset * days);
+    const startDate = new Date(endDate);
+    startDate.setDate(startDate.getDate() - days + 1);
+    return {
+      startKey: dateKeyFromDate(startDate),
+      endKey: dateKeyFromDate(endDate),
+      canGoBack: true,
+      canGoForward: offset > 0,
+    };
+  }
+
+  function buildChartBody(allLogs, type, days, offset) {
+    const { startKey, endKey } = getChartDateRange(allLogs, days, offset);
+    const filtered = (allLogs || []).filter((l) => dateInRange(l.date, startKey, endKey));
+    if (type === "heatmap") {
+      const countByDate = {};
+      filtered.forEach((l) => {
+        const d = String(l.date || "").slice(0, 10);
+        if (d) countByDate[d] = (countByDate[d] || 0) + 1;
+      });
+      return renderHeatmapV2(countByDate, startKey, endKey);
+    }
+    return renderTrendV2(filtered);
+  }
+
+  function renderChartWidget(allLogs) {
+    const days = 90;
+    const offset = 0;
+    const range = getChartDateRange(allLogs, days, offset);
+    return `
+      <div class="chart-widget" data-chart-type="heatmap" data-chart-days="${days}" data-chart-offset="${offset}">
+        <div class="chart-widget-header">
+          <div class="chart-type-toggle">
+            <button class="chart-type-btn active" data-chart-tab="heatmap">
+              <span class="material-symbols-outlined">grid_4x4</span>热力图
+            </button>
+            <button class="chart-type-btn" data-chart-tab="trend">
+              <span class="material-symbols-outlined">show_chart</span>趋势图
+            </button>
+          </div>
+          <div class="chart-range-toggle">
+            <button class="chart-range-btn" data-chart-days="30">30天</button>
+            <button class="chart-range-btn active" data-chart-days="90">3月</button>
+            <button class="chart-range-btn" data-chart-days="180">6月</button>
+            <button class="chart-range-btn" data-chart-days="0">全部</button>
+          </div>
+        </div>
+        <div class="chart-nav-row">
+          <button class="chart-nav-btn" data-chart-nav="-1" title="上一时段">
+            <span class="material-symbols-outlined">chevron_left</span>
+          </button>
+          <span class="chart-period-label-nav">${range.startKey} — ${range.endKey}</span>
+          <button class="chart-nav-btn" data-chart-nav="1" title="下一时段" disabled>
+            <span class="material-symbols-outlined">chevron_right</span>
+          </button>
+        </div>
+        <div class="chart-body">
+          ${buildChartBody(allLogs, "heatmap", days, offset)}
+        </div>
+      </div>
+    `;
+  }
+
+  function bindChartWidget(container) {
+    const widget = container.querySelector(".chart-widget");
+    if (!widget) return;
+
+    function refresh() {
+      const type = widget.dataset.chartType || "heatmap";
+      const days = Number(widget.dataset.chartDays || 90);
+      const offset = Number(widget.dataset.chartOffset || 0);
+      const allLogs = readStudyLogs();
+      const body = widget.querySelector(".chart-body");
+      if (body) body.innerHTML = buildChartBody(allLogs, type, days, offset);
+      const range = getChartDateRange(allLogs, days, offset);
+      const lbl = widget.querySelector(".chart-period-label-nav");
+      if (lbl) lbl.textContent = `${range.startKey} — ${range.endKey}`;
+      const fwd = widget.querySelector("[data-chart-nav='1']");
+      if (fwd) fwd.disabled = !range.canGoForward;
+      const back = widget.querySelector("[data-chart-nav='-1']");
+      if (back) back.disabled = !range.canGoBack;
+    }
+
+    widget.addEventListener("click", (e) => {
+      const tab = e.target.closest("[data-chart-tab]");
+      const rangeBtn = e.target.closest("[data-chart-days]");
+      const navBtn = e.target.closest("[data-chart-nav]");
+      if (tab) {
+        const type = tab.dataset.chartTab;
+        widget.dataset.chartType = type;
+        widget.querySelectorAll("[data-chart-tab]").forEach((b) => b.classList.toggle("active", b.dataset.chartTab === type));
+        refresh();
+      } else if (rangeBtn) {
+        const days = rangeBtn.dataset.chartDays;
+        widget.dataset.chartDays = days;
+        widget.dataset.chartOffset = 0;
+        widget.querySelectorAll("[data-chart-days]").forEach((b) => b.classList.toggle("active", b.dataset.chartDays === days));
+        refresh();
+      } else if (navBtn && !navBtn.disabled) {
+        const dir = Number(navBtn.dataset.chartNav);
+        widget.dataset.chartOffset = Math.max(0, Number(widget.dataset.chartOffset || 0) + dir);
+        refresh();
+      }
+    });
+  }
+
+  function renderHeatmapV2(countByDate, startKey, endKey) {
+    const CELL = 18, GAP = 4, STEP = CELL + GAP;
+    const L = 28, T = 26;
+
+    const start = parseDateAtNoon(startKey);
+    const sdow = (start.getDay() + 6) % 7;
+    start.setDate(start.getDate() - sdow);
+
+    const end = parseDateAtNoon(endKey);
+    const edow = (end.getDay() + 6) % 7;
+    if (edow < 6) end.setDate(end.getDate() + (6 - edow));
+
+    const days = [];
+    const cur = new Date(start);
+    while (cur <= end) {
+      days.push(dateKeyFromDate(cur));
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    const numWeeks = Math.ceil(days.length / 7);
+    const svgW = L + numWeeks * STEP;
+    const svgH = T + 7 * STEP;
+
+    const DAY_CHARS = ["一", null, "三", null, "五", null, "日"];
+    const dayLabels = DAY_CHARS.map((ch, i) =>
+      ch ? `<text x="${L - 6}" y="${T + i * STEP + CELL - 3}" text-anchor="end" font-size="11" fill="rgba(255,255,255,0.32)">${ch}</text>` : ""
+    ).join("");
+
+    let monthLabels = "";
+    let lastMonth = "";
+    const cells = days.map((dateKey, i) => {
+      const col = Math.floor(i / 7);
+      const row = i % 7;
+      const month = dateKey.slice(0, 7);
+      if (row === 0 && month !== lastMonth) {
+        const mIdx = parseInt(dateKey.slice(5, 7), 10) - 1;
+        const mNames = ["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
+        monthLabels += `<text x="${L + col * STEP}" y="${T - 7}" font-size="11" fill="rgba(255,255,255,0.46)">${mNames[mIdx]}</text>`;
+        lastMonth = month;
+      }
+      const inRange = dateKey >= startKey && dateKey <= endKey;
+      const count = inRange ? Number(countByDate[dateKey] || 0) : 0;
+      const opacity = !inRange ? 0.04 : count === 0 ? 0.10 : count === 1 ? 0.35 : count <= 3 ? 0.62 : count <= 5 ? 0.84 : 1;
+      return `<rect x="${L + col * STEP}" y="${T + row * STEP}" width="${CELL}" height="${CELL}" rx="4" fill="var(--primary)" opacity="${opacity}"><title>${dateKey}${inRange ? ": " + count + "条记录" : ""}</title></rect>`;
+    }).join("");
+
+    return `<div class="chart-heatmap-wrap"><svg width="${svgW}" height="${svgH}" style="display:block;margin:0 auto">${dayLabels}${monthLabels}${cells}</svg></div>`;
+  }
+
+  function renderTrendV2(logs) {
+    if (!logs || logs.length === 0) {
+      return `<div class="chart-empty-state"><span class="material-symbols-outlined">show_chart</span><p>暂无数据，继续学习后会显示趋势图</p></div>`;
+    }
+    const wTotal = {}, wMath = {}, wPhys = {}, wChem = {};
+    logs.forEach((l) => {
+      const w = getWeekKey(l.date);
+      wTotal[w] = (wTotal[w] || 0) + 1;
+      if (l.subject === "math") wMath[w] = (wMath[w] || 0) + 1;
+      else if (l.subject === "physics") wPhys[w] = (wPhys[w] || 0) + 1;
+      else if (l.subject === "chemistry") wChem[w] = (wChem[w] || 0) + 1;
+    });
+    const weeks = Object.keys(wTotal).sort();
+    if (weeks.length === 0) return `<div class="chart-empty-state"><span class="material-symbols-outlined">show_chart</span><p>暂无数据</p></div>`;
+
+    const W = 400, H = 240, PL = 36, PR = 16, PT = 30, PB = 36;
+    const iW = W - PL - PR, iH = H - PT - PB;
+    const maxVal = Math.max(...weeks.map((w) => wTotal[w]), 1);
+    const xOf = (i) => PL + (weeks.length > 1 ? (i / (weeks.length - 1)) * iW : iW / 2);
+    const yOf = (val) => PT + iH - (val / maxVal) * iH;
+
+    function smoothPath(valFn) {
+      const pts = weeks.map((w, i) => ({ x: xOf(i), y: yOf(valFn(w)) }));
+      if (pts.length === 1) return `M${pts[0].x},${pts[0].y}`;
+      let d = `M${pts[0].x},${pts[0].y}`;
+      for (let i = 1; i < pts.length; i++) {
+        const cpx = (pts[i - 1].x + pts[i].x) / 2;
+        d += ` C${cpx},${pts[i - 1].y} ${cpx},${pts[i].y} ${pts[i].x},${pts[i].y}`;
+      }
+      return d;
+    }
+
+    const totalPath = smoothPath((w) => wTotal[w] || 0);
+    const fillPath = `${totalPath} L${xOf(weeks.length - 1)},${PT + iH} L${xOf(0)},${PT + iH} Z`;
+    const gradId = "tg" + Math.random().toString(36).slice(2, 8);
+
+    const gridLines = [0.25, 0.5, 0.75, 1].map((p) => {
+      const y = PT + iH - p * iH;
+      return `<line x1="${PL}" y1="${y}" x2="${W - PR}" y2="${y}" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+              <text x="${PL - 5}" y="${y + 4}" text-anchor="end" font-size="11" fill="rgba(255,255,255,0.26)">${Math.round(p * maxVal)}</text>`;
+    }).join("");
+
+    const totalPts = weeks.map((w, i) => ({ x: xOf(i), y: yOf(wTotal[w] || 0), val: wTotal[w] || 0 }));
+    const dots = totalPts.map((p) =>
+      `<circle cx="${p.x}" cy="${p.y}" r="5" fill="var(--primary)" stroke="var(--surface)" stroke-width="2"/>
+       <text x="${p.x}" y="${p.y - 10}" text-anchor="middle" font-size="11" font-weight="700" fill="var(--on-surface)" opacity="0.88">${p.val}</text>`
+    ).join("");
+
+    const lStep = weeks.length <= 6 ? 1 : weeks.length <= 14 ? 2 : Math.ceil(weeks.length / 8);
+    const xLabels = weeks.map((w, i) => {
+      if (i % lStep !== 0 && i !== weeks.length - 1) return "";
+      return `<text x="${xOf(i)}" y="${H - 6}" text-anchor="middle" font-size="10" fill="rgba(255,255,255,0.34)">${w.slice(5)}</text>`;
+    }).join("");
+
+    const subLines = [
+      { map: wMath, color: "#ff9eb5" },
+      { map: wPhys, color: "#aaa8f0" },
+      { map: wChem, color: "#6dd98c" },
+    ].map(({ map, color }) => {
+      if (!weeks.some((w) => map[w])) return "";
+      return `<path d="${smoothPath((w) => map[w] || 0)}" fill="none" stroke="${color}" stroke-width="2" opacity="0.65" stroke-linejoin="round" stroke-linecap="round"/>`;
+    }).join("");
+
+    const legendItems = [
+      { color: "var(--primary)", label: "合计", stroke: 3 },
+      { color: "#ff9eb5", label: "数学", stroke: 2 },
+      { color: "#aaa8f0", label: "物理", stroke: 2 },
+      { color: "#6dd98c", label: "化学", stroke: 2 },
+    ].filter(({ label }) => label === "合计" || weeks.some((w) => ({ "数学": wMath, "物理": wPhys, "化学": wChem }[label]?.[w])))
+     .map(({ color, label, stroke }) =>
+       `<span class="chart-legend-item"><svg width="18" height="8"><line x1="0" y1="4" x2="18" y2="4" stroke="${color}" stroke-width="${stroke}"/></svg>${label}</span>`
+     ).join("");
+
+    return `
+      <div class="chart-trend-wrap">
+        <svg width="100%" viewBox="0 0 ${W} ${H}" style="display:block;overflow:visible">
+          <defs>
+            <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--primary)" stop-opacity="0.34"/>
+              <stop offset="100%" stop-color="var(--primary)" stop-opacity="0.02"/>
+            </linearGradient>
+          </defs>
+          ${gridLines}
+          <path d="${fillPath}" fill="url(#${gradId})"/>
+          ${subLines}
+          <path d="${totalPath}" fill="none" stroke="var(--primary)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+          ${dots}
+          ${xLabels}
+        </svg>
+      </div>
+      <div class="chart-legend">${legendItems}</div>
+    `;
+  }
+
+  // ── End Chart Widget ──────────────────────────────────────────────────────
+
+  function renderSeasonArchiveRow(season) {
+    const snapshot = season.snapshot || {};
+    const overall = snapshot.titles?.overall;
+    return `
+      <button class="season-archive-row" data-action="view-season" data-season-id="${escapeHtml(season.id || "")}" type="button">
+        <span class="season-archive-main">
+          <strong>${escapeHtml(season.name || "未命名赛季")}</strong>
+          <span class="muted">${escapeHtml(season.startDate || "")} - ${escapeHtml(season.endDate || "")}</span>
+        </span>
+        <span class="season-archive-meta">
+          ${overall ? `<span class="season-archive-title">Lv${overall.level} ${escapeHtml(overall.label)}</span>` : ""}
+          <span class="muted">${snapshot.totalRecords || 0}题</span>
+          <span class="material-symbols-outlined">chevron_right</span>
+        </span>
+      </button>
+    `;
+  }
+
+  function renderSeasonManager() {
+    const current = loadCurrentSeason();
+    const archives = loadSeasonArchives();
+    const nextId = nextSeasonId(current, archives);
+    const today = todayKey();
+    const defaultEnd = dateKeyFromDate(addDays(parseDateAtNoon(today), 55));
+    if (current?.status === "active") {
+      return `
+        <section class="card">
+          <h3>赛季管理</h3>
+          <p class="muted">${escapeHtml(current.name)} 正在进行：${escapeHtml(current.startDate)} - ${escapeHtml(current.endDate)}</p>
+          <div class="settings-list" style="margin-top:18px">
+            <button class="btn btn-danger" data-action="end-season" type="button">
+              <span class="material-symbols-outlined">flag</span>
+              结束当前赛季并存档
+            </button>
+          </div>
+        </section>
+      `;
+    }
+    return `
+      <section class="card">
+        <h3>赛季管理</h3>
+        <p class="muted">开启后，赛季页会按这个时间范围统计学习记录、专注、称号和图表。</p>
+        <form id="season-form" class="form-grid" style="margin-top:18px">
+          <div class="field"><label>赛季名称</label><input name="name" required value="${nextId === "S1" ? "第一赛季" : `第${nextId.slice(1)}赛季`}" placeholder="例如：第一赛季" /></div>
+          <div class="field"><label>开始日期</label><input name="startDate" type="date" required value="${today}" /></div>
+          <div class="field"><label>结束日期</label><input name="endDate" type="date" required value="${defaultEnd}" /></div>
+          <input name="id" type="hidden" value="${nextId}" />
+          <button class="btn btn-primary" type="submit"><span class="material-symbols-outlined">emoji_events</span>开启赛季</button>
+        </form>
+      </section>
+    `;
+  }
+
+  function openSeason(seasonInput) {
+    if (!seasonInput.name || !seasonInput.startDate || !seasonInput.endDate) {
+      toast("请填写完整赛季信息");
+      return;
+    }
+    if (seasonInput.endDate < seasonInput.startDate) {
+      toast("结束日期不能早于开始日期");
+      return;
+    }
+    const season = {
+      id: seasonInput.id || `S${Date.now()}`,
+      name: String(seasonInput.name).trim(),
+      startDate: seasonInput.startDate,
+      endDate: seasonInput.endDate,
+      status: "active",
+    };
+    saveCurrentSeason(season);
+    toast("赛季已开启");
+    navigate("season");
+  }
+
+  function endCurrentSeason() {
+    const current = loadCurrentSeason();
+    if (!current || current.status !== "active") {
+      toast("没有正在进行的赛季");
+      return;
+    }
+    if (!confirm(`结束「${current.name}」并保存到历史赛季吗？`)) return;
+    const ended = { ...current, status: "ended" };
+    const snapshot = buildSeasonSnapshot(ended);
+    const archives = loadSeasonArchives().filter((season) => season.id !== ended.id);
+    archives.unshift({ ...ended, snapshot });
+    saveSeasonArchives(archives);
+    saveCurrentSeason(ended);
+    toast("赛季已结束并存档");
+    route(currentRoute());
+  }
+
+  function showSeasonArchiveModal(seasonId) {
+    const season = loadSeasonArchives().find((item) => item.id === seasonId);
+    if (!season) {
+      toast("没有找到这个历史赛季");
+      return;
+    }
+    modal(`
+      <div class="modal-head">
+        <div><h2>${escapeHtml(season.name || "历史赛季")}</h2><p class="muted">历史赛季快照</p></div>
+        <button class="icon-btn" data-action="close-modal"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      ${renderSeasonSnapshotCard(season, season.snapshot || buildSeasonSnapshot(season), { current: false })}
+    `);
+  }
+
+  function generateSeasonTextReport(season, snapshot, logs, focusLogs) {
+    const overall = snapshot.titles?.overall || calcSeasonTitle(0);
+    const lines = [
+      `【${season.name}总结报告】`,
+      `${season.startDate} — ${season.endDate}`,
+      "",
+      "📊 核心数据",
+      `学习天数：${snapshot.validStudyDays || 0} 天`,
+      `导入记录：${snapshot.totalRecords || 0} 条`,
+      `专注时长：${Math.round((Number(snapshot.totalFocusMinutes || 0) / 60) * 10) / 10} 小时`,
+      "",
+      "📚 各科情况",
+      `数学：${snapshot.subjectRecords?.math || 0}条  Lv${snapshot.titles?.math?.level || 1} ${snapshot.titles?.math?.label || ""}`,
+      `物理：${snapshot.subjectRecords?.physics || 0}条  Lv${snapshot.titles?.physics?.level || 1} ${snapshot.titles?.physics?.label || ""}`,
+      `化学：${snapshot.subjectRecords?.chemistry || 0}条  Lv${snapshot.titles?.chemistry?.level || 1} ${snapshot.titles?.chemistry?.label || ""}`,
+      "",
+      `🏆 总称号：Lv${overall.level} ${overall.label}`,
+      "",
+      `🎖 勋章：小勋章 ${snapshot.totalSmallBadges || 0}个 · 大勋章 ${snapshot.totalBigBadges || 0}个`,
+    ];
+    const highlights = buildSeasonHighlights(logs, focusLogs);
+    if (highlights.length > 0) {
+      lines.push("", "✨ 这个赛季的高光时刻");
+      highlights.forEach((h) => lines.push(h));
+    }
+    return lines.join("\n").trim();
+  }
+
+  function buildSeasonHighlights(logs, focusLogs) {
+    const highlights = [];
+    if (!logs || logs.length === 0) return highlights;
+
+    const countByDate = {};
+    logs.forEach((l) => {
+      const d = String(l.date || "").slice(0, 10);
+      if (d) countByDate[d] = (countByDate[d] || 0) + 1;
+    });
+
+    const busyDates = Object.entries(countByDate).sort((a, b) => b[1] - a[1]);
+    if (busyDates.length > 0 && busyDates[0][1] >= 2) {
+      highlights.push(`🔥 最努力的一天：${busyDates[0][0]}，学了 ${busyDates[0][1]} 道题`);
+    }
+
+    if (focusLogs && focusLogs.length > 0) {
+      const longest = focusLogs.reduce((max, l) =>
+        Number(l.duration || 0) > Number(max.duration || 0) ? l : max, focusLogs[0]);
+      if (Number(longest.duration || 0) >= 20) {
+        highlights.push(`⚡ 最长专注：${longest.date}，连续专注 ${longest.duration} 分钟`);
+      }
+    }
+
+    const nodeProgress = {};
+    logs.forEach((l) => {
+      const key = `${l.subject}:${l.nodeLabel}`;
+      if (!nodeProgress[key]) nodeProgress[key] = [];
+      nodeProgress[key].push(Number(l.stars || 1));
+    });
+    let bestProgressNode = null;
+    Object.entries(nodeProgress).forEach(([key, starList]) => {
+      if (starList.length >= 2 && starList[0] <= 1 && starList[starList.length - 1] >= 3) {
+        bestProgressNode = key.split(":")[1];
+      }
+    });
+    if (bestProgressNode) {
+      highlights.push(`📈 进步最快：${bestProgressNode}，从 1 星一路提升到 3 星`);
+    }
+
+    const newNodes = new Set(logs.map((l) => `${l.subject}:${l.nodeLabel}`));
+    if (newNodes.size >= 3) {
+      highlights.push(`🌱 本赛季开拓了 ${newNodes.size} 个知识点`);
+    }
+
+    const weekMap = {};
+    logs.forEach((l) => {
+      const w = getWeekKey(l.date);
+      if (!weekMap[w]) weekMap[w] = new Set();
+      weekMap[w].add(l.subject);
+    });
+    const balancedWeeks = Object.values(weekMap).filter((s) => s.size >= 3).length;
+    if (balancedWeeks >= 2) {
+      highlights.push(`⚖️ 均衡发展：有 ${balancedWeeks} 周三科都有学习记录`);
+    }
+
+    const sortedDates = Object.keys(countByDate).sort();
+    let maxStreak = 1;
+    let curStreak = 1;
+    for (let i = 1; i < sortedDates.length; i++) {
+      const prev = new Date(`${sortedDates[i - 1]}T12:00:00`);
+      const cur = new Date(`${sortedDates[i]}T12:00:00`);
+      const diff = Math.round((cur - prev) / (1000 * 60 * 60 * 24));
+      if (diff === 1) {
+        curStreak++;
+        maxStreak = Math.max(maxStreak, curStreak);
+      } else {
+        curStreak = 1;
+      }
+    }
+    if (maxStreak >= 3) {
+      highlights.push(`🗓️ 最长连续学习：${maxStreak} 天没有间断`);
+    }
+
+    return highlights;
+  }
+
+  function exportSeasonReport() {
+    const current = loadCurrentSeason();
+    if (!current) {
+      toast("还没有可导出的赛季");
+      return;
+    }
+    const archived = current.status === "ended" ? loadSeasonArchives().find((item) => item.id === current.id) : null;
+    const snapshot = archived?.snapshot || buildSeasonSnapshot(current);
+    showSeasonExportSheet(current, snapshot);
+  }
+
+  function showSeasonExportSheet(season, snapshot) {
+    document.getElementById("season-export-root")?.remove();
+    const root = document.createElement("div");
+    root.id = "season-export-root";
+    root.className = "archive-export-root";
+    const allLogs = readStudyLogs();
+    const allFocusLogs = readFocusLogs();
+    const seasonLogs = allLogs.filter(
+      (l) => String(l.date || "") >= season.startDate && String(l.date || "") <= season.endDate
+    );
+    const seasonFocusLogs = allFocusLogs.filter(
+      (l) => String(l.date || "") >= season.startDate
+    );
+    const textReport = generateSeasonTextReport(season, snapshot, seasonLogs, seasonFocusLogs);
+    const jsonReport = JSON.stringify({ season, snapshot }, null, 2);
+    root.innerHTML = `
+      <section class="archive-export-sheet" role="dialog" aria-modal="true" aria-labelledby="season-export-title">
+        <div class="modal-head">
+          <div><h2 id="season-export-title">导出赛季报告</h2></div>
+          <button class="icon-btn" data-season-export-close aria-label="关闭"><span class="material-symbols-outlined">close</span></button>
+        </div>
+        <div class="archive-export-switch season-export-switch" role="tablist">
+          <button class="active" data-season-export-format="text" type="button">文字版</button>
+          <button data-season-export-format="json" type="button">JSON</button>
+        </div>
+        <p class="archive-export-hint" data-season-export-hint>适合粘贴给 AI 或家长做阶段复盘</p>
+        <textarea class="archive-export-preview" readonly></textarea>
+        <div class="archive-export-actions">
+          <button class="btn btn-primary" data-season-export-copy type="button"><span class="material-symbols-outlined">content_copy</span><span data-copy-label>复制到剪贴板</span></button>
+          <button class="btn btn-outline" data-season-export-close type="button">关闭</button>
+        </div>
+      </section>
+    `;
+    document.body.appendChild(root);
+    const preview = root.querySelector(".archive-export-preview");
+    const setFormat = (format) => {
+      root.querySelectorAll("[data-season-export-format]").forEach((button) => {
+        button.classList.toggle("active", button.dataset.seasonExportFormat === format);
+      });
+      if (preview) preview.value = format === "json" ? jsonReport : textReport;
+      const hint = root.querySelector("[data-season-export-hint]");
+      if (hint) hint.textContent = format === "json" ? "包含赛季配置和快照数据，适合开发或自动化处理" : "适合粘贴给 AI 或家长做阶段复盘";
+    };
+    root.addEventListener("click", async (event) => {
+      if (event.target === root || event.target.closest("[data-season-export-close]")) {
+        root.remove();
+        return;
+      }
+      const formatButton = event.target.closest("[data-season-export-format]");
+      if (formatButton) {
+        setFormat(formatButton.dataset.seasonExportFormat || "text");
+        return;
+      }
+      const copyButton = event.target.closest("[data-season-export-copy]");
+      if (copyButton) {
+        const ok = await copyTextToClipboard(preview?.value || "");
+        const label = copyButton.querySelector("[data-copy-label]");
+        if (ok && label) {
+          label.textContent = "已复制";
+          setTimeout(() => {
+            if (label.isConnected) label.textContent = "复制到剪贴板";
+          }, 1600);
+        }
+      }
+    });
+    setFormat("text");
+  }
+
+  async function copyTextToClipboard(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      const ok = document.execCommand("copy");
+      textarea.remove();
+      return ok;
+    }
+  }
+
+  function showAdminPasswordPrompt() {
+    document.querySelector(".admin-auth-overlay")?.remove();
+    const savedPwd = localStorage.getItem("admin_password") || "mochi2025";
+    const overlay = document.createElement("div");
+    overlay.className = "admin-auth-overlay";
+    overlay.innerHTML = `
+      <div class="admin-auth-box" role="dialog" aria-modal="true" aria-labelledby="admin-auth-title">
+        <h3 id="admin-auth-title">管理员入口</h3>
+        <input type="password" id="admin-pwd-input" class="admin-input" placeholder="输入密码" autocomplete="current-password" />
+        <button class="btn btn-primary" id="admin-pwd-confirm" type="button">进入</button>
+        <p id="admin-pwd-error" class="muted" hidden>密码错误</p>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const input = overlay.querySelector("#admin-pwd-input");
+    const button = overlay.querySelector("#admin-pwd-confirm");
+    const error = overlay.querySelector("#admin-pwd-error");
+    input?.focus();
+    input?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") button?.click();
+    });
+    button?.addEventListener("click", () => {
+      if (input?.value === savedPwd) {
+        overlay.remove();
+        showAdminPanel();
+      } else {
+        if (error) error.hidden = false;
+        if (input) {
+          input.value = "";
+          input.focus();
+        }
+      }
+    });
+  }
+
+  function showAdminPanel() {
+    document.getElementById("admin-panel-overlay")?.remove();
+    adminCalendarCursor = new Date();
+    const overlay = document.createElement("div");
+    overlay.id = "admin-panel-overlay";
+    overlay.className = "admin-panel-overlay";
+    overlay.innerHTML = `
+      <div class="admin-panel-inner">
+        <div class="admin-panel-header">
+          <h2>管理后台</h2>
+          <button data-admin-action="close-admin" class="admin-close-btn" type="button" aria-label="关闭">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="admin-panel-body">
+          ${renderAdminSections()}
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    bindAdminPanel(overlay);
+  }
+
+  function renderAdminSections() {
+    return `
+      ${renderAdminSeasonSection()}
+      ${renderAdminAchievementSection()}
+      ${renderAdminTitleSection()}
+      ${renderAdminLotterySection()}
+      ${renderAdminCalendarSection()}
+      ${renderAdminSampleDataSection()}
+      ${renderAdminDataSection()}
+      ${renderAdminPasswordSection()}
+    `;
+  }
+
+  function refreshAdminPanel(overlay = document.getElementById("admin-panel-overlay")) {
+    const body = overlay?.querySelector(".admin-panel-body");
+    if (body) body.innerHTML = renderAdminSections();
+    refreshVisibleRoute();
+  }
+
+  function refreshVisibleRoute() {
+    const routeId = currentRoute();
+    if (routeId === "season") renderSeason(view);
+    if (routeId === "achievements") renderAchievements(view);
+    if (routeId === "schedule") window.MochiCalendar?.renderSchedule?.(view);
+    if (routeId === "settings") renderSettings(view);
+    if (routeId === "home") window.MochiFarm?.renderFarm?.(view);
+    if (routeId === "learn") renderLearn(view);
+    if (routeId === "review") renderLearn(view, "review");
+    if (routeId === "map") renderLearn(view, "map");
+  }
+
+  function renderAdminSeasonSection() {
+    const current = loadCurrentSeason();
+    const defaultEnd = dateKeyFromDate(addDays(parseDateAtNoon(todayKey()), 56));
+    const nextId = nextSeasonId(current, loadSeasonArchives());
+    return `
+      <section class="admin-section">
+        <h3>赛季管理</h3>
+        ${current?.status === "active" ? `
+          <div class="admin-row">
+            <span>当前赛季：<strong>${escapeHtml(current.name)}</strong>（${escapeHtml(current.startDate)} - ${escapeHtml(current.endDate)}）</span>
+          </div>
+          <div class="admin-row admin-row-actions">
+            <button class="btn btn-soft btn-sm" data-admin-action="end-season" type="button">结束当前赛季</button>
+          </div>
+        ` : `<p class="muted admin-help">当前没有进行中的赛季</p>`}
+        <div class="admin-row">
+          <label for="admin-season-name">新赛季名称</label>
+          <input type="text" id="admin-season-name" class="admin-input" placeholder="如：第二赛季" value="${nextId === "S1" ? "第一赛季" : `第${nextId.slice(1)}赛季`}" />
+        </div>
+        <div class="admin-row">
+          <label for="admin-season-end">结束日期</label>
+          <input type="date" id="admin-season-end" class="admin-input" value="${defaultEnd}" />
+        </div>
+        <button class="btn btn-primary btn-sm" data-admin-action="start-season" type="button" ${current?.status === "active" ? "disabled" : ""}>开启新赛季</button>
+      </section>
+    `;
+  }
+
+  function adminAchievementFields() {
+    const cfg = loadAchievementConfig();
+    return [
+      { key: "small.focusHours", label: "小勋章：专注间隔（小时）", val: cfg.small.focusHours },
+      { key: "small.studyDays", label: "小勋章：打卡间隔（天）", val: cfg.small.studyDays },
+      { key: "small.recordCount", label: "小勋章：记录间隔（条）", val: cfg.small.recordCount },
+      { key: "small.balancedWeeks", label: "小勋章：均衡周间隔", val: cfg.small.balancedWeeks },
+      { key: "small.harvests", label: "小勋章：收获间隔（次）", val: cfg.small.harvests },
+      { key: "big.nodeRecords", label: "大勋章：知识深耕（条/点）", val: cfg.big.nodeRecords },
+      { key: "big.totalRecords", label: "大勋章：总记录间隔（条）", val: cfg.big.totalRecords },
+      { key: "big.focusHours", label: "大勋章：专注里程碑（小时）", val: cfg.big.focusHours },
+      { key: "big.farmLevelStep", label: "大勋章：农场升级间隔", val: cfg.big.farmLevelStep },
+      { key: "big.studyDays", label: "大勋章：长期坚持（天）", val: cfg.big.studyDays },
+      { key: "lottery.smallPerDraw", label: "抽奖：小勋章兑换比例", val: cfg.lottery.smallPerDraw },
+      { key: "lottery.bigPerDraw", label: "抽奖：大勋章兑换比例", val: cfg.lottery.bigPerDraw },
+    ];
+  }
+
+  function renderAdminAchievementSection() {
+    return `
+      <section class="admin-section">
+        <h3>勋章参数</h3>
+        ${adminAchievementFields().map((field) => `
+          <div class="admin-row">
+            <label>${field.label}</label>
+            <input type="number" min="1" class="admin-input admin-input-sm" data-admin-achievement-key="${field.key}" value="${field.val}" />
+          </div>
+        `).join("")}
+        <button class="btn btn-primary btn-sm" data-admin-action="save-achievement-cfg" type="button">保存勋章参数</button>
+      </section>
+    `;
+  }
+
+  function renderAdminTitleSection() {
+    const cfg = loadAdminConfig();
+    const thresholds = Array.isArray(cfg.season?.titleThresholds) ? cfg.season.titleThresholds : GAME_CONFIG_DEFAULTS.season.titleThresholds;
+    return `
+      <section class="admin-section">
+        <h3>称号阈值（每级需要的记录数）</h3>
+        <div class="admin-title-grid">
+          ${SEASON_TITLES.map((title, index) => `
+            <div class="admin-title-row">
+              <span class="admin-title-name">Lv${title.level} ${escapeHtml(title.label)}</span>
+              <input type="number" min="0" class="admin-input admin-input-sm" data-admin-title-index="${index}" value="${Number(thresholds[index] || 0)}" />
+            </div>
+          `).join("")}
+        </div>
+        <button class="btn btn-primary btn-sm" data-admin-action="save-title-cfg" type="button">保存称号阈值</button>
+      </section>
+    `;
+  }
+
+  function renderAdminLotterySection() {
+    const cfg = loadLotteryConfig();
+    return `
+      <section class="admin-section">
+        <h3>抽奖转盘内容</h3>
+        <div id="admin-lottery-items">
+          ${cfg.items.map((item, index) => renderAdminLotteryItem(item, index)).join("")}
+        </div>
+        <div class="admin-row-actions">
+          <button class="btn btn-soft btn-sm" data-admin-action="add-lottery-item" type="button">+ 添加项目</button>
+          <button class="btn btn-primary btn-sm" data-admin-action="save-lottery-cfg" type="button">保存转盘</button>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderAdminLotteryItem(item = {}, index = 0) {
+    return `
+      <div class="admin-lottery-item" data-item-index="${index}">
+        <input type="text" class="admin-input" placeholder="项目名称" data-field="label" value="${escapeHtml(item.label || "")}" />
+        <select class="admin-input admin-input-sm" data-field="type">
+          <option value="reward" ${item.type === "reward" ? "selected" : ""}>奖励</option>
+          <option value="bigReward" ${item.type === "bigReward" ? "selected" : ""}>大奖</option>
+          <option value="punish" ${item.type === "punish" ? "selected" : ""}>惩罚</option>
+        </select>
+        <input type="number" min="1" max="100" class="admin-input admin-input-sm" placeholder="权重" data-field="weight" value="${Number(item.weight || 10)}" />
+        <button class="btn-icon" data-admin-action="remove-lottery-item" type="button" aria-label="删除项目">删除</button>
+      </div>
+    `;
+  }
+
+  function loadHolidayDates() {
+    const dates = new Set();
+    getHolidays().forEach((holiday) => {
+      if (!holiday?.start || !holiday?.end) return;
+      const cursor = parseDateAtNoon(holiday.start);
+      const end = parseDateAtNoon(holiday.end);
+      while (cursor <= end) {
+        dates.add(dateKeyFromDate(cursor));
+        cursor.setDate(cursor.getDate() + 1);
+      }
+    });
+    return [...dates].sort();
+  }
+
+  function isSingleDayHoliday(holiday) {
+    return holiday?.start && holiday.start === holiday.end;
+  }
+
+  function holidayContainsDate(holiday, date) {
+    return holiday?.start && holiday?.end && date >= holiday.start && date <= holiday.end;
+  }
+
+  function removeHolidayDate(date) {
+    const next = [];
+    getHolidays().forEach((holiday) => {
+      if (!holidayContainsDate(holiday, date)) {
+        next.push(holiday);
+        return;
+      }
+      if (isSingleDayHoliday(holiday)) return;
+      const start = parseDateAtNoon(holiday.start);
+      const end = parseDateAtNoon(holiday.end);
+      const target = parseDateAtNoon(date);
+      const beforeEnd = new Date(target);
+      beforeEnd.setDate(beforeEnd.getDate() - 1);
+      const afterStart = new Date(target);
+      afterStart.setDate(afterStart.getDate() + 1);
+      if (start <= beforeEnd) {
+        next.push({ ...holiday, id: `${holiday.id}_before_${date}`, end: dateKeyFromDate(beforeEnd) });
+      }
+      if (afterStart <= end) {
+        next.push({ ...holiday, id: `${holiday.id}_after_${date}`, start: dateKeyFromDate(afterStart) });
+      }
+    });
+    saveHolidays(next.sort((a, b) => a.start.localeCompare(b.start)));
+  }
+
+  function addHolidayDate(date) {
+    const holidays = getHolidays();
+    if (holidays.some((holiday) => holidayContainsDate(holiday, date))) return;
+    holidays.push({ id: `admin_${date}`, label: "管理后台放假日", start: date, end: date });
+    saveHolidays(holidays.sort((a, b) => a.start.localeCompare(b.start)));
+  }
+
+  function renderAdminCalendarSection() {
+    const holidays = loadHolidayDates();
+    const year = adminCalendarCursor.getFullYear();
+    const month = adminCalendarCursor.getMonth();
+    return `
+      <section class="admin-section">
+        <h3>学年日历（放假日设置）</h3>
+        <p class="muted admin-help">点击日期切换上学/放假状态。绿色=放假（计入学习统计），灰色=上学日。</p>
+        <div class="admin-calendar-controls">
+          <button class="btn btn-soft btn-sm" data-admin-action="mark-weekends" type="button">标记全年周六日为放假</button>
+          <button class="btn btn-soft btn-sm" data-admin-action="clear-holidays" type="button">清空所有放假日</button>
+        </div>
+        <div class="admin-calendar-import">
+          <textarea id="admin-holiday-import" class="admin-input" rows="3" placeholder="批量导入：粘贴日期，逗号或换行分隔，如 2026-01-01,2026-01-02"></textarea>
+          <button class="btn btn-soft btn-sm" data-admin-action="import-holidays" type="button">导入</button>
+        </div>
+        <div id="admin-calendar-grid">
+          ${renderAdminMonthCalendar(year, month, holidays)}
+        </div>
+        <div class="admin-calendar-nav">
+          <button class="btn btn-soft btn-sm" data-admin-action="prev-month" type="button">上个月</button>
+          <button class="btn btn-soft btn-sm" data-admin-action="next-month" type="button">下个月</button>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderAdminMonthCalendar(year, month, holidays) {
+    const holidaySet = new Set(holidays);
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const monthLabel = `${year}年${month + 1}月`;
+    let cells = `<p class="admin-calendar-label">${monthLabel}</p><div class="admin-cal-weekdays">${["日", "一", "二", "三", "四", "五", "六"].map((day) => `<span>${day}</span>`).join("")}</div><div class="admin-cal-grid">`;
+    for (let i = 0; i < firstDay; i += 1) cells += `<div></div>`;
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      const holiday = holidaySet.has(dateStr);
+      cells += `<button class="admin-cal-day ${holiday ? "holiday" : ""}" data-admin-action="toggle-holiday" data-date="${dateStr}" type="button">${day}</button>`;
+    }
+    cells += `</div>`;
+    return cells;
+  }
+
+  function sampleNode(subject, label) {
+    const nodes = window.MochiKnowledge?.SUBJECTS?.[subject]?.nodes || [];
+    return nodes.find((node) => node.label === label) || nodes[0] || { id: "", label };
+  }
+
+  function sampleDate(daysAgo) {
+    return dateKeyFromDate(addDays(parseDateAtNoon(todayKey()), -Number(daysAgo || 0)));
+  }
+
+  function buildSampleCards() {
+    const rows = [
+      {
+        id: "sample_lesson_physics_electric_1",
+        daysAgo: 9,
+        subject: "physics",
+        nodeLabel: "电场",
+        stars: 1,
+        painPoint: "电量$q$公式中$\\Phi$的计算容易把物理量和几何面积混在一起。",
+        originalQuestion: "匀强电场中面积为$S$的平面与电场方向夹角为$\\theta$，求电通量$\\Phi$。",
+        routine: "第一步：先画法线方向\n第二步：用$\\Phi=ES\\cos\\theta$判断角度\n第三步：再联系$q=It$核对单位",
+        meta: { source: "lesson", errorType: "公式含义混淆", tags: ["电场", "公式辨析"], confidence: 2, timeSpentMinutes: 18 },
+      },
+      {
+        id: "sample_review_physics_electric_1",
+        daysAgo: 4,
+        subject: "physics",
+        nodeLabel: "电场",
+        stars: 2,
+        painPoint: "复习时能写出$\\Phi$，但容易把夹角取反。",
+        originalQuestion: "复习题：同一电场中，平面旋转后$\\Phi$如何变化？",
+        routine: "第一步：标出平面法线\n第二步：找法线和电场的夹角\n第三步：代入余弦判断变大还是变小",
+        meta: { source: "review", reviewResult: "看提示做对", stuckStep: "夹角对象判断不稳", keyInsight: "电通量看法线，不看平面本身", tags: ["复习", "电通量"], confidence: 3, timeSpentMinutes: 12 },
+      },
+      {
+        id: "sample_quiz_math_function_1",
+        daysAgo: 2,
+        subject: "math",
+        nodeLabel: "函数",
+        stars: 2,
+        painPoint: "看到$f(x+a)$时会忘记先整体替换$x$。",
+        originalQuestion: "已知$f(x)=x^2-2x$，求$f(x+1)-f(x)$。",
+        routine: "第一步：把$x+1$整体代入\n第二步：展开后再合并同类项",
+        meta: { source: "quiz", reviewResult: "小测部分做对", errorType: "代换顺序不稳", tags: ["函数代换"], confidence: 3, timeSpentMinutes: 9 },
+      },
+      {
+        id: "sample_lesson_math_derivative_1",
+        daysAgo: 6,
+        subject: "math",
+        nodeLabel: "导数",
+        stars: 1,
+        painPoint: "导数符号和单调区间对应关系不够熟。",
+        originalQuestion: "讨论函数$f(x)=x^3-3x$的单调区间。",
+        routine: "第一步：求$f'(x)$\n第二步：解$f'(x)>0$和$f'(x)<0$\n第三步：按区间写结论",
+        meta: { source: "lesson", errorType: "符号区间", tags: ["导数", "单调性"], confidence: 2, timeSpentMinutes: 16 },
+      },
+      {
+        id: "sample_review_chem_equilibrium_1",
+        daysAgo: 3,
+        subject: "chemistry",
+        nodeLabel: "化学平衡",
+        stars: 2,
+        painPoint: "压强变化时会漏看气体系数和。",
+        originalQuestion: "恒温下改变压强，判断$N_2+3H_2\\rightleftharpoons2NH_3$平衡移动方向。",
+        routine: "第一步：只比较气体系数和\n第二步：增压向气体系数小的一侧移动",
+        meta: { source: "review", reviewResult: "基本掌握", stuckStep: "气体系数比较慢", tags: ["化学平衡"], confidence: 3, timeSpentMinutes: 11 },
+      },
+      {
+        id: "sample_lesson_chem_redox_1",
+        daysAgo: 1,
+        subject: "chemistry",
+        nodeLabel: "氧化还原反应",
+        stars: 3,
+        painPoint: "这次能稳定用化合价升降判断氧化剂。",
+        originalQuestion: "判断反应中氧化剂和还原剂。",
+        routine: "第一步：标化合价\n第二步：升失氧化，降得还原\n第三步：回到物质名称作答",
+        meta: { source: "lesson", keyInsight: "先标价再判断，不凭感觉", tags: ["氧化还原"], confidence: 4, timeSpentMinutes: 10 },
+      },
+      {
+        id: "sample_quiz_physics_kinematics_1",
+        daysAgo: 0,
+        subject: "physics",
+        nodeLabel: "运动学",
+        stars: 2,
+        painPoint: "追及题没有先统一正方向。",
+        originalQuestion: "甲乙同向运动，已知$v_0$和$a$，求相遇时间。",
+        routine: "第一步：统一正方向\n第二步：分别写位移表达式\n第三步：令位移差等于初始距离",
+        meta: { source: "quiz", reviewResult: "独立做对一半", errorType: "建模慢", tags: ["追及相遇"], confidence: 3, timeSpentMinutes: 14 },
+      },
+    ];
+
+    return rows.map((row) => {
+      const node = sampleNode(row.subject, row.nodeLabel);
+      return {
+        log: {
+          id: row.id,
+          date: sampleDate(row.daysAgo),
+          subject: row.subject,
+          nodeId: node.id,
+          nodeLabel: node.label,
+          questionsCompleted: 1,
+          stars: row.stars,
+          painPoint: row.painPoint,
+          originalQuestion: row.originalQuestion,
+          routine: row.routine,
+        },
+        meta: row.meta,
+      };
+    });
+  }
+
+  function sampleCardCount() {
+    return readStudyLogs().filter((log) => String(log.id || "").startsWith("sample_")).length;
+  }
+
+  function clearSampleCards() {
+    const sampleIds = new Set(readStudyLogs().filter((log) => String(log.id || "").startsWith("sample_")).map((log) => log.id));
+    writeStudyLogs(readStudyLogs().filter((log) => !sampleIds.has(log.id)));
+    const meta = readStudyCardMeta();
+    sampleIds.forEach((id) => delete meta[id]);
+    writeStudyCardMeta(meta);
+    window.MochiCards?.refresh?.();
+    checkAndGrantAchievements();
+  }
+
+  function importSampleCards() {
+    clearSampleCards();
+    const samples = buildSampleCards();
+    writeStudyLogs([...samples.map((item) => item.log), ...readStudyLogs()]);
+    samples.forEach((item) => setStudyCardMeta(item.log.id, item.meta));
+    const farmState = window.MochiFarm?.readState?.() || {};
+    farmState.plots = farmState.plots || {};
+    ["math", "physics", "chemistry"].forEach((subject) => {
+      const count = samples.filter((item) => item.log.subject === subject).length;
+      farmState.plots[subject] = farmState.plots[subject] || {};
+      farmState.plots[subject].recordCount = Math.max(Number(farmState.plots[subject].recordCount || 0), count);
+    });
+    farmState.xp = Math.max(Number(farmState.xp || 0), samples.length * 3);
+    window.MochiFarm?.saveState?.(farmState);
+    checkAndGrantAchievements();
+    window.MochiCards?.refresh?.();
+    refreshVisibleRoute();
+    renderDebugPanel();
+  }
+
+  function renderAdminSampleDataSection() {
+    return `
+      <section class="admin-section">
+        <h3>默认测试卡片</h3>
+        <p class="muted admin-help">一键导入学习、复习、小测三类样例卡片，包含多科目、多星级和公式文本，方便新版本直接检查首页、学习档案和复习队列排版。</p>
+        <div class="admin-row">
+          <span>当前样例卡片：<strong>${sampleCardCount()}</strong> 张</span>
+        </div>
+        <div class="admin-row-actions">
+          <button class="btn btn-primary btn-sm" data-admin-action="import-sample-cards" type="button">导入/刷新测试卡片</button>
+          <button class="btn btn-soft btn-sm" data-admin-action="clear-sample-cards" type="button">清除测试卡片</button>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderAdminDataSection() {
+    const farmState = window.MochiFarm?.readState?.() || {};
+    const plots = farmState.plots || {};
+    const achState = loadAchievementState();
+    return `
+      <section class="admin-section">
+        <h3>数据调整</h3>
+        <p class="muted admin-help">用于版本更新或数据迁移后手动补齐数据，保存后立即生效。</p>
+
+        <p style="font-size:12px;font-weight:600;margin:12px 0 4px;color:var(--muted)">农场进度</p>
+        <div class="admin-row">
+          <label>数学 recordCount</label>
+          <input type="number" min="0" class="admin-input admin-input-sm" id="adj-math-rc" value="${Number(plots.math?.recordCount || 0)}" />
+        </div>
+        <div class="admin-row">
+          <label>物理 recordCount</label>
+          <input type="number" min="0" class="admin-input admin-input-sm" id="adj-physics-rc" value="${Number(plots.physics?.recordCount || 0)}" />
+        </div>
+        <div class="admin-row">
+          <label>化学 recordCount</label>
+          <input type="number" min="0" class="admin-input admin-input-sm" id="adj-chemistry-rc" value="${Number(plots.chemistry?.recordCount || 0)}" />
+        </div>
+        <div class="admin-row">
+          <label>totalHarvests（总收获次数）</label>
+          <input type="number" min="0" class="admin-input admin-input-sm" id="adj-total-harvests" value="${Number(farmState.totalHarvests || 0)}" />
+        </div>
+        <div class="admin-row">
+          <label>农场 XP</label>
+          <input type="number" min="0" class="admin-input admin-input-sm" id="adj-farm-xp" value="${Number(farmState.xp || 0)}" />
+        </div>
+
+        <p style="font-size:12px;font-weight:600;margin:12px 0 4px;color:var(--muted)">勋章 / 抽奖</p>
+        <div class="admin-row">
+          <label>totalSmall（累计小勋章）</label>
+          <input type="number" min="0" class="admin-input admin-input-sm" id="adj-total-small" value="${Number(achState.totalSmall || 0)}" />
+        </div>
+        <div class="admin-row">
+          <label>totalBig（累计大勋章）</label>
+          <input type="number" min="0" class="admin-input admin-input-sm" id="adj-total-big" value="${Number(achState.totalBig || 0)}" />
+        </div>
+        <div class="admin-row">
+          <label>lotteryTickets（可用抽奖次数）</label>
+          <input type="number" min="0" class="admin-input admin-input-sm" id="adj-lottery-tickets" value="${Number(achState.lotteryTickets || 0)}" />
+        </div>
+        <div class="admin-row">
+          <label>usedLotteryCount（已用抽奖次数）</label>
+          <input type="number" min="0" class="admin-input admin-input-sm" id="adj-used-lottery" value="${Number(achState.usedLotteryCount || 0)}" />
+        </div>
+
+        <p style="font-size:12px;font-weight:600;margin:12px 0 4px;color:var(--muted)">补录专注记录</p>
+        <div class="admin-row">
+          <label>日期</label>
+          <input type="date" class="admin-input admin-input-sm" id="adj-focus-date" value="${todayKey()}" />
+        </div>
+        <div class="admin-row">
+          <label>专注分钟数</label>
+          <input type="number" min="1" class="admin-input admin-input-sm" id="adj-focus-mins" value="25" />
+        </div>
+
+        <div style="margin-top:12px">
+          <button class="btn btn-primary" data-admin-action="save-data-adjust">保存数据调整</button>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderAdminPasswordSection() {
+    return `
+      <section class="admin-section">
+        <h3>修改管理员密码</h3>
+        <div class="admin-row">
+          <input type="password" id="admin-new-pwd" class="admin-input" placeholder="新密码（留空不修改）" autocomplete="new-password" />
+        </div>
+        <button class="btn btn-soft btn-sm" data-admin-action="save-password" type="button">保存密码</button>
+      </section>
+    `;
+  }
+
+  function adminStartSeason(overlay) {
+    const name = overlay.querySelector("#admin-season-name")?.value?.trim();
+    const endDate = overlay.querySelector("#admin-season-end")?.value;
+    if (!name || !endDate) {
+      alert("请填写赛季名称和结束日期");
+      return;
+    }
+    const startDate = todayKey();
+    if (endDate < startDate) {
+      alert("结束日期不能早于今天");
+      return;
+    }
+    const newSeason = {
+      id: nextSeasonId(null, loadSeasonArchives()),
+      name,
+      startDate,
+      endDate,
+      status: "active",
+    };
+    saveCurrentSeason(newSeason);
+    const achState = loadAchievementState();
+    const availableTickets = Number(achState.lotteryTickets || 0);
+    const usedTickets = Number(achState.usedLotteryCount || 0);
+    achState.small = {};
+    achState.big = {};
+    achState.totalSmall = 0;
+    achState.totalBig = 0;
+    achState.recentNew = { small: {}, big: {} };
+    achState.carriedLotteryDraws = availableTickets + usedTickets;
+    achState.lotteryTickets = availableTickets;
+    saveAchievementState(achState);
+    refreshAdminPanel(overlay);
+    toast(`赛季「${name}」已开启`);
+  }
+
+  function adminEndSeason(overlay) {
+    if (!confirm("确认结束当前赛季？将生成赛季存档。")) return;
+    const current = loadCurrentSeason();
+    if (!current) return;
+    const ended = { ...current, status: "ended", endDate: todayKey() };
+    const snapshot = buildSeasonSnapshot(ended);
+    const archives = loadSeasonArchives().filter((season) => season.id !== ended.id);
+    archives.unshift({ ...ended, snapshot });
+    saveSeasonArchives(archives);
+    saveCurrentSeason(null);
+    refreshAdminPanel(overlay);
+    toast("赛季已结束，存档已保存");
+  }
+
+  function saveAdminAchievementConfig(overlay) {
+    const cfg = loadAchievementConfig();
+    overlay.querySelectorAll("[data-admin-achievement-key]").forEach((input) => {
+      setByPath(cfg, input.dataset.adminAchievementKey, Math.max(1, Number(input.value || 1)));
+    });
+    saveAchievementConfig(cfg);
+    const earned = calcAchievements();
+    const state = loadAchievementState();
+    state.small = { ...earned.small };
+    state.big = { ...earned.big };
+    state.totalSmall = Object.values(earned.small).reduce((sum, value) => sum + Number(value || 0), 0);
+    state.totalBig = Object.values(earned.big).reduce((sum, value) => sum + Number(value || 0), 0);
+    state.recentNew = { small: {}, big: {} };
+    recalcLotteryTickets(state, cfg);
+    saveAchievementState(state);
+    refreshVisibleRoute();
+    toast("勋章参数已保存");
+  }
+
+  function saveAdminTitleConfig(overlay) {
+    const values = [...overlay.querySelectorAll("[data-admin-title-index]")]
+      .sort((a, b) => Number(a.dataset.adminTitleIndex) - Number(b.dataset.adminTitleIndex))
+      .map((input) => Math.max(0, Number(input.value || 0)));
+    GAME_CONFIG.season.titleThresholds = values.slice(0, SEASON_TITLES.length);
+    saveGameConfig();
+    refreshVisibleRoute();
+    toast("称号阈值已保存");
+  }
+
+  function lotteryColorForType(type) {
+    if (type === "bigReward") return "#e07020";
+    if (type === "punish") return "#9c27b0";
+    return "#f5c518";
+  }
+
+  function collectAdminLotteryItems(overlay) {
+    return [...overlay.querySelectorAll(".admin-lottery-item")]
+      .map((row, index) => {
+        const label = row.querySelector('[data-field="label"]')?.value?.trim();
+        const type = row.querySelector('[data-field="type"]')?.value || "reward";
+        const weight = Math.max(1, Number(row.querySelector('[data-field="weight"]')?.value || 10));
+        return label ? { id: index + 1, label, type, weight, color: lotteryColorForType(type) } : null;
+      })
+      .filter(Boolean);
+  }
+
+  function saveAdminLotteryConfig(overlay) {
+    const items = collectAdminLotteryItems(overlay);
+    if (!items.length) {
+      alert("至少保留一个转盘项目");
+      return;
+    }
+    localStorage.setItem("lottery_config", JSON.stringify({ items }));
+    refreshVisibleRoute();
+    toast("转盘内容已保存");
+  }
+
+  function markYearWeekendsAsHolidays() {
+    const year = adminCalendarCursor.getFullYear();
+    const cursor = new Date(year, 0, 1, 12, 0, 0, 0);
+    while (cursor.getFullYear() === year) {
+      const day = cursor.getDay();
+      if (day === 0 || day === 6) addHolidayDate(dateKeyFromDate(cursor));
+      cursor.setDate(cursor.getDate() + 1);
+    }
+  }
+
+  function importHolidayDates(overlay) {
+    const text = overlay.querySelector("#admin-holiday-import")?.value || "";
+    const dates = text.match(/\d{4}-\d{2}-\d{2}/g) || [];
+    dates.forEach(addHolidayDate);
+    return dates.length;
+  }
+
+  function bindAdminPanel(overlay) {
+    overlay.addEventListener("click", (event) => {
+      const actionEl = event.target.closest("[data-admin-action]");
+      if (!actionEl) return;
+      const action = actionEl.dataset.adminAction;
+      if (action === "close-admin") {
+        overlay.remove();
+        return;
+      }
+      if (action === "start-season") {
+        adminStartSeason(overlay);
+        return;
+      }
+      if (action === "end-season") {
+        adminEndSeason(overlay);
+        return;
+      }
+      if (action === "save-achievement-cfg") {
+        saveAdminAchievementConfig(overlay);
+        return;
+      }
+      if (action === "save-title-cfg") {
+        saveAdminTitleConfig(overlay);
+        return;
+      }
+      if (action === "add-lottery-item") {
+        const list = overlay.querySelector("#admin-lottery-items");
+        if (list) list.insertAdjacentHTML("beforeend", renderAdminLotteryItem({ label: "", type: "reward", weight: 10 }, list.children.length));
+        return;
+      }
+      if (action === "remove-lottery-item") {
+        actionEl.closest(".admin-lottery-item")?.remove();
+        return;
+      }
+      if (action === "save-lottery-cfg") {
+        saveAdminLotteryConfig(overlay);
+        return;
+      }
+      if (action === "toggle-holiday") {
+        const date = actionEl.dataset.date;
+        if (loadHolidayDates().includes(date)) removeHolidayDate(date);
+        else addHolidayDate(date);
+        refreshAdminPanel(overlay);
+        return;
+      }
+      if (action === "mark-weekends") {
+        markYearWeekendsAsHolidays();
+        refreshAdminPanel(overlay);
+        toast("已标记本年周六日为放假日");
+        return;
+      }
+      if (action === "clear-holidays") {
+        if (!confirm("确认清空所有放假日设置吗？")) return;
+        saveHolidays([]);
+        refreshAdminPanel(overlay);
+        toast("放假日已清空");
+        return;
+      }
+      if (action === "import-holidays") {
+        const count = importHolidayDates(overlay);
+        refreshAdminPanel(overlay);
+        toast(count ? `已导入 ${count} 个日期` : "没有识别到日期");
+        return;
+      }
+      if (action === "prev-month" || action === "next-month") {
+        adminCalendarCursor.setMonth(adminCalendarCursor.getMonth() + (action === "next-month" ? 1 : -1));
+        refreshAdminPanel(overlay);
+        return;
+      }
+      if (action === "save-data-adjust") {
+        saveAdminDataAdjust(overlay);
+        return;
+      }
+      if (action === "import-sample-cards") {
+        importSampleCards();
+        refreshAdminPanel(overlay);
+        toast("默认测试卡片已导入");
+        return;
+      }
+      if (action === "clear-sample-cards") {
+        clearSampleCards();
+        refreshAdminPanel(overlay);
+        refreshVisibleRoute();
+        toast("测试卡片已清除");
+        return;
+      }
+      if (action === "save-password") {
+        const pwd = overlay.querySelector("#admin-new-pwd")?.value?.trim();
+        if (!pwd) {
+          toast("密码未修改");
+          return;
+        }
+        localStorage.setItem("admin_password", pwd);
+        overlay.querySelector("#admin-new-pwd").value = "";
+        toast("管理员密码已保存");
+      }
+    });
+  }
+
+  function saveAdminDataAdjust(overlay) {
+    const farmState = window.MochiFarm?.readState?.() || {};
+    const plots = farmState.plots || {};
+
+    plots.math = plots.math || {};
+    plots.math.recordCount = Math.max(0, Number(overlay.querySelector("#adj-math-rc")?.value || 0));
+    plots.physics = plots.physics || {};
+    plots.physics.recordCount = Math.max(0, Number(overlay.querySelector("#adj-physics-rc")?.value || 0));
+    plots.chemistry = plots.chemistry || {};
+    plots.chemistry.recordCount = Math.max(0, Number(overlay.querySelector("#adj-chemistry-rc")?.value || 0));
+    farmState.totalHarvests = Math.max(0, Number(overlay.querySelector("#adj-total-harvests")?.value || 0));
+    farmState.xp = Math.max(0, Number(overlay.querySelector("#adj-farm-xp")?.value || 0));
+    farmState.plots = plots;
+    window.MochiFarm?.saveState?.(farmState);
+
+    const achState = loadAchievementState();
+    achState.totalSmall = Math.max(0, Number(overlay.querySelector("#adj-total-small")?.value || 0));
+    achState.totalBig = Math.max(0, Number(overlay.querySelector("#adj-total-big")?.value || 0));
+    achState.lotteryTickets = Math.max(0, Number(overlay.querySelector("#adj-lottery-tickets")?.value || 0));
+    achState.usedLotteryCount = Math.max(0, Number(overlay.querySelector("#adj-used-lottery")?.value || 0));
+    saveAchievementState(achState);
+
+    const focusDate = overlay.querySelector("#adj-focus-date")?.value;
+    const focusMins = Math.max(1, Number(overlay.querySelector("#adj-focus-mins")?.value || 0));
+    if (focusDate && focusMins > 0) {
+      const focusLogs = readFocusLogs();
+      focusLogs.push({
+        id: `manual_focus_${Date.now()}`,
+        type: "focus",
+        date: focusDate,
+        duration: focusMins,
+        completed: true,
+      });
+      localStorage.setItem("focus_log", JSON.stringify(focusLogs));
+    }
+
+    refreshAdminPanel(overlay);
+    refreshVisibleRoute();
+    toast("数据已保存");
   }
 
   function renderSettings(container) {
@@ -448,6 +2867,7 @@
     const mode = holidayMode();
     const focusEndSound = localStorage.getItem("focus_end_sound") || "soft";
     const restReminderSound = localStorage.getItem("rest_reminder_sound") || "melody";
+    const readingPreferences = readReadingPreferences();
     container.innerHTML = `
       <div class="page-head">
         <div>
@@ -456,6 +2876,32 @@
         </div>
       </div>
       <div class="grid schedule-grid">
+        <section class="card settings-section">
+          <h3>阅读外观</h3>
+          <div class="settings-row">
+            <div>
+              <strong>复习 / 学习档案字体</strong>
+              <p class="muted" style="font-size:13px;margin-top:2px">换复习队列、学习档案、卡片原题和复习材料里的阅读字体。</p>
+            </div>
+            <select id="reading-font-select" class="settings-select settings-select-wide" aria-label="复习和学习档案字体">
+              ${readingOptionTags(READING_FONT_OPTIONS, readingPreferences.font.value)}
+            </select>
+          </div>
+          <div class="settings-row">
+            <div>
+              <strong>阅读字号</strong>
+              <p class="muted" style="font-size:13px;margin-top:2px">只放大复习和学习档案里的正文，不影响导航和按钮布局。</p>
+            </div>
+            <select id="reading-size-select" class="settings-select settings-select-wide" aria-label="复习和学习档案字号">
+              ${readingOptionTags(READING_SIZE_OPTIONS, readingPreferences.size.value)}
+            </select>
+          </div>
+          <div class="settings-reading-preview" data-reading-preview>
+            <strong data-reading-current>${escapeHtml(readingPreferences.font.label)} · ${escapeHtml(readingPreferences.size.label)}</strong>
+            <p>例：函数图像的平移、受力分析、离子方程式。原题和卡点要一眼看清，字要圆一点、稳一点，也要够大。</p>
+            <p class="muted" data-reading-hint style="margin-top:6px">${escapeHtml(readingPreferences.font.hint)}</p>
+          </div>
+        </section>
         <section class="card settings-section">
           <h3>提醒设置</h3>
           <div class="settings-row">
@@ -508,7 +2954,7 @@
         </section>
         <section class="card">
           <h3>数据备份与恢复</h3>
-          <p class="muted">备份会打包当前浏览器里保存的全部 MochiStudy 数据。恢复会覆盖当前数据。</p>
+          <p class="muted">备份会打包当前浏览器里保存的全部 Mochii 数据。恢复会覆盖当前数据。</p>
           <div class="settings-list" style="margin-top:18px">
             <button class="btn btn-outline" data-action="export-data"><span class="material-symbols-outlined">download</span>导出备份</button>
             <label class="btn btn-outline" style="cursor:pointer"><span class="material-symbols-outlined">upload</span>导入恢复<input id="backup-import" type="file" accept="application/json" hidden /></label>
@@ -527,7 +2973,7 @@
               <span class="material-symbols-outlined">delete_forever</span>
               恢复出厂设置
             </button>
-            <p class="field-hint">删除当前浏览器里 MochiStudy 的全部已知数据和设置，适合彻底重来。</p>
+            <p class="field-hint">删除当前浏览器里 Mochii 的全部已知数据和设置，适合彻底重来。</p>
           </div>
         </section>
         <section class="card" style="grid-column:1 / -1">
@@ -562,106 +3008,134 @@
         </section>
         <section class="card">
           <h3>关于</h3>
-          <p class="muted">MochiStudy v3.0 · 原生 HTML/CSS/JavaScript · 粘贴学习记录驱动档案、农场和日历。</p>
+          <p class="muted">Mochii v3.0 · 原生 HTML/CSS/JavaScript · 粘贴学习记录驱动档案、农场和日历。</p>
         </section>
       </div>
     `;
+    updateReadingPreview(container);
   }
 
   function renderAchievements(container) {
-    const all = getUnlockedAchievements();
-    const groups = [...new Set(ACHIEVEMENT_DEFS.map((achievement) => achievement.group))];
-    const unlockedCount = all.filter((achievement) => achievement.unlocked).length;
-    const recentUnlocked = all.filter((achievement) => achievement.unlocked).slice(0, 3);
-    const recentHtml = recentUnlocked.length > 0 ? `
-      <section class="card recent-unlocked">
-        <h3 style="margin-bottom:12px">已解锁</h3>
-        <div class="recent-badges">
-          ${recentUnlocked.map((achievement) => `
-            <div class="recent-badge">
-              <div class="achievement-icon" style="background:${achievement.color || achievement.currentTier?.color || "#e7e2d9"}">${achievement.icon || achievement.currentTier?.icon || "🏅"}</div>
-              <span>${escapeHtml(achievement.label || achievement.currentTier?.label || achievement.group)}</span>
-            </div>
-          `).join("")}
-        </div>
-      </section>
-    ` : "";
+    checkAndGrantAchievements();
+    const state = recalcLotteryTickets(loadAchievementState());
+    saveAchievementState(state);
+    const cfg = loadAchievementConfig();
+    const earned = calcAchievements();
+
     container.innerHTML = `
       <div class="page-head">
         <div>
-          <h2>勋章墙</h2>
-          <p class="muted">已解锁 ${unlockedCount} / ${all.length} 个勋章</p>
+          <h2>勋章收藏</h2>
+          <p>勋章会按累计阈值重复获得，自动换成抽奖机会。</p>
         </div>
       </div>
-      ${recentHtml}
-      <div class="achievements-grid">
-        ${groups.map((group) => {
-          const groupItems = all.filter((achievement) => achievement.group === group);
-          const unlocked = groupItems.filter((achievement) => achievement.unlocked || achievement.currentLevel > 0);
-          const locked = groupItems.filter((achievement) => !achievement.unlocked && achievement.currentLevel === 0);
-          const sorted = [...unlocked, ...locked];
-          return `
-            <section class="card">
-              <h3 style="margin-bottom:16px">${group}</h3>
-              ${sorted.map(renderAchievementItem).join("")}
-            </section>
-          `;
-        }).join("")}
-      </div>
+
+      <section class="card lottery-entry-card">
+        <div class="lottery-entry-inner">
+          <div class="lottery-tickets-display">
+            <span class="lottery-tickets-num">${state.lotteryTickets || 0}</span>
+            <span class="lottery-tickets-label">次抽奖机会</span>
+          </div>
+          <button class="btn btn-primary" data-action="open-lottery" ${(state.lotteryTickets || 0) === 0 ? "disabled" : ""}>
+            <span class="material-symbols-outlined">casino</span>
+            去抽奖
+          </button>
+        </div>
+        <p class="muted lottery-rule-text">
+          每 ${cfg.lottery.smallPerDraw} 个小勋章或 ${cfg.lottery.bigPerDraw} 个大勋章换 1 次抽奖
+        </p>
+      </section>
+
+      <section class="card">
+        <div class="badge-summary">
+          <div class="badge-summary-item">
+            <span class="badge-summary-num">${state.totalBig || 0}</span>
+            <span class="badge-summary-label">大勋章</span>
+          </div>
+          <div class="badge-summary-divider"></div>
+          <div class="badge-summary-item">
+            <span class="badge-summary-num">${state.totalSmall || 0}</span>
+            <span class="badge-summary-label">小勋章</span>
+          </div>
+          <div class="badge-summary-divider"></div>
+          <div class="badge-summary-item">
+            <span class="badge-summary-num">${state.usedLotteryCount || 0}</span>
+            <span class="badge-summary-label">已抽奖</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3 style="margin-bottom:16px">大勋章</h3>
+        <div class="badge-grid">
+          ${renderBadgeItem("big", "nodeRecords", "知识深耕", `每 ${cfg.big.nodeRecords} 条/知识点`, earned.big.nodeRecords, state.recentNew?.big?.nodeRecords || 0, "book_4")}
+          ${renderBadgeItem("big", "totalRecords", "刷题达人", `每累计 ${cfg.big.totalRecords} 条记录`, earned.big.totalRecords, state.recentNew?.big?.totalRecords || 0, "edit_note")}
+          ${renderBadgeItem("big", "focusHours", "专注大师", `每累计 ${cfg.big.focusHours} 小时专注`, earned.big.focusHours, state.recentNew?.big?.focusHours || 0, "timer")}
+          ${renderBadgeItem("big", "farmLevel", "农场传说", `农场每升 ${cfg.big.farmLevelStep} 级`, earned.big.farmLevel, state.recentNew?.big?.farmLevel || 0, "agriculture")}
+          ${renderBadgeItem("big", "studyDays", "长期坚持", `每累计 ${cfg.big.studyDays} 个学习日`, earned.big.studyDays, state.recentNew?.big?.studyDays || 0, "calendar_month")}
+        </div>
+      </section>
+
+      <section class="card">
+        <h3 style="margin-bottom:16px">小勋章</h3>
+        <div class="badge-grid">
+          ${renderBadgeItem("small", "focusHours", "专注时光", `每 ${cfg.small.focusHours} 小时专注`, earned.small.focusHours, state.recentNew?.small?.focusHours || 0, "local_fire_department")}
+          ${renderBadgeItem("small", "studyDays", "坚持打卡", `每 ${cfg.small.studyDays} 个学习日`, earned.small.studyDays, state.recentNew?.small?.studyDays || 0, "check_circle")}
+          ${renderBadgeItem("small", "recordCount", "勤奋记录", `每 ${cfg.small.recordCount} 条记录`, earned.small.recordCount, state.recentNew?.small?.recordCount || 0, "menu_book")}
+          ${renderBadgeItem("small", "balancedWeeks", "均衡发展", `每 ${cfg.small.balancedWeeks} 个三科均衡周`, earned.small.balancedWeeks, state.recentNew?.small?.balancedWeeks || 0, "balance")}
+          ${renderBadgeItem("small", "harvests", "丰收季节", `每收获 ${cfg.small.harvests} 次农场`, earned.small.harvests, state.recentNew?.small?.harvests || 0, "psychiatry")}
+        </div>
+      </section>
+
+      ${renderLotteryHistory()}
     `;
   }
 
-  function renderAchievementItem(achievement) {
-    if (achievement.type === "tiered") {
-      const progressPercent = achievement.nextTier ? Math.min(100, Math.round((achievement.current / achievement.nextTier.target) * 100)) : 100;
+  function renderLotteryHistory() {
+    const history = JSON.parse(localStorage.getItem("lottery_history") || "[]");
+    if (history.length === 0) {
       return `
-        <div class="achievement-item ${achievement.unlocked ? "unlocked unlocked-glow" : "locked"} ${achievement.maxed ? "maxed" : ""}">
-          <div class="achievement-icon" style="background:${achievement.currentTier ? achievement.currentTier.color : "#e7e2d9"}">
-            ${achievement.currentTier ? achievement.currentTier.icon : "🔒"}
-            ${achievement.currentLevel > 0 ? `<span class="achievement-level">Lv.${achievement.currentLevel}</span>` : ""}
-          </div>
-          <div class="achievement-body">
-            <strong>${achievement.currentTier ? achievement.currentTier.label : achievement.group}</strong>
-            ${achievement.maxed ? `
-              <p style="color:#FFD700;font-weight:700;font-size:12px">✦ 已达到最高等级</p>
-            ` : `
-              <p class="muted">下一级：${achievement.nextTier?.desc || ""}</p>
-              <div class="progress" style="margin-top:6px">
-                <span class="bar-primary" style="--value:${progressPercent}%"></span>
-              </div>
-              <span class="muted" style="font-size:11px">${achievement.current} / ${achievement.nextTier?.target || 0}</span>
-            `}
-            ${achievement.currentLevel > 0 && !achievement.maxed ? `
-              <div class="tier-dots">
-                ${Array.from({ length: achievement.totalLevels }, (_, index) => `<span class="tier-dot ${index < achievement.currentLevel ? "filled" : ""}"></span>`).join("")}
-              </div>
-            ` : ""}
-          </div>
-        </div>
+        <section class="card">
+          <h3 style="margin-bottom:12px">抽奖历史</h3>
+          <p class="muted" style="text-align:center;padding:16px 0">暂无抽奖记录</p>
+        </section>
       `;
     }
-    const percent = Math.min(100, Math.round((achievement.current / achievement.target) * 100));
-    return `
-      <div class="achievement-item ${achievement.unlocked ? "unlocked unlocked-glow" : "locked"}">
-        <div class="achievement-icon" style="background:${achievement.unlocked ? achievement.color : "#e7e2d9"}">
-          ${achievement.unlocked ? achievement.icon : "🔒"}
+    const rows = history.map((entry) => {
+      const typeMap = { bigReward: ["大奖", "#e07020"], reward: ["奖励", "#4caf50"], punish: ["任务", "#9c27b0"] };
+      const [typeLabel, typeColor] = typeMap[entry.type] || ["奖励", "#4caf50"];
+      return `
+        <div class="lottery-history-item">
+          <span class="lottery-history-date">${escapeHtml(entry.date || "")}</span>
+          <span class="lottery-history-label" style="color:${typeColor}">${escapeHtml(entry.label || "")}</span>
+          <span class="lottery-history-type" style="background:${typeColor}22;color:${typeColor}">${typeLabel}</span>
         </div>
-        <div class="achievement-body">
-          <strong>${achievement.label}</strong>
-          <p class="muted">${achievement.desc}</p>
-          ${achievement.unlocked ? `
-            <span style="font-size:11px;color:${achievement.color};font-weight:700">✓ 已解锁</span>
-          ` : `
-            <div class="progress" style="margin-top:6px">
-              <span class="bar-primary" style="--value:${percent}%"></span>
-            </div>
-            <span class="muted" style="font-size:11px">${achievement.current} / ${achievement.target}</span>
-          `}
+      `;
+    }).join("");
+    return `
+      <section class="card">
+        <h3 style="margin-bottom:12px">抽奖历史</h3>
+        <div class="lottery-history-list">${rows}</div>
+      </section>
+    `;
+  }
+
+  function renderBadgeItem(type, key, label, desc, totalEarned, newCount, icon) {
+    const pendingCount = Math.max(0, Number(newCount || 0));
+    return `
+      <div class="badge-item ${pendingCount > 0 ? "badge-new" : ""}" data-badge-type="${type}" data-badge-key="${key}">
+        <div class="badge-icon"><span class="material-symbols-outlined">${icon}</span></div>
+        <div class="badge-info">
+          <strong>${label}</strong>
+          <span class="muted">${desc}</span>
+        </div>
+        <div class="badge-count">
+          <span class="badge-total">x${Number(totalEarned || 0)}</span>
+          ${pendingCount > 0 ? `<span class="badge-new-tag">+${pendingCount}</span>` : ""}
         </div>
       </div>
     `;
   }
-
   function modal(html) {
     modalRoot.hidden = false;
     modalRoot.innerHTML = `<section class="modal">${html}</section>`;
@@ -682,6 +3156,7 @@
 
   let _audioCtx = null;
   let _reminderInterval = null;
+  let _wheelCurrentAngleDeg = 0;
   let _reminderCount = 0;
   const REMINDER_MAX = 10;
   const REMINDER_INTERVAL = 30;
@@ -870,6 +3345,7 @@
       showRestReminderOverlay();
       playRestReminderSound();
       _reminderCount += 1;
+      document.addEventListener("click", stopRestReminderOnce, { once: true });
     }, REMINDER_INTERVAL * 1000);
     document.addEventListener("click", stopRestReminderOnce, { once: true });
   }
@@ -889,24 +3365,83 @@
     const match = text.match(/---MOCHI-RECORD-START---([\s\S]*?)---MOCHI-RECORD-END---/);
     if (!match) return null;
     const block = match[1].trim();
-    function extract(key) {
-      const line = block.split(/\r?\n/).find((item) => {
-        const trimmed = item.trim();
-        return trimmed.startsWith(`${key}:`) || trimmed.startsWith(`${key}：`);
-      });
-      return line ? line.replace(new RegExp(`^\\s*${key}[:：]`), "").trim() : "";
-    }
+    const fields = parseRecordFields(block);
+    const extract = (key) => fields[key] || "";
     const nodeLabel = extract("知识点");
     const subject = subjectKeyFromLabel(extract("科目"));
+    const originalQuestion = extract("原题") || "";
     return {
       subject,
       nodeId: nodeIdFromLabel(nodeLabel, subject),
       nodeLabel,
-      questionsCompleted: parseInt(extract("完成题数"), 10) || 1,
+      questionsCompleted: 1,
       stars: Math.max(1, Math.min(3, parseInt(extract("掌握星级"), 10) || 1)),
       painPoint: extract("卡点记录"),
+      originalQuestion,
       routine: extract("今日套路"),
       date: normalizeRecordDate(extract("学习日期")),
+      meta: normalizeCardMeta({
+        source: extract("学习来源"),
+        reviewResult: extract("复习结果"),
+        errorType: extract("错误类型"),
+        stuckStep: extract("卡住步骤"),
+        keyInsight: extract("关键突破"),
+        tags: parseTags(extract("题型标签")),
+        confidence: extract("信心分"),
+        timeSpentMinutes: extract("耗时分钟"),
+        sourceRecordIds: parseTags(extract("关联记录")),
+      }),
+    };
+  }
+
+  function parseRecordFields(block) {
+    const fields = {};
+    let activeKey = "";
+    block.split(/\r?\n/).forEach((line) => {
+      const trimmed = line.trim();
+      const matchedKey = MOCHI_RECORD_FIELDS.find((key) => trimmed.startsWith(`${key}:`) || trimmed.startsWith(`${key}：`));
+      if (matchedKey) {
+        activeKey = matchedKey;
+        fields[activeKey] = trimmed.replace(new RegExp(`^${matchedKey}[:：]`), "").trim();
+        return;
+      }
+      if (activeKey && trimmed) {
+        fields[activeKey] = `${fields[activeKey] ? `${fields[activeKey]}\n` : ""}${trimmed}`;
+      }
+    });
+    return fields;
+  }
+
+  function parseTags(value) {
+    return String(value || "")
+      .split(/[,，、\n]/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  function normalizeSource(value) {
+    const text = String(value || "").trim().toLowerCase();
+    if (!text) return "lesson";
+    if (["lesson", "new", "新题", "新题讲解"].some((item) => text.includes(item))) return "lesson";
+    if (["复习", "复习测验", "复习卡", "review"].some((item) => text.includes(item))) return "review";
+    if (["测验", "小测", "quiz", "test"].some((item) => text.includes(item))) return "quiz";
+    if (["复盘", "阶段复盘", "summary", "archive", "reflection"].some((item) => text.includes(item))) return "reflection";
+    return "lesson";
+  }
+
+  function normalizeCardMeta(meta) {
+    const confidence = Number(meta?.confidence || 0);
+    const timeSpentMinutes = Number(meta?.timeSpentMinutes || 0);
+    return {
+      source: normalizeSource(meta?.source),
+      reviewResult: String(meta?.reviewResult || "").trim(),
+      errorType: String(meta?.errorType || "").trim(),
+      stuckStep: String(meta?.stuckStep || "").trim(),
+      keyInsight: String(meta?.keyInsight || "").trim(),
+      tags: Array.isArray(meta?.tags) ? meta.tags.map((tag) => String(tag).trim()).filter(Boolean) : parseTags(meta?.tags),
+      confidence: confidence > 0 ? Math.max(1, Math.min(5, confidence)) : 0,
+      timeSpentMinutes: timeSpentMinutes > 0 ? Math.round(timeSpentMinutes) : 0,
+      sourceRecordIds: Array.isArray(meta?.sourceRecordIds) ? meta.sourceRecordIds.map((id) => String(id).trim()).filter(Boolean) : parseTags(meta?.sourceRecordIds),
     };
   }
 
@@ -941,8 +3476,11 @@ ${record.routine || "这次记录还没有填写套路，可以下次补充一�
 ## 卡点记录
 ${record.painPoint || "暂无明显卡点，继续保持稳定练习。"}
 
+## 原题
+${record.originalQuestion || "暂无原题描述。"}
+
 ## 完成情况
-完成题数：${record.questionsCompleted}题 · 掌握星级：${stars}
+完成题数：1题 · 掌握星级：${stars}
 `;
   }
 
@@ -957,19 +3495,22 @@ ${record.painPoint || "暂无明显卡点，继续保持稳定练习。"}
       subject: record.subject,
       nodeId: node?.id || record.nodeId,
       nodeLabel: normalizedLabel,
-      questionsCompleted: record.questionsCompleted,
+      questionsCompleted: 1,
       stars: record.stars,
       painPoint: record.painPoint || "",
+      originalQuestion: record.originalQuestion || "",
       routine: record.routine || "",
     };
     logs.unshift(logEntry);
     writeStudyLogs(logs);
+    setStudyCardMeta(logEntry.id, record.meta);
     const pet = window.MochiPet.addReward({
-      xp: record.questionsCompleted * GAME_CONFIG.rewards.petXPPerQuestion,
+      xp: GAME_CONFIG.rewards.petXPPerQuestion,
       studyEnergy: 0,
     });
-    const farm = window.MochiFarm?.addResources?.({ xp: record.questionsCompleted * GAME_CONFIG.rewards.farmXPPerQuestion });
+    const farm = window.MochiFarm?.addResources?.({ xp: GAME_CONFIG.rewards.farmXPPerQuestion });
     window.MochiFarm?.addSubjectRecord?.(record.subject);
+    checkAndGrantAchievements();
     window.MochiCards?.refresh?.();
     const masteredNow = !wasMastered && window.MochiCards?.calcNodeStatus?.(logs, record.subject, normalizedLabel) === "mastered";
     return { cards: { masteredNow }, pet, farm, note: noteFromRecord({ ...record, nodeLabel: normalizedLabel }) };
@@ -980,23 +3521,40 @@ ${record.painPoint || "暂无明显卡点，继续保持稳定练习。"}
     const record = parseMochiRecord(textarea.value);
     result.hidden = false;
     if (!record) {
-      result.innerHTML = `<strong>没有找到 Mochi 记录块</strong><p class="muted">请确认文本里包含 ---MOCHI-RECORD-START--- 和 ---MOCHI-RECORD-END---。</p>`;
+      result.innerHTML = `<strong>没有找到 Mochi 记录块</strong><p class="muted">请把 AI 输出里从 ---MOCHI-RECORD-START--- 到 ---MOCHI-RECORD-END--- 的整段一起粘贴进来；如果少了开头或结尾，MochiStudy 就无法识别。</p>`;
       return;
     }
     const applied = applyMochiRecord(record);
     const subject = window.MochiKnowledge.SUBJECTS[record.subject]?.label || "数学";
     const starIcons = "★".repeat(record.stars) + "☆".repeat(3 - record.stars);
+    const farmState = readJson("farm_state");
+    const plotCount = farmState?.plots?.[record.subject]?.recordCount || 0;
+    const harvestTarget = GAME_CONFIG.farm.harvestTarget || 15;
+    const pct = Math.min(100, Math.round((plotCount / harvestTarget) * 100));
+    const todayCount = getTodayRecordCount();
+    const starMsgMap = ["", "能找到卡点就是进步。", "做到这里就值了。", "完全做对，继续保持。"];
+    const starMsg = starMsgMap[record.stars] || "";
     result.innerHTML = `
       <div class="checkin-success">
         <div class="checkin-success-icon">✓</div>
         <strong class="checkin-title">打卡成功！</strong>
-        <p class="checkin-detail">${subject} · ${record.nodeLabel} · ${record.questionsCompleted}题 · ${starIcons}</p>
-        <p class="checkin-rewards muted">${subject}地块成长中 🌱，已保存学习记录</p>
+        <p class="checkin-detail">${subject} · ${record.nodeLabel} · 1题 · ${starIcons}</p>
+        <p class="checkin-saved-msg">已保存到学习档案，可以继续粘贴下一条。</p>
+        ${starMsg ? `<p class="checkin-star-msg">${starMsg}</p>` : ""}
+        <div class="checkin-farm-bar">
+          <div class="checkin-farm-track"><div class="checkin-farm-fill" style="width:${pct}%"></div></div>
+          <span class="checkin-farm-label">${subject}地块 ${plotCount}/${harvestTarget}</span>
+        </div>
+        ${todayCount >= 2 ? `<span class="checkin-today">今天已打卡 ${todayCount} 次</span>` : ""}
       </div>
     `;
+    sparkle(result, "★");
     textarea.value = "";
     window.MochiPet.renderMiniState();
-    if (!document.body.classList.contains("focus-mode")) window.MochiFarm?.refreshFarmSummary?.();
+    if (!document.body.classList.contains("focus-mode")) {
+      window.MochiFarm?.refreshFarmSummary?.();
+      refreshVisibleRoute();
+    }
     window.MochiCards?.refresh?.();
     toast(`${subject}地块成长中 🌱，已保存学习记录`);
     if (applied.cards.masteredNow) toast(`${record.nodeLabel} 已收进掌握档案！`);
@@ -1055,10 +3613,6 @@ ${record.painPoint || "暂无明显卡点，继续保持稳定练习。"}
             <button class="btn btn-primary focus-rest-btn" data-action="confirm-rest" type="button">
               <span class="material-symbols-outlined">self_improvement</span>
               开始休息 ${restMins} 分钟
-            </button>
-            <button class="btn btn-soft" data-action="keep-focusing" type="button">
-              <span class="material-symbols-outlined">bolt</span>
-              状态好，继续专注
             </button>
             <button class="btn btn-ghost btn-sm" data-action="end-today" type="button" style="color:rgba(255,255,255,0.35);margin-top:4px">
               结束今天的学习
@@ -1136,10 +3690,6 @@ ${record.painPoint || "暂无明显卡点，继续保持稳定练习。"}
       }
       if (action === "confirm-rest") {
         window.MochiTimer?.confirmRest?.();
-        return;
-      }
-      if (action === "keep-focusing") {
-        window.MochiTimer?.keepFocusing?.();
         return;
       }
       if (action === "end-today") {
@@ -1231,7 +3781,10 @@ ${record.painPoint || "暂无明显卡点，继续保持稳定练习。"}
   }
 
   function createBackupPayload() {
-    const achievements = getUnlockedAchievements();
+    const achievements = {
+      earned: calcAchievements(),
+      state: loadAchievementState(),
+    };
     const petState = readStorageJson("mochi_state", {});
     const raw = rawLocalStorageSnapshot();
     return {
@@ -1241,14 +3794,22 @@ ${record.painPoint || "暂无明显卡点，继续保持稳定练习。"}
         study_log: readStorageJson(STUDY_LOG_KEY, []),
         farm_state: readStorageJson("farm_state", {}),
         pet_state: petState,
-        achievements: {
-          unlocked: achievements,
-        },
+        achievements,
         calendar_state: {
           focus_log: readStorageJson("focus_log", []),
           school_holidays: readStorageJson(HOLIDAYS_KEY, DEFAULT_HOLIDAYS),
           holiday_mode_override: readStorageJson(HOLIDAY_MODE_KEY, { mode: "auto" }),
         },
+        achievement_state: readStorageJson("achievement_state", {}),
+        achievement_config: readStorageJson("achievement_config", {}),
+        lottery_config: readStorageJson("lottery_config", {}),
+        lottery_history: readStorageJson("lottery_history", []),
+        current_season: readStorageJson(CURRENT_SEASON_KEY, null),
+        season_archives: readStorageJson(SEASON_ARCHIVES_KEY, []),
+        card_order: readStorageJson(CARD_ORDER_KEY, {}),
+        study_card_meta: readStorageJson(CARD_META_KEY, {}),
+        study_node_summary: readStorageJson(NODE_SUMMARY_KEY, {}),
+        game_config: readStorageJson("game_config", {}),
         localStorage: raw,
       },
     };
@@ -1269,7 +3830,10 @@ ${record.painPoint || "暂无明显卡点，继续保持稳定练习。"}
   function validateBackupPayload(payload) {
     if (!payload || typeof payload !== "object") return "备份文件格式不正确";
     if (!payload.version) return "备份文件缺少 version 字段";
-    if (payload.version !== BACKUP_VERSION) return `备份版本 ${payload.version} 暂不兼容，当前支持 ${BACKUP_VERSION}`;
+    // Accept any 1.x backup — the raw localStorage snapshot makes them fully compatible.
+    // Only reject major version changes (2.0+) which indicate a truly breaking format.
+    const majorVersion = String(payload.version).split(".")[0];
+    if (majorVersion !== "1") return `备份版本 ${payload.version} 不兼容，当前支持版本 1.x`;
     if (!payload.data || typeof payload.data !== "object") return "备份文件缺少 data 字段";
     return "";
   }
@@ -1282,6 +3846,52 @@ ${record.painPoint || "暂无明显卡点，继续保持稳定练习。"}
     localStorage.setItem("focus_log", JSON.stringify(Array.isArray(calendar.focus_log) ? calendar.focus_log : []));
     localStorage.setItem(HOLIDAYS_KEY, JSON.stringify(calendar.school_holidays || DEFAULT_HOLIDAYS));
     localStorage.setItem(HOLIDAY_MODE_KEY, JSON.stringify(calendar.holiday_mode_override || { mode: "auto" }));
+    if (data.achievement_state && typeof data.achievement_state === "object") {
+      localStorage.setItem("achievement_state", JSON.stringify(data.achievement_state));
+    }
+    if (data.achievement_config && typeof data.achievement_config === "object") {
+      localStorage.setItem("achievement_config", JSON.stringify(data.achievement_config));
+    }
+    if (data.lottery_config && typeof data.lottery_config === "object") {
+      localStorage.setItem("lottery_config", JSON.stringify(data.lottery_config));
+    }
+    if (Array.isArray(data.lottery_history)) {
+      localStorage.setItem("lottery_history", JSON.stringify(data.lottery_history));
+    }
+    if (data.current_season && typeof data.current_season === "object") {
+      localStorage.setItem(CURRENT_SEASON_KEY, JSON.stringify(data.current_season));
+    }
+    if (Array.isArray(data.season_archives)) {
+      localStorage.setItem(SEASON_ARCHIVES_KEY, JSON.stringify(data.season_archives));
+    }
+    if (data.card_order && typeof data.card_order === "object" && !Array.isArray(data.card_order)) {
+      localStorage.setItem(CARD_ORDER_KEY, JSON.stringify(data.card_order));
+    }
+    if (data.study_card_meta && typeof data.study_card_meta === "object" && !Array.isArray(data.study_card_meta)) {
+      localStorage.setItem(CARD_META_KEY, JSON.stringify(data.study_card_meta));
+    }
+    if (data.study_node_summary && typeof data.study_node_summary === "object" && !Array.isArray(data.study_node_summary)) {
+      localStorage.setItem(NODE_SUMMARY_KEY, JSON.stringify(data.study_node_summary));
+    }
+    if (data.game_config && typeof data.game_config === "object") {
+      localStorage.setItem("game_config", JSON.stringify(data.game_config));
+    }
+    // Settings that were added after the initial backup format but before data.localStorage was introduced.
+    if (data.api_config && typeof data.api_config === "object") {
+      localStorage.setItem("api_config", JSON.stringify(data.api_config));
+    }
+    if (typeof data.admin_password === "string") {
+      localStorage.setItem("admin_password", data.admin_password);
+    }
+    if (typeof data.sound_reminder_enabled === "string") {
+      localStorage.setItem("sound_reminder_enabled", data.sound_reminder_enabled);
+    }
+    if (typeof data.focus_end_sound === "string") {
+      localStorage.setItem("focus_end_sound", data.focus_end_sound);
+    }
+    if (typeof data.rest_reminder_sound === "string") {
+      localStorage.setItem("rest_reminder_sound", data.rest_reminder_sound);
+    }
   }
 
   function restoreBackupPayload(payload) {
@@ -1319,7 +3929,7 @@ ${record.painPoint || "暂无明显卡点，继续保持稳定练习。"}
   }
 
   function progressDataKeys() {
-    const fixed = [STUDY_LOG_KEY, "focus_log", "farm_state", "mochi_state", "mochi_study_points", "mochi_hearts", "daily_task_settings"];
+    const fixed = [STUDY_LOG_KEY, "focus_log", "farm_state", "mochi_state", "achievement_state", CURRENT_SEASON_KEY, CARD_ORDER_KEY, CARD_META_KEY, NODE_SUMMARY_KEY, "mochi_study_points", "mochi_hearts", "daily_task_settings"];
     const dynamic = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
       .filter((key) => key && key.startsWith("daily_tasks_"));
     return [...new Set([...fixed, ...dynamic])];
@@ -1333,14 +3943,14 @@ ${record.painPoint || "暂无明显卡点，继续保持稳定练习。"}
   }
 
   function factoryResetData() {
-    if (!confirm("这会删除 MochiStudy 在当前浏览器里的全部数据和设置。请先导出备份。确认恢复出厂设置吗？")) return;
+    if (!confirm("这会删除 Mochii 在当前浏览器里的全部数据和设置。请先导出备份。确认恢复出厂设置吗？")) return;
     allDataKeys().forEach((key) => localStorage.removeItem(key));
     toast("本地数据和设置已清空，正在刷新页面");
     location.reload();
   }
 
   function allDataKeys() {
-    const fixed = ["mochi_state", "farm_state", STUDY_LOG_KEY, "focus_log", "api_config", HOLIDAYS_KEY, HOLIDAY_MODE_KEY, "mochi_debug_panel_open", "mochi_debug_float_collapsed", "mochi_debug_tab", "game_config", "sound_reminder_enabled", "focus_end_sound", "rest_reminder_sound"];
+    const fixed = ["mochi_state", "farm_state", STUDY_LOG_KEY, "focus_log", "achievement_state", "achievement_config", "lottery_config", "lottery_history", CURRENT_SEASON_KEY, SEASON_ARCHIVES_KEY, CARD_ORDER_KEY, CARD_META_KEY, NODE_SUMMARY_KEY, "admin_password", "api_config", HOLIDAYS_KEY, HOLIDAY_MODE_KEY, "mochi_debug_panel_open", "mochi_debug_float_collapsed", "mochi_debug_tab", "game_config", "sound_reminder_enabled", "focus_end_sound", "rest_reminder_sound", READING_FONT_KEY, READING_SIZE_KEY];
     const dynamic = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
       .filter((key) => key && isRetiredStorageKey(key));
     return [...new Set([...fixed, ...dynamic])];
@@ -1374,6 +3984,10 @@ ${record.painPoint || "暂无明显卡点，继续保持稳定练习。"}
     return `<label class="debug-config-inline">${label ? `<span>${label}</span>` : ""}<input type="number" data-config-path="${path}" value="${value}" /></label>`;
   }
 
+  function achievementConfigNumberInput(path, value, label = "") {
+    return `<label class="debug-config-inline">${label ? `<span>${label}</span>` : ""}<input type="number" data-achievement-config-path="${path}" value="${value}" /></label>`;
+  }
+
   function configRow(label, inputs) {
     return `
       <div class="debug-config-row">
@@ -1387,6 +4001,7 @@ ${record.painPoint || "暂无明显卡点，继续保持稳定练习。"}
 
   function renderConfigPanel() {
     const cfg = GAME_CONFIG;
+    const achievementCfg = loadAchievementConfig();
     return `
       <div class="debug-config-section">
         <h4>农场</h4>
@@ -1421,6 +4036,39 @@ ${record.painPoint || "暂无明显卡点，继续保持稳定练习。"}
         ${configRow("Lv1最低题数", configNumberInput("calendar.heatLevel1", cfg.calendar.heatLevel1))}
         ${configRow("Lv2最低题数", configNumberInput("calendar.heatLevel2", cfg.calendar.heatLevel2))}
         ${configRow("Lv3最低题数", configNumberInput("calendar.heatLevel3", cfg.calendar.heatLevel3))}
+      </div>
+      <div class="debug-config-section">
+        <h4>赛季称号阈值</h4>
+        ${configRow("Lv1-Lv8", cfg.season.titleThresholds.slice(0, 8).map((value, index) => configNumberInput(`season.titleThresholds.${index}`, value, `Lv${index + 1}:`)).join(""))}
+        ${configRow("Lv9-Lv16", cfg.season.titleThresholds.slice(8, 16).map((value, index) => configNumberInput(`season.titleThresholds.${index + 8}`, value, `Lv${index + 9}:`)).join(""))}
+      </div>
+      <div class="debug-config-section">
+        <h4>勋章小阈值</h4>
+        ${configRow("专注/学习日/记录", [
+          achievementConfigNumberInput("small.focusHours", achievementCfg.small.focusHours, "小时:"),
+          achievementConfigNumberInput("small.studyDays", achievementCfg.small.studyDays, "天:"),
+          achievementConfigNumberInput("small.recordCount", achievementCfg.small.recordCount, "记录:")
+        ].join(""))}
+        ${configRow("均衡周/收获", [
+          achievementConfigNumberInput("small.balancedWeeks", achievementCfg.small.balancedWeeks, "周:"),
+          achievementConfigNumberInput("small.harvests", achievementCfg.small.harvests, "收获:")
+        ].join(""))}
+      </div>
+      <div class="debug-config-section">
+        <h4>勋章大阈值</h4>
+        ${configRow("知识点/总记录", [
+          achievementConfigNumberInput("big.nodeRecords", achievementCfg.big.nodeRecords, "单点:"),
+          achievementConfigNumberInput("big.totalRecords", achievementCfg.big.totalRecords, "总数:")
+        ].join(""))}
+        ${configRow("专注/农场/学习日", [
+          achievementConfigNumberInput("big.focusHours", achievementCfg.big.focusHours, "小时:"),
+          achievementConfigNumberInput("big.farmLevelStep", achievementCfg.big.farmLevelStep, "级:"),
+          achievementConfigNumberInput("big.studyDays", achievementCfg.big.studyDays, "天:")
+        ].join(""))}
+        ${configRow("抽奖兑换", [
+          achievementConfigNumberInput("lottery.smallPerDraw", achievementCfg.lottery.smallPerDraw, "小:"),
+          achievementConfigNumberInput("lottery.bigPerDraw", achievementCfg.lottery.bigPerDraw, "大:")
+        ].join(""))}
       </div>
       <button class="debug-reset-config" data-action="debug-reset-config" type="button">重置所有参数为默认值</button>
     `;
@@ -1467,6 +4115,24 @@ ${record.painPoint || "暂无明显卡点，继续保持稳定练习。"}
               <button data-action="debug-set-total-harvests" type="button">保存</button>
             </div>
           </div>
+          <div class="debug-float-row debug-total-row">
+            <span>勋章测试</span>
+            <strong>${loadAchievementState().lotteryTickets || 0} 抽</strong>
+            <div class="debug-float-actions">
+              <button data-action="debug-add-records" data-count="10" type="button">+10记录</button>
+              <button data-action="debug-add-node-records" data-count="20" type="button">+20同点</button>
+              <button data-action="debug-add-focus" data-minutes="120" type="button">+2h专注</button>
+              <button data-action="debug-reset-achievements" type="button">清勋章</button>
+            </div>
+          </div>
+          <div class="debug-float-row debug-total-row debug-sample-row">
+            <span>样例</span>
+            <strong>${sampleCardCount()} 张</strong>
+            <div class="debug-float-actions">
+              <button data-action="debug-import-sample-cards" type="button">导入测试卡片</button>
+              <button data-action="debug-clear-sample-cards" type="button">清样例</button>
+            </div>
+          </div>
         `}
       </div>
     `;
@@ -1477,6 +4143,7 @@ ${record.painPoint || "暂无明显卡点，继续保持稳定练习。"}
     window.MochiPet?.renderMiniState?.();
     const routeId = location.hash.replace("#", "") || "home";
     if (view && routeId === "home") window.MochiFarm?.renderFarm?.(view);
+    if (view && routeId === "season") renderSeason(view);
   }
 
   function debugSetRecordCount(subject, value) {
@@ -1492,7 +4159,55 @@ ${record.painPoint || "暂无明显卡点，继续保持稳定练习。"}
     const state = window.MochiFarm.readState();
     state.totalHarvests = Math.max(0, Number(input?.value || 0));
     window.MochiFarm.saveState(state);
+    checkAndGrantAchievements();
     debugRefreshFarm();
+  }
+
+  function debugAddRecords(count, sameNode = false) {
+    const logs = readStudyLogs();
+    const subjects = ["math", "physics", "chemistry"];
+    const today = todayKey();
+    const nodeLabels = {
+      math: "函数",
+      physics: "运动学",
+      chemistry: "化学反应",
+    };
+    Array.from({ length: Math.max(1, Number(count || 1)) }).forEach((_, index) => {
+      const subject = sameNode ? "math" : subjects[index % subjects.length];
+      logs.unshift({
+        id: `debug_log_${Date.now()}_${index}`,
+        date: today,
+        subject,
+        nodeLabel: nodeLabels[subject],
+        questionsCompleted: 1,
+        stars: 3,
+        painPoint: "调试记录",
+        originalQuestion: "调试生成的原题",
+        routine: "第一步：定位条件\n第二步：套用模型",
+      });
+    });
+    writeStudyLogs(logs);
+    checkAndGrantAchievements();
+    debugRefreshFarm();
+    if (currentRoute() === "achievements") renderAchievements(view);
+    if ((currentRoute() === "map" || currentRoute() === "learn") && learnActiveTab === "map") window.MochiCards?.refresh?.();
+  }
+
+  function debugAddFocusMinutes(minutes) {
+    const logs = readFocusLogs();
+    logs.push({
+      id: `debug_focus_${Date.now()}`,
+      date: todayKey(),
+      startTime: new Date().toTimeString().slice(0, 5),
+      duration: Math.max(1, Number(minutes || 1)),
+      type: "focus",
+      completed: true,
+      microGoal: "调试专注",
+    });
+    writeJson("focus_log", logs);
+    checkAndGrantAchievements();
+    debugRefreshFarm();
+    if (currentRoute() === "achievements") renderAchievements(view);
   }
 
   function saveDebugConfig(button) {
@@ -1501,6 +4216,10 @@ ${record.painPoint || "暂无明显卡点，继续保持稳定练习。"}
     row.querySelectorAll("[data-config-path]").forEach((input) => {
       updateGameConfig(input.dataset.configPath, Number(input.value || 0));
     });
+    row.querySelectorAll("[data-achievement-config-path]").forEach((input) => {
+      updateAchievementConfig(input.dataset.achievementConfigPath, Number(input.value || 0));
+    });
+    checkAndGrantAchievements();
     const mark = row.querySelector(".debug-config-saved");
     if (mark) {
       mark.textContent = "✓";
@@ -1512,7 +4231,8 @@ ${record.painPoint || "暂无明显卡点，继续保持稳定练习。"}
     const routeId = location.hash.replace("#", "") || "home";
     if (routeId === "home") window.MochiFarm?.renderFarm?.(view);
     if (routeId === "schedule") window.MochiCalendar?.renderSchedule?.(view);
-    if (routeId === "map") window.MochiCards?.refresh?.();
+    if ((routeId === "map" || routeId === "learn") && learnActiveTab === "map") window.MochiCards?.refresh?.();
+    if (routeId === "season") renderSeason(view);
   }
 
   function handleClick(event) {
@@ -1552,6 +4272,37 @@ ${record.painPoint || "暂无明显卡点，继续保持稳定练习。"}
         debugSetTotalHarvests(action);
         return;
       }
+      if (name === "debug-add-records") {
+        debugAddRecords(action.dataset.count, false);
+        return;
+      }
+      if (name === "debug-add-node-records") {
+        debugAddRecords(action.dataset.count, true);
+        return;
+      }
+      if (name === "debug-add-focus") {
+        debugAddFocusMinutes(action.dataset.minutes);
+        return;
+      }
+      if (name === "debug-reset-achievements") {
+        localStorage.removeItem("achievement_state");
+        debugRefreshFarm();
+        if (currentRoute() === "achievements") renderAchievements(view);
+        return;
+      }
+      if (name === "debug-import-sample-cards") {
+        importSampleCards();
+        debugRefreshFarm();
+        toast("默认测试卡片已导入");
+        return;
+      }
+      if (name === "debug-clear-sample-cards") {
+        clearSampleCards();
+        debugRefreshFarm();
+        refreshVisibleRoute();
+        toast("测试卡片已清除");
+        return;
+      }
       if (name === "debug-save-config") {
         saveDebugConfig(action);
         return;
@@ -1559,8 +4310,27 @@ ${record.painPoint || "暂无明显卡点，继续保持稳定练习。"}
       if (name === "debug-reset-config") {
         if (confirm("确定重置所有游戏参数为默认值吗？")) {
           localStorage.removeItem("game_config");
+          localStorage.removeItem("achievement_config");
           location.reload();
         }
+        return;
+      }
+      if (name === "open-lottery") {
+        const state = loadAchievementState();
+        if ((state.lotteryTickets || 0) <= 0) return;
+        showLotteryOverlay();
+        return;
+      }
+      if (name === "export-season-report") {
+        exportSeasonReport();
+        return;
+      }
+      if (name === "view-season") {
+        showSeasonArchiveModal(action.dataset.seasonId);
+        return;
+      }
+      if (name === "end-season") {
+        endCurrentSeason();
         return;
       }
       if (name === "copy-note" || name === "copy-upload-note") copyNote();
@@ -1618,7 +4388,7 @@ ${record.painPoint || "暂无明显卡点，继续保持稳定练习。"}
   function copyNote() {
     const text = document.querySelector(".note-output")?.textContent || document.querySelector(".upload-note")?.textContent || "";
     navigator.clipboard?.writeText(text).then(
-      () => toast("已复制！粘贴到 Obsidian 即可保存。"),
+      () => toast("已复制！"),
       () => toast("复制失败，请手动选择文本。")
     );
   }
@@ -1643,6 +4413,10 @@ ${record.painPoint || "暂无明显卡点，继续保持稳定练习。"}
       closeModal();
       toast("假期已添加");
       route("settings");
+    }
+    if (event.target.id === "season-form") {
+      event.preventDefault();
+      openSeason(Object.fromEntries(new FormData(event.target)));
     }
   }
 
@@ -1677,9 +4451,61 @@ ${record.painPoint || "暂无明显卡点，继续保持稳定练习。"}
       localStorage.setItem("rest_reminder_sound", event.target.value || "melody");
       playRestReminderSound(event.target.value || "melody");
     }
+    if (event.target.id === "reading-font-select") {
+      setReadingPreference("font", event.target.value);
+      toast("阅读字体已更新");
+    }
+    if (event.target.id === "reading-size-select") {
+      setReadingPreference("size", event.target.value);
+      toast("阅读字号已更新");
+    }
+  }
+
+  function checkSeasonAutoRenew() {
+    const current = loadCurrentSeason();
+    if (!current || current.status !== "active") return;
+    const today = todayKey();
+    if (today <= current.endDate) return;
+
+    const snapshot = buildSeasonSnapshot(current);
+    const ended = { ...current, status: "ended" };
+    const archives = loadSeasonArchives().filter((s) => s.id !== ended.id);
+    archives.unshift({ ...ended, snapshot });
+    saveSeasonArchives(archives);
+
+    const prevStart = new Date(`${current.startDate}T12:00:00`);
+    const prevEnd = new Date(`${current.endDate}T12:00:00`);
+    const durationDays = Math.ceil((prevEnd - prevStart) / (1000 * 60 * 60 * 24));
+    const newEndDate = new Date();
+    newEndDate.setDate(newEndDate.getDate() + durationDays);
+    const newEnd = newEndDate.toISOString().slice(0, 10);
+
+    const newId = nextSeasonId(null, archives);
+    const newNum = Number(newId.replace(/^S/i, "")) || archives.length + 1;
+    const newSeason = {
+      id: newId,
+      name: `第${newNum}赛季`,
+      startDate: today,
+      endDate: newEnd,
+      status: "active",
+    };
+    saveCurrentSeason(newSeason);
+
+    const achState = loadAchievementState();
+    const carried = Number(achState.lotteryTickets || 0);
+    achState.small = {};
+    achState.big = {};
+    achState.totalSmall = 0;
+    achState.totalBig = 0;
+    achState.carriedLotteryDraws = (Number(achState.carriedLotteryDraws || 0)) + carried;
+    achState.lotteryTickets = carried;
+    saveAchievementState(achState);
+
+    toast(`🏆 ${current.name}已结束，${newSeason.name}自动开启！`);
   }
 
   function init() {
+    applyReadingPreferences();
     window.MochiKnowledge.readState();
     window.MochiPet.renderMiniState();
     window.addEventListener("hashchange", () => route());
@@ -1687,11 +4513,15 @@ ${record.painPoint || "暂无明显卡点，继续保持稳定练习。"}
     document.addEventListener("submit", handleSubmit);
     document.addEventListener("change", handleChange);
     document.getElementById("mobile-menu")?.addEventListener("click", () => document.querySelector(".side-nav")?.classList.toggle("open"));
+    checkSeasonAutoRenew();
     route();
     if (location.search.includes("debug=1")) {
       const debugPanel = document.getElementById("debug-panel");
       if (debugPanel) debugPanel.style.display = "block";
       renderDebugPanel();
+    }
+    if (new URLSearchParams(location.search).get("admin") === "1") {
+      showAdminPasswordPrompt();
     }
   }
 
@@ -1719,11 +4549,18 @@ ${record.painPoint || "暂无明显卡点，继续保持稳定练习。"}
     refreshFocusOverlay,
     tickFocusOverlay,
     parsePastedRecordEl,
+    applyMochiRecord,
     readStudyLogs,
     writeStudyLogs,
+    readFocusLogs,
     parseMochiRecord,
     readJson,
     writeJson,
+    readStudyCardMeta,
+    writeStudyCardMeta,
+    setStudyCardMeta,
+    removeStudyCardMeta,
+    normalizeCardMeta,
     getHolidays,
     isHolidayToday,
     nextHoliday,
@@ -1731,7 +4568,18 @@ ${record.painPoint || "暂无明显卡点，继续保持稳定练习。"}
     holidayMode,
     setHolidayMode,
     getUnlockedAchievements,
-    calcAchievementMetrics,
+    loadAchievementConfig,
+    loadAchievementState,
+    loadLotteryConfig,
+    calcAchievements,
+    checkAndGrantAchievements,
+    loadCurrentSeason,
+    loadSeasonArchives,
+    buildSeasonSnapshot,
+    calcSeasonTitle,
+    calcStudyStreak,
+    getTodayRecordCount,
+    escapeHtml,
   };
 
   init();

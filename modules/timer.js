@@ -125,6 +125,7 @@
       calcStats();
       window.MochiPet?.addReward?.({ xp: actualMins, focusBonus: 15 });
       window.MochiFarm?.addResources?.({ xp: 5 });
+      window.MochiApp?.checkAndGrantAchievements?.();
     }
 
     state.running = false;

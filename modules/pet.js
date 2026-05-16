@@ -194,8 +194,8 @@
             <h3>动态专注</h3>
           </div>
           <div class="timer-goal-wrap">
-            <label>这次要完成什么？</label>
-            <input id="timer-micro-goal" type="text" placeholder="今天要突破哪道题？" value="${escapeAttr(timer.microGoal || "")}" ${enabled ? "" : "disabled"} />
+            <label>目标</label>
+            <input id="timer-micro-goal" type="text" placeholder="今天突破哪道题？" value="${escapeAttr(timer.microGoal || "")}" ${enabled ? "" : "disabled"} />
           </div>
           <div class="timer-mode-switch">
             <button id="timer-free-mode-btn" class="timer-mode-btn ${freeActive ? "active" : ""}" type="button" ${enabled ? "" : "disabled"}
@@ -209,7 +209,7 @@
           </div>
           <div id="timer-time-row" class="timer-setup-row" style="${freeActive ? "display:none" : ""}">
             <div class="timer-setup-field">
-              <label>预计时长 <span class="label-hint">（参考，累了随时停）</span></label>
+              <label>时长</label>
               <div class="timer-input-wrap">
                 <input id="timer-focus-mins" type="number" value="${timer.focusMins}" min="1" max="180" ${enabled ? "" : "disabled"} />
                 <span>分钟</span>
@@ -222,7 +222,7 @@
           </button>
           ${!enabled
             ? `<p class="muted" style="text-align:center;font-size:12px;margin-top:8px">放假回来再开始专注吧</p>`
-            : `<p class="muted timer-hint">感觉思维钝了就停，不用撑到时间结束</p>`
+            : `<p class="muted timer-hint">累了就停</p>`
           }
           <div class="timer-today-stats">
             <span>🍅 今日 ${timer.todayPomodoros} 轮</span>

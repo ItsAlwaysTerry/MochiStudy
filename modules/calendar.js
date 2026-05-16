@@ -112,58 +112,56 @@
   }
 
   function renderWeeklyAchievements() {
-    const all = window.MochiApp.getUnlockedAchievements();
-    const weekly = all.filter((achievement) => achievement.type === "weekly");
-    const nearlyDone = all
-      .filter((achievement) => achievement.type !== "weekly" && !achievement.maxed && achievement.current > 0)
-      .sort((a, b) => achievementRatio(b) - achievementRatio(a))
-      .slice(0, 2);
-    const show = [...weekly, ...nearlyDone];
+    const earned = window.MochiApp.getUnlockedAchievements?.() || { small: {}, big: {} };
+    const state = window.MochiApp.loadAchievementState?.() || { small: {}, big: {} };
+    const cfg = window.MochiApp.loadAchievementConfig?.() || {
+      small: { recordCount: 10, focusHours: 2, studyDays: 3 },
+      big: { nodeRecords: 20, totalRecords: 50 },
+    };
+    const show = [
+      {
+        icon: "menu_book",
+        label: "勤奋记录",
+        desc: `每 ${cfg.small.recordCount} 条记录 1 个小勋章`,
+        earned: Number(earned.small?.recordCount || 0),
+        claimed: Number(state.small?.recordCount || 0),
+      },
+      {
+        icon: "timer",
+        label: "专注时光",
+        desc: `每 ${cfg.small.focusHours} 小时专注 1 个小勋章`,
+        earned: Number(earned.small?.focusHours || 0),
+        claimed: Number(state.small?.focusHours || 0),
+      },
+      {
+        icon: "book_4",
+        label: "知识深耕",
+        desc: `每 ${cfg.big.nodeRecords} 条/知识点 1 个大勋章`,
+        earned: Number(earned.big?.nodeRecords || 0),
+        claimed: Number(state.big?.nodeRecords || 0),
+      },
+    ];
     return `
       <section class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:12px">
-          <h3>每周里程碑</h3>
+          <h3>勋章进度</h3>
           <button class="btn btn-outline btn-sm" data-route="achievements">查看全部</button>
         </div>
-        ${show.map((achievement) => {
-          const meta = achievementDisplay(achievement);
-          const percent = Math.min(100, Math.round((achievement.current / meta.target) * 100));
-          return `
-            <div class="milestone-row ${achievement.unlocked ? "unlocked" : ""}">
-              <span class="milestone-icon">${meta.icon}</span>
+        ${show.map((item) => `
+            <div class="milestone-row ${item.claimed > 0 ? "unlocked" : ""}">
+              <span class="milestone-icon material-symbols-outlined">${item.icon}</span>
               <div class="milestone-info">
-                <strong>${meta.label}</strong>
-                <p class="muted">${meta.desc}</p>
+                <strong>${item.label}</strong>
+                <p class="muted">${item.desc}</p>
               </div>
               <div class="milestone-progress">
-                <span class="milestone-fraction">${Math.min(achievement.current, meta.target)}/${meta.target}</span>
-                <div class="progress" style="width:80px">
-                  <span class="bar-primary" style="--value:${percent}%"></span>
-                </div>
+                <span class="milestone-fraction">x${item.earned}</span>
+                ${item.earned > item.claimed ? `<span class="badge-new-tag">+${item.earned - item.claimed}</span>` : ""}
               </div>
             </div>
-          `;
-        }).join("")}
+          `).join("")}
       </section>
     `;
-  }
-
-  function achievementDisplay(achievement) {
-    if (achievement.type === "tiered") {
-      const tier = achievement.nextTier || achievement.currentTier;
-      return {
-        icon: tier?.icon || "🔒",
-        label: tier?.label || achievement.group,
-        desc: achievement.nextTier ? `下一级：${achievement.nextTier.desc}` : "已达到最高等级",
-        target: tier?.target || 1,
-      };
-    }
-    return achievement;
-  }
-
-  function achievementRatio(achievement) {
-    const display = achievementDisplay(achievement);
-    return display.target ? achievement.current / display.target : 0;
   }
 
   function renderFocusStats() {
@@ -292,17 +290,110 @@
     const subject = window.MochiKnowledge.SUBJECTS[log.subject];
     return `
       <article class="day-detail-row">
-        <strong><span class="material-symbols-outlined">${subject.icon}</span>${subject.label} · ${log.nodeLabel}</strong>
+        <strong><span class="material-symbols-outlined">${subject.icon}</span>${subject.label} · ${formatRichText(log.nodeLabel)}</strong>
         <p>完成 ${log.questionsCompleted} 题 · ${"★".repeat(log.stars || 1)}</p>
-        <p>Obsidian 笔记：${obsidianTitle(log)}</p>
-        <p>卡点：${log.painPoint || "暂无卡点记录"}</p>
+        <p>原题：${formatRichText(originalQuestionText(log))}</p>
+        <p>卡点：${formatRichText(log.painPoint || "暂无卡点记录")}</p>
       </article>
     `;
   }
 
-  function obsidianTitle(log) {
-    const subjectLabel = { math: "数学", physics: "物理", chemistry: "化学" }[log.subject] || log.subject;
-    return `${subjectLabel}-${log.nodeLabel}-${log.date}`;
+  function originalQuestionText(log) {
+    return String(log.originalQuestion || "").trim() || "暂无原题描述";
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
+  }
+
+  function formatRichText(value) {
+    const escaped = escapeHtml(value).replace(/＄/g, "$");
+    return escaped.replace(/\$([^$\n]+)\$/g, (_, formula) => `<span class="math-inline">${formatInlineMath(formula)}</span>`);
+  }
+
+  function formatInlineMath(value) {
+    let text = String(value || "");
+    text = text
+      .replace(/\\cdot/g, "·")
+      .replace(/\\times/g, "×")
+      .replace(/\\div/g, "÷")
+      .replace(/\\leq/g, "≤")
+      .replace(/\\geq/g, "≥")
+      .replace(/\\neq/g, "≠")
+      .replace(/\\left/g, "")
+      .replace(/\\right/g, "")
+      .replace(/\\,/g, " ");
+    const symbols = {
+      "\\sin": "sin",
+      "\\cos": "cos",
+      "\\tan": "tan",
+      "\\ln": "ln",
+      "\\log": "log",
+      "\\rightleftharpoons": "⇌",
+      "\\alpha": "α",
+      "\\beta": "β",
+      "\\gamma": "γ",
+      "\\Gamma": "Γ",
+      "\\delta": "δ",
+      "\\Delta": "Δ",
+      "\\epsilon": "ε",
+      "\\theta": "θ",
+      "\\lambda": "λ",
+      "\\mu": "μ",
+      "\\pi": "π",
+      "\\rho": "ρ",
+      "\\sigma": "σ",
+      "\\omega": "ω",
+      "\\Omega": "Ω",
+      "\\phi": "φ",
+      "\\Phi": "Φ",
+    };
+    Object.entries(symbols).forEach(([source, target]) => {
+      text = text.replaceAll(source, target);
+    });
+    text = text.replace(/([A-Za-z0-9)]+)\^\{([^{}]+)\}/g, "$1<sup>$2</sup>");
+    text = text.replace(/([A-Za-z0-9)]+)\^([A-Za-z0-9]+)/g, "$1<sup>$2</sup>");
+    text = text.replace(/([A-Za-z0-9)]+)_\{([^{}]+)\}/g, "$1<sub>$2</sub>");
+    text = text.replace(/([A-Za-z0-9)]+)_([A-Za-z0-9]+)/g, "$1<sub>$2</sub>");
+    text = replaceMathCommand(text, "dfrac", 2, (top, bottom) => (
+      `<span class="math-frac"><span class="math-num">${top}</span><span class="math-den">${bottom}</span></span>`
+    ));
+    text = replaceMathCommand(text, "tfrac", 2, (top, bottom) => (
+      `<span class="math-frac"><span class="math-num">${top}</span><span class="math-den">${bottom}</span></span>`
+    ));
+    text = replaceMathCommand(text, "frac", 2, (top, bottom) => (
+      `<span class="math-frac"><span class="math-num">${top}</span><span class="math-den">${bottom}</span></span>`
+    ));
+    text = replaceMathCommand(text, "sqrt", 1, (radicand) => (
+      `<span class="math-sqrt"><span class="math-radicand">${radicand}</span></span>`
+    ));
+    text = replaceMathCommand(text, "dfrac", 2, (top, bottom) => (
+      `<span class="math-frac"><span class="math-num">${top}</span><span class="math-den">${bottom}</span></span>`
+    ));
+    text = replaceMathCommand(text, "tfrac", 2, (top, bottom) => (
+      `<span class="math-frac"><span class="math-num">${top}</span><span class="math-den">${bottom}</span></span>`
+    ));
+    text = replaceMathCommand(text, "frac", 2, (top, bottom) => (
+      `<span class="math-frac"><span class="math-num">${top}</span><span class="math-den">${bottom}</span></span>`
+    ));
+    text = text.replace(/\\?sqrt\s*([A-Za-z0-9]+)/g, `<span class="math-sqrt"><span class="math-radicand">$1</span></span>`);
+    return text;
+  }
+
+  function replaceMathCommand(text, command, arity, render) {
+    const slash = "\\\\?";
+    const pattern = arity === 2
+      ? new RegExp(`${slash}${command}\\s*\\{([^{}]+)\\}\\s*\\{([^{}]+)\\}`, "g")
+      : new RegExp(`${slash}${command}\\s*\\{([^{}]+)\\}`, "g");
+    let next = text;
+    for (let i = 0; i < 8; i += 1) {
+      const replaced = arity === 2
+        ? next.replace(pattern, (_, first, second) => render(first, second))
+        : next.replace(pattern, (_, first) => render(first));
+      if (replaced === next) break;
+      next = replaced;
+    }
+    return next;
   }
 
   function formatDateTitle(dateKey) {

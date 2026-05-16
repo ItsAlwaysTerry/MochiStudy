@@ -3,7 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>MochiStudy</title>
+    <title>Mochii</title>
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&family=Be+Vietnam+Pro:wght@500;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
@@ -21,24 +22,17 @@
         </section>
         <nav class="nav-list">
           <button class="nav-item active" data-route="home"><span class="material-symbols-outlined">home</span>首页</button>
-          <button class="nav-item" data-route="schedule"><span class="material-symbols-outlined">calendar_month</span>日程</button>
-          <button class="nav-item" data-route="map"><span class="material-symbols-outlined">collections_bookmark</span>学习档案</button>
+          <button class="nav-item" data-route="learn"><span class="material-symbols-outlined">school</span>学习</button>
           <button class="nav-item" data-route="achievements"><span class="material-symbols-outlined">military_tech</span>勋章</button>
+          <button class="nav-item" data-route="season"><span class="material-symbols-outlined">emoji_events</span>赛季</button>
           <button class="nav-item" data-route="settings"><span class="material-symbols-outlined">settings</span>设置</button>
         </nav>
       </aside>
 
       <header class="top-bar">
         <button class="icon-btn mobile-only" id="mobile-menu" aria-label="打开导航"><span class="material-symbols-outlined">menu</span></button>
-        <strong class="brand">MochiStudy</strong>
-        <nav class="top-tabs" aria-label="快捷导航">
-          <button data-route="home">控制台</button>
-          <button data-route="schedule">日历</button>
-          <button data-route="map">学习档案</button>
-        </nav>
+        <strong class="brand">Mochii</strong>
         <div class="top-actions">
-          <button class="btn btn-outline btn-sm" data-action="export-data"><span class="material-symbols-outlined">download</span>导出备份</button>
-          <span id="top-resources" class="pill">收获0次 · XP0</span>
           <button class="icon-btn" data-route="settings" aria-label="设置"><span class="material-symbols-outlined">settings</span></button>
         </div>
       </header>
@@ -47,8 +41,8 @@
 
       <nav class="bottom-nav" aria-label="移动端导航">
         <button class="nav-item active" data-route="home"><span class="material-symbols-outlined">home</span>首页</button>
-          <button class="nav-item" data-route="schedule"><span class="material-symbols-outlined">calendar_month</span>日程</button>
-          <button class="nav-item" data-route="map"><span class="material-symbols-outlined">collections_bookmark</span>档案</button>
+          <button class="nav-item" data-route="learn"><span class="material-symbols-outlined">school</span>学习</button>
+          <button class="nav-item" data-route="achievements"><span class="material-symbols-outlined">military_tech</span>勋章</button>
           <button class="nav-item" data-route="settings"><span class="material-symbols-outlined">settings</span>设置</button>
       </nav>
     </div>
@@ -57,6 +51,7 @@
     <div id="toast-root" class="toast-root" aria-live="assertive"></div>
     <div id="focus-overlay" class="focus-overlay" hidden></div>
     <div id="rest-reminder-overlay" class="rest-reminder-overlay" hidden></div>
+    <div id="lottery-overlay" class="lottery-overlay" hidden></div>
     <div id="debug-panel" style="display:none">
       <div id="debug-panel-inner"></div>
     </div>
@@ -67,6 +62,8 @@
     <script defer src="modules/pet.js"></script>
     <script defer src="modules/knowledgeMap.js"></script>
     <script defer src="modules/calendar.js"></script>
+    <script defer src="modules/reviewEngine.js"></script>
+    <script defer src="modules/reviewPage.js"></script>
     <script defer src="app.js"></script>
   </body>
 </html>
