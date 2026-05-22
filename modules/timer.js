@@ -15,6 +15,9 @@
     elapsedSecs: 0,
     sessionId: null,
     sessionStart: null,
+    focusStartedAtMs: null,
+    accumulatedFocusSecs: 0,
+    focusTargetNotified: false,
     microGoal: "",
     freeMode: false,
     pendingRestMins: null,
@@ -82,6 +85,9 @@
     state.running = true;
     state.sessionId = `focus_${Date.now()}`;
     state.sessionStart = new Date().toTimeString().slice(0, 5);
+    state.focusStartedAtMs = Date.now();
+    state.accumulatedFocusSecs = 0;
+    state.focusTargetNotified = false;
     state.pendingRestMins = null;
     state.pendingActualMins = null;
     clearInterval(interval);
@@ -94,11 +100,15 @@
   function togglePause() {
     if (state.phase !== "focusing") return;
     if (state.running) {
+      syncFocusElapsed();
+      state.accumulatedFocusSecs = state.elapsedSecs;
+      state.focusStartedAtMs = null;
       state.running = false;
       clearInterval(interval);
       window.MochiPet?.setFocusing?.(false);
     } else {
       state.running = true;
+      state.focusStartedAtMs = Date.now();
       interval = setInterval(tick, 1000);
       window.MochiPet?.setFocusing?.(true);
     }
@@ -106,6 +116,7 @@
   }
 
   function stopAndRest() {
+    syncFocusElapsed();
     clearInterval(interval);
     const actualMins = Math.round(state.elapsedSecs / 60);
     const restMins = calcRecommendedRest(Math.max(1, actualMins));
@@ -130,6 +141,8 @@
 
     state.running = false;
     state.phase = "deciding";
+    state.focusStartedAtMs = null;
+    state.accumulatedFocusSecs = state.elapsedSecs;
     state.pendingRestMins = restMins;
     state.pendingActualMins = actualMins;
     window.MochiPet?.setFocusing?.(false);
@@ -162,6 +175,9 @@
     state.remaining = state.freeMode ? 0 : state.focusMins * 60;
     state.sessionId = `focus_${Date.now()}`;
     state.sessionStart = new Date().toTimeString().slice(0, 5);
+    state.focusStartedAtMs = Date.now();
+    state.accumulatedFocusSecs = 0;
+    state.focusTargetNotified = false;
     state.pendingRestMins = null;
     state.pendingActualMins = null;
     clearInterval(interval);
@@ -171,6 +187,7 @@
   }
 
   function giveUp() {
+    syncFocusElapsed();
     clearInterval(interval);
     const actualMins = Math.round(state.elapsedSecs / 60);
     if (state.sessionId && actualMins >= 1) {
@@ -189,6 +206,9 @@
     }
     state.sessionId = null;
     state.sessionStart = null;
+    state.focusStartedAtMs = null;
+    state.accumulatedFocusSecs = 0;
+    state.focusTargetNotified = false;
     state.running = false;
     state.phase = "setup";
     state.pendingRestMins = null;
@@ -202,6 +222,9 @@
     clearInterval(interval);
     state.sessionId = null;
     state.sessionStart = null;
+    state.focusStartedAtMs = null;
+    state.accumulatedFocusSecs = 0;
+    state.focusTargetNotified = false;
     state.running = false;
     state.phase = "setup";
     state.pendingRestMins = null;
@@ -225,8 +248,9 @@
       }
       state.remaining -= 1;
     } else if (state.phase === "focusing") {
-      state.elapsedSecs += 1;
-      if (!state.freeMode && state.elapsedSecs === state.focusMins * 60) {
+      syncFocusElapsed();
+      if (!state.freeMode && !state.focusTargetNotified && state.elapsedSecs >= state.focusMins * 60) {
+        state.focusTargetNotified = true;
         window.MochiApp?.playFocusEndSound?.();
         window.MochiApp?.toast?.(`⏰ 已专注 ${state.focusMins} 分钟！感觉思维还清晰就继续，累了就点「现在休息」`);
       }
@@ -241,7 +265,19 @@
     }
   }
 
+  function syncFocusElapsed() {
+    if (state.phase !== "focusing") return;
+    if (state.running && state.focusStartedAtMs) {
+      const liveSecs = Math.max(0, Math.floor((Date.now() - state.focusStartedAtMs) / 1000));
+      state.elapsedSecs = Math.max(0, Number(state.accumulatedFocusSecs || 0) + liveSecs);
+    } else {
+      state.elapsedSecs = Math.max(0, Number(state.elapsedSecs || 0));
+    }
+    state.remaining = state.elapsedSecs;
+  }
+
   function updateTimerDom() {
+    if (state.phase === "focusing") syncFocusElapsed();
     if (state.phase === "focusing") {
       const mins = String(Math.floor(state.elapsedSecs / 60)).padStart(2, "0");
       const secs = String(state.elapsedSecs % 60).padStart(2, "0");
@@ -278,6 +314,7 @@
   }
 
   function getState() {
+    if (state.phase === "focusing") syncFocusElapsed();
     calcStats();
     if (state.phase === "setup") {
       state.focusMins = Number(config().defaultFocus || DEFAULT_TIMER_CONFIG.defaultFocus);
@@ -295,6 +332,15 @@
     else if (action === "keep-focusing") keepFocusing();
     else if (action === "end-today") endToday();
   }
+
+  document.addEventListener("visibilitychange", () => {
+    if (state.phase !== "focusing") return;
+    syncFocusElapsed();
+    updateTimerDom();
+    if (document.body.classList.contains("focus-mode")) {
+      window.MochiApp?.tickFocusOverlay?.();
+    }
+  });
 
   window.MochiTimer = { getState, handleAction, calcStats, startFocus, togglePause, stopAndRest, confirmRest, keepFocusing, giveUp, endToday };
 })();

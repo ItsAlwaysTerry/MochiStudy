@@ -675,7 +675,7 @@
 
   function getTodayRecordCount() {
     const today = todayKey();
-    return readStudyLogs().filter((log) => String(log.date || "").slice(0, 10) === today).length;
+    return readStudyLogs().filter((log) => String(log.importedAt || log.date || "").slice(0, 10) === today).length;
   }
 
   function loadAchievementConfig() {
@@ -3492,6 +3492,7 @@ ${record.originalQuestion || "暂无原题描述。"}
     const logEntry = {
       id: `log_${Date.now()}`,
       date: record.date,
+      importedAt: new Date().toISOString(),
       subject: record.subject,
       nodeId: node?.id || record.nodeId,
       nodeLabel: normalizedLabel,

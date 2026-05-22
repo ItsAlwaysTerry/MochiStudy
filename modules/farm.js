@@ -428,7 +428,7 @@
             </div>
           </section>
           <div class="home-focus-panel">
-            ${window.MochiPet?.renderTimer?.(holiday) || ""}
+            ${window.MochiPet?.renderTimer?.(true) || ""}
           </div>
         </div>
       </div>
