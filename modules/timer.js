@@ -127,10 +127,13 @@
 
     if (state.sessionId && actualMins >= 1) {
       const logs = readLog();
+      const now = new Date();
       logs.push({
         id: state.sessionId,
         date: todayKey(),
         startTime: state.sessionStart,
+        endTime: now.toTimeString().slice(0, 5),
+        endedAt: now.toISOString(),
         duration: actualMins,
         type: "focus",
         completed: true,
@@ -202,10 +205,13 @@
     const actualMins = Math.round(state.elapsedSecs / 60);
     if (state.sessionId && actualMins >= 1) {
       const logs = readLog();
+      const now = new Date();
       logs.push({
         id: state.sessionId,
         date: todayKey(),
         startTime: state.sessionStart,
+        endTime: now.toTimeString().slice(0, 5),
+        endedAt: now.toISOString(),
         duration: actualMins,
         type: "focus",
         completed: false,

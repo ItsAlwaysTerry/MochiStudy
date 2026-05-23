@@ -363,6 +363,27 @@
     `;
   }
 
+  function renderTodayStudyEntry() {
+    const logs = window.MochiApp?.readStudyLogs?.() || [];
+    const focusLogs = window.MochiApp?.readFocusLogs?.() || [];
+    const today = new Date().toISOString().slice(0, 10);
+    const todayCards = logs.filter((log) => String(log.importedAt || log.date || "").slice(0, 10) === today || String(log.date || "").slice(0, 10) === today);
+    const todayFocus = focusLogs.filter((log) => log.type === "focus" && log.completed && log.date === today);
+    const minutes = todayFocus.reduce((sum, log) => sum + Number(log.duration || 0), 0);
+    return `
+      <section class="card home-today-study-card">
+        <div>
+          <span class="material-symbols-outlined">visibility</span>
+          <div>
+            <h3>今日学习报告</h3>
+            <p>${minutes} 分钟专注 · ${todayCards.length} 张卡片</p>
+          </div>
+        </div>
+        <button class="btn btn-soft btn-sm" data-route="today" type="button">查看</button>
+      </section>
+    `;
+  }
+
   function renderFarm(container) {
     const state = readState();
     const farmLv = getFarmLevel(state.totalHarvests);
@@ -387,6 +408,7 @@
       <div class="home-flow">
         <div class="home-left-stack">
           ${renderStreakBanner()}
+          ${renderTodayStudyEntry()}
           ${holiday
             ? `
               <section class="card import-card home-import-card">

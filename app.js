@@ -1048,13 +1048,16 @@
     }
   }
 
-  let learnActiveTab = "review";
+  let learnActiveTab = "today";
 
   function renderLearn(container, tab) {
-    if (!tab) learnActiveTab = "review";
-    else if (tab === "review" || tab === "map") learnActiveTab = tab;
+    if (!tab) learnActiveTab = "today";
+    else if (tab === "today" || tab === "review" || tab === "map") learnActiveTab = tab;
     container.innerHTML = `
       <div class="learn-tab-bar">
+        <button class="learn-tab-btn ${learnActiveTab === "today" ? "active" : ""}" data-action="learn-tab" data-tab="today" type="button">
+          <span class="material-symbols-outlined">today</span>今日学习
+        </button>
         <button class="learn-tab-btn ${learnActiveTab === "review" ? "active" : ""}" data-action="learn-tab" data-tab="review" type="button">
           <span class="material-symbols-outlined">rate_review</span>复习队列
         </button>
@@ -1065,14 +1068,16 @@
       <div id="learn-content-pane"></div>
     `;
     const pane = container.querySelector("#learn-content-pane");
-    if (learnActiveTab === "review") {
+    if (learnActiveTab === "today") {
+      window.MochiTodayStudy?.render?.(pane);
+    } else if (learnActiveTab === "review") {
       window.MochiReviewPage?.render?.(pane);
     } else {
       window.MochiCards?.render?.(pane);
     }
     container.querySelectorAll("[data-action='learn-tab']").forEach((button) => {
       button.addEventListener("click", () => {
-        renderLearn(container, button.dataset.tab || "review");
+        renderLearn(container, button.dataset.tab || "today");
       });
     });
   }
@@ -1087,6 +1092,7 @@
     if (routeId === "home") window.MochiFarm?.renderFarm?.(view);
     else if (routeId === "schedule") renderSeason(view);
     else if (routeId === "learn") renderLearn(view);
+    else if (routeId === "today") renderLearn(view, "today");
     else if (routeId === "review") renderLearn(view, "review");
     else if (routeId === "map") renderLearn(view, "map");
     else if (routeId === "achievements") renderAchievements(view);
@@ -1118,7 +1124,7 @@
   }
 
   function setActive(routeId) {
-    const isLearnRoute = routeId === "review" || routeId === "map" || routeId === "learn";
+    const isLearnRoute = routeId === "today" || routeId === "review" || routeId === "map" || routeId === "learn";
     document.querySelectorAll("[data-route]").forEach((el) => {
       const match = el.dataset.route === routeId || (el.dataset.route === "learn" && isLearnRoute);
       el.classList.toggle("active", match);
@@ -2149,6 +2155,7 @@
     if (routeId === "settings") renderSettings(view);
     if (routeId === "home") window.MochiFarm?.renderFarm?.(view);
     if (routeId === "learn") renderLearn(view);
+    if (routeId === "today") renderLearn(view, "today");
     if (routeId === "review") renderLearn(view, "review");
     if (routeId === "map") renderLearn(view, "map");
   }
@@ -3489,10 +3496,13 @@ ${record.originalQuestion || "暂无原题描述。"}
     const node = window.MochiKnowledge.getNode(record.nodeId);
     const normalizedLabel = window.MochiCards?.normalizeNodeLabel?.(record.subject, record.nodeLabel || node?.label || "", record.nodeId) || record.nodeLabel || node?.label || "";
     const wasMastered = window.MochiCards?.calcNodeStatus?.(logs, record.subject, normalizedLabel) === "mastered";
+    const timerState = window.MochiTimer?.getState?.() || {};
+    const activeSessionId = ["focusing", "deciding"].includes(timerState.phase) ? timerState.sessionId : "";
     const logEntry = {
       id: `log_${Date.now()}`,
       date: record.date,
       importedAt: new Date().toISOString(),
+      sessionId: activeSessionId || "",
       subject: record.subject,
       nodeId: node?.id || record.nodeId,
       nodeLabel: normalizedLabel,
@@ -4232,6 +4242,7 @@ ${record.originalQuestion || "暂无原题描述。"}
     const routeId = location.hash.replace("#", "") || "home";
     if (routeId === "home") window.MochiFarm?.renderFarm?.(view);
     if (routeId === "schedule") window.MochiCalendar?.renderSchedule?.(view);
+    if ((routeId === "today" || routeId === "learn") && learnActiveTab === "today") window.MochiTodayStudy?.render?.(document.getElementById("learn-content-pane"));
     if ((routeId === "map" || routeId === "learn") && learnActiveTab === "map") window.MochiCards?.refresh?.();
     if (routeId === "season") renderSeason(view);
   }
