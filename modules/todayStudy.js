@@ -470,6 +470,16 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  async function copyBlobToClipboard(blob) {
+    if (!navigator.clipboard?.write || typeof ClipboardItem === "undefined") {
+      return false;
+    }
+    await navigator.clipboard.write([
+      new ClipboardItem({ "image/png": blob }),
+    ]);
+    return true;
+  }
+
   async function exportTodayImage(button) {
     if (button) {
       button.disabled = true;
@@ -482,21 +492,13 @@
       const blob = await canvasToBlob(canvas);
       if (!blob) throw new Error("Canvas export failed");
       const filename = `MochiStudy-${data.today}-今日学习报告.png`;
-      const file = typeof File !== "undefined" ? new File([blob], filename, { type: "image/png" }) : null;
-      if (file && navigator.canShare?.({ files: [file] })) {
-        try {
-          await navigator.share({ files: [file], title: "今日学习报告", text: "MochiStudy 今日学习报告" });
-          window.MochiApp?.toast?.("今日学习长图已打开分享");
-          return;
-        } catch (err) {
-          if (err?.name === "AbortError") {
-            window.MochiApp?.toast?.("已取消分享");
-            return;
-          }
-        }
+      const copied = await copyBlobToClipboard(blob);
+      if (copied) {
+        window.MochiApp?.toast?.("今日学习长图已复制，打开微信直接粘贴");
+        return;
       }
       downloadBlob(blob, filename);
-      window.MochiApp?.toast?.("今日学习长图已导出");
+      window.MochiApp?.toast?.("当前浏览器不支持复制图片，已改为下载长图");
     } catch (err) {
       console.error(err);
       window.MochiApp?.toast?.("导出失败，请稍后再试");
@@ -694,7 +696,7 @@
           </div>
           <div class="today-title-actions">
             <button class="btn btn-primary btn-sm" data-today-export-image type="button">
-              <span class="material-symbols-outlined">ios_share</span>导出长图
+              <span class="material-symbols-outlined">content_paste</span>复制长图
             </button>
             <button class="btn btn-outline btn-sm" data-route="home" type="button">
               <span class="material-symbols-outlined">add_circle</span>继续学习
