@@ -145,6 +145,19 @@ button {
   line-height: 1.5;
 }
 
+.today-title-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.today-title-actions .btn.loading {
+  opacity: 0.72;
+  cursor: wait;
+}
+
 .today-hero {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -490,6 +503,12 @@ button {
   .home-today-study-card {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .today-title-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-content: stretch;
   }
 
   .today-title-row .btn,

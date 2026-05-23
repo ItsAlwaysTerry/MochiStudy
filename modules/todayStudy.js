@@ -1,6 +1,9 @@
 (function () {
   const SESSION_MATCH_LEEWAY_BEFORE = 5;
   const SESSION_MATCH_LEEWAY_AFTER = 25;
+  const EXPORT_IMAGE_WIDTH = 1080;
+  const EXPORT_PADDING = 54;
+  const EXPORT_FONT = '"Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", Arial, sans-serif';
 
   function todayKey() {
     return new Date().toISOString().slice(0, 10);
@@ -167,6 +170,342 @@
       groups[key].push(card);
       return groups;
     }, {});
+  }
+
+  function roundRect(ctx, x, y, width, height, radius) {
+    const r = Math.min(radius, width / 2, height / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + width, y, x + width, y + height, r);
+    ctx.arcTo(x + width, y + height, x, y + height, r);
+    ctx.arcTo(x, y + height, x, y, r);
+    ctx.arcTo(x, y, x + width, y, r);
+    ctx.closePath();
+  }
+
+  function fillRoundRect(ctx, x, y, width, height, radius, fill) {
+    roundRect(ctx, x, y, width, height, radius);
+    ctx.fillStyle = fill;
+    ctx.fill();
+  }
+
+  function strokeRoundRect(ctx, x, y, width, height, radius, stroke) {
+    roundRect(ctx, x, y, width, height, radius);
+    ctx.strokeStyle = stroke;
+    ctx.stroke();
+  }
+
+  function setFont(ctx, size, weight = 600) {
+    ctx.font = `${weight} ${size}px ${EXPORT_FONT}`;
+  }
+
+  function wrapCanvasText(ctx, text, maxWidth, maxLines = Infinity) {
+    const source = String(text || "").replace(/\s+/g, " ").trim();
+    if (!source) return [];
+    const chars = [...source];
+    const lines = [];
+    let line = "";
+    chars.forEach((char) => {
+      const next = `${line}${char}`;
+      if (line && ctx.measureText(next).width > maxWidth) {
+        lines.push(line);
+        line = char;
+      } else {
+        line = next;
+      }
+    });
+    if (line) lines.push(line);
+    if (lines.length <= maxLines) return lines;
+    const clipped = lines.slice(0, maxLines);
+    const last = clipped[clipped.length - 1] || "";
+    clipped[clipped.length - 1] = `${last.slice(0, Math.max(1, last.length - 1))}…`;
+    return clipped;
+  }
+
+  function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, options = {}) {
+    setFont(ctx, options.size || 28, options.weight || 500);
+    ctx.fillStyle = options.color || "#3f3438";
+    const lines = wrapCanvasText(ctx, text, maxWidth, options.maxLines || Infinity);
+    lines.forEach((line, index) => ctx.fillText(line, x, y + index * lineHeight));
+    return lines.length * lineHeight;
+  }
+
+  function estimateCardBlockHeight(ctx, card, width) {
+    let height = 118;
+    setFont(ctx, 25, 500);
+    if (card.painPoint) height += wrapCanvasText(ctx, `卡点：${card.painPoint}`, width - 54, 3).length * 32 + 14;
+    if (card.originalQuestion) height += wrapCanvasText(ctx, `原题：${card.originalQuestion}`, width - 54, 3).length * 32 + 14;
+    return Math.max(156, height);
+  }
+
+  function estimateExportHeight(ctx, data, stats) {
+    const inner = EXPORT_IMAGE_WIDTH - EXPORT_PADDING * 2;
+    let height = EXPORT_PADDING + 152 + 126 + 34;
+    const subjectEntries = Object.entries(groupBySubject(data.cards));
+    if (subjectEntries.length) height += 90 + subjectEntries.length * 46 + 32;
+    if (data.sessions.length || data.unmatchedCards.length) {
+      height += 90;
+      data.sessions.forEach((session) => {
+        height += 108 + session.cards.length * 38 + 18;
+      });
+      if (data.unmatchedCards.length) height += 110 + data.unmatchedCards.length * 38 + 18;
+    } else {
+      height += 200;
+    }
+    if (data.cards.length) {
+      height += 90;
+      data.cards.forEach((card) => {
+        height += estimateCardBlockHeight(ctx, card, inner) + 18;
+      });
+    }
+    height += 70;
+    return Math.max(1200, Math.ceil(height));
+  }
+
+  function drawExportHeader(ctx, data, stats, inner) {
+    let y = EXPORT_PADDING;
+    setFont(ctx, 48, 900);
+    ctx.fillStyle = "#2b2326";
+    ctx.fillText("今日学习报告", EXPORT_PADDING, y);
+    setFont(ctx, 25, 700);
+    ctx.fillStyle = "#75666c";
+    ctx.fillText(`${data.today} · MochiStudy`, EXPORT_PADDING, y + 58);
+    fillRoundRect(ctx, EXPORT_IMAGE_WIDTH - EXPORT_PADDING - 210, y - 8, 210, 56, 28, "#eaf6ec");
+    setFont(ctx, 24, 800);
+    ctx.fillStyle = "#2f6a3f";
+    ctx.textAlign = "center";
+    ctx.fillText(stats.cardCount ? "已开始学习" : "尚未开始", EXPORT_IMAGE_WIDTH - EXPORT_PADDING - 105, y + 8);
+    ctx.textAlign = "left";
+    y += 118;
+
+    const statWidth = (inner - 30) / 4;
+    const items = [
+      ["今日专注", formatMinutes(stats.totalMinutes), "#2f6a3f"],
+      ["学习时段", stats.windowLabel, "#864d61"],
+      ["导入卡片", `${stats.cardCount}张`, "#4f6fd8"],
+      ["涉及科目", `${stats.subjectCount}科`, "#e07020"],
+    ];
+    items.forEach((item, index) => {
+      const x = EXPORT_PADDING + index * (statWidth + 10);
+      fillRoundRect(ctx, x, y, statWidth, 104, 22, index === 0 ? "#eef8ef" : "#ffffff");
+      strokeRoundRect(ctx, x, y, statWidth, 104, 22, "rgba(134,77,97,0.12)");
+      setFont(ctx, 22, 800);
+      ctx.fillStyle = "#8a7b80";
+      ctx.fillText(item[0], x + 24, y + 20);
+      setFont(ctx, item[1].length > 9 ? 27 : 32, 900);
+      ctx.fillStyle = item[2];
+      ctx.fillText(item[1], x + 24, y + 54);
+    });
+    return y + 138;
+  }
+
+  function drawExportSectionTitle(ctx, icon, title, y) {
+    fillRoundRect(ctx, EXPORT_PADDING, y, 44, 44, 12, "#f3ecf0");
+    setFont(ctx, 25, 900);
+    ctx.fillStyle = "#864d61";
+    ctx.fillText(icon, EXPORT_PADDING + 12, y + 9);
+    setFont(ctx, 31, 900);
+    ctx.fillStyle = "#2b2326";
+    ctx.fillText(title, EXPORT_PADDING + 60, y + 5);
+    return y + 64;
+  }
+
+  function drawExportSubjects(ctx, data, y, inner) {
+    const entries = Object.entries(groupBySubject(data.cards));
+    if (!entries.length) return y;
+    y = drawExportSectionTitle(ctx, "●", "今天学了哪些科目", y);
+    const max = Math.max(...entries.map(([, items]) => items.length), 1);
+    entries.forEach(([subject, items]) => {
+      const info = subjectInfo(subject);
+      const barX = EXPORT_PADDING + 140;
+      const barW = inner - 230;
+      setFont(ctx, 25, 800);
+      ctx.fillStyle = "#3f3438";
+      ctx.fillText(info.label, EXPORT_PADDING, y + 4);
+      fillRoundRect(ctx, barX, y + 8, barW, 18, 9, "#f0e9ed");
+      fillRoundRect(ctx, barX, y + 8, Math.max(28, Math.round((items.length / max) * barW)), 18, 9, info.color || "#864d61");
+      setFont(ctx, 24, 900);
+      ctx.fillStyle = "#2b2326";
+      ctx.textAlign = "right";
+      ctx.fillText(`${items.length}张`, EXPORT_IMAGE_WIDTH - EXPORT_PADDING, y + 1);
+      ctx.textAlign = "left";
+      y += 46;
+    });
+    return y + 30;
+  }
+
+  function drawExportCardLine(ctx, card, x, y, width) {
+    const info = subjectInfo(card.subject);
+    fillRoundRect(ctx, x, y, width, 30, 15, "#f9f5f7");
+    fillRoundRect(ctx, x, y, 82, 30, 15, info.color || "#864d61");
+    setFont(ctx, 18, 900);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(info.label, x + 16, y + 5);
+    setFont(ctx, 22, 800);
+    ctx.fillStyle = "#2b2326";
+    const text = `${card.nodeLabel || "未命名知识点"} · ${"★".repeat(Number(card.stars || 1))}`;
+    drawWrappedText(ctx, text, x + 98, y + 3, width - 110, 26, { size: 22, weight: 800, maxLines: 1, color: "#2b2326" });
+  }
+
+  function drawExportTimeline(ctx, data, y, inner) {
+    y = drawExportSectionTitle(ctx, "│", "学习时间轴", y);
+    if (!data.sessions.length && !data.unmatchedCards.length) {
+      fillRoundRect(ctx, EXPORT_PADDING, y, inner, 132, 24, "#ffffff");
+      strokeRoundRect(ctx, EXPORT_PADDING, y, inner, 132, 24, "rgba(134,77,97,0.12)");
+      drawWrappedText(ctx, "今天还没有学习记录。开始一次专注，或导入一张学习卡片后，这里会自动生成报告。", EXPORT_PADDING + 28, y + 34, inner - 56, 34, { size: 26, weight: 700, color: "#75666c" });
+      return y + 162;
+    }
+    const drawSession = (session, cards, title, subtitle, tone = "#864d61") => {
+      const h = 102 + cards.length * 38;
+      fillRoundRect(ctx, EXPORT_PADDING, y, inner, h, 24, "#ffffff");
+      strokeRoundRect(ctx, EXPORT_PADDING, y, inner, h, 24, "rgba(134,77,97,0.12)");
+      fillRoundRect(ctx, EXPORT_PADDING + 24, y + 26, 14, 54, 7, tone);
+      setFont(ctx, 29, 900);
+      ctx.fillStyle = "#2b2326";
+      ctx.fillText(title, EXPORT_PADDING + 56, y + 24);
+      setFont(ctx, 23, 700);
+      ctx.fillStyle = "#75666c";
+      ctx.fillText(subtitle, EXPORT_PADDING + 56, y + 62);
+      let cardY = y + 92;
+      cards.forEach((card) => {
+        drawExportCardLine(ctx, card, EXPORT_PADDING + 56, cardY, inner - 86);
+        cardY += 38;
+      });
+      y += h + 18;
+    };
+    data.sessions.forEach((session) => {
+      const start = session.startMinute === null ? "未知" : timeFromMinutes(session.startMinute);
+      const end = session.active ? "进行中" : (session.endMinute === null ? "未知" : timeFromMinutes(session.endMinute));
+      const status = session.active ? "正在学" : session.completed === false ? "未完成" : "已完成";
+      const subtitle = `${formatMinutes(session.duration)} · ${status}${session.microGoal ? ` · ${session.microGoal}` : ""}`;
+      drawSession(session, session.cards, `${start}-${end}`, subtitle, session.completed === false ? "#e07020" : "#4caf50");
+    });
+    if (data.unmatchedCards.length) {
+      drawSession(null, data.unmatchedCards, "未匹配时段", `${data.unmatchedCards.length}张卡片今天导入，但没有落在专注轮附近`, "#e07020");
+    }
+    return y + 14;
+  }
+
+  function drawExportDetails(ctx, data, y, inner) {
+    if (!data.cards.length) return y;
+    y = drawExportSectionTitle(ctx, "□", "今日卡片明细", y);
+    data.cards.forEach((card) => {
+      const info = subjectInfo(card.subject);
+      const h = estimateCardBlockHeight(ctx, card, inner);
+      fillRoundRect(ctx, EXPORT_PADDING, y, inner, h, 24, "#ffffff");
+      strokeRoundRect(ctx, EXPORT_PADDING, y, inner, h, 24, "rgba(134,77,97,0.12)");
+      fillRoundRect(ctx, EXPORT_PADDING + 24, y + 24, 86, 36, 18, info.color || "#864d61");
+      setFont(ctx, 20, 900);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(info.label, EXPORT_PADDING + 44, y + 31);
+      setFont(ctx, 29, 900);
+      ctx.fillStyle = "#2b2326";
+      drawWrappedText(ctx, card.nodeLabel || "未命名知识点", EXPORT_PADDING + 126, y + 25, inner - 156, 34, { size: 29, weight: 900, maxLines: 1, color: "#2b2326" });
+      setFont(ctx, 22, 800);
+      ctx.fillStyle = "#75666c";
+      const meta = [card.displayTime || "未记录导入时间", sourceLabel(card.meta?.source), "★".repeat(Number(card.stars || 1))];
+      if (card.meta?.timeSpentMinutes) meta.push(`耗时${card.meta.timeSpentMinutes}分钟`);
+      ctx.fillText(meta.join(" · "), EXPORT_PADDING + 24, y + 78);
+      let textY = y + 116;
+      if (card.painPoint) {
+        textY += drawWrappedText(ctx, `卡点：${card.painPoint}`, EXPORT_PADDING + 24, textY, inner - 48, 32, { size: 25, weight: 600, maxLines: 3, color: "#3f3438" }) + 8;
+      }
+      if (card.originalQuestion) {
+        drawWrappedText(ctx, `原题：${card.originalQuestion}`, EXPORT_PADDING + 24, textY, inner - 48, 32, { size: 25, weight: 500, maxLines: 3, color: "#75666c" });
+      }
+      y += h + 18;
+    });
+    return y;
+  }
+
+  function buildTodayShareCanvas(data, stats) {
+    const measureCanvas = document.createElement("canvas");
+    const measureCtx = measureCanvas.getContext("2d");
+    if (!measureCtx) throw new Error("Canvas is not supported");
+    const height = estimateExportHeight(measureCtx, data, stats);
+    const canvas = document.createElement("canvas");
+    canvas.width = EXPORT_IMAGE_WIDTH;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas is not supported");
+    const inner = EXPORT_IMAGE_WIDTH - EXPORT_PADDING * 2;
+    ctx.textBaseline = "top";
+    ctx.fillStyle = "#fffaf4";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    fillRoundRect(ctx, 26, 26, canvas.width - 52, canvas.height - 52, 34, "#fffdf9");
+    let y = drawExportHeader(ctx, data, stats, inner);
+    y = drawExportSubjects(ctx, data, y, inner);
+    y = drawExportTimeline(ctx, data, y, inner);
+    y = drawExportDetails(ctx, data, y, inner);
+    setFont(ctx, 22, 700);
+    ctx.fillStyle = "#a08f95";
+    ctx.textAlign = "center";
+    ctx.fillText("由 MochiStudy 自动生成", EXPORT_IMAGE_WIDTH / 2, Math.min(canvas.height - 76, y + 24));
+    ctx.textAlign = "left";
+    return canvas;
+  }
+
+  function canvasToBlob(canvas) {
+    return new Promise((resolve) => {
+      if (!canvas.toBlob) {
+        const dataUrl = canvas.toDataURL("image/png");
+        const binary = atob(dataUrl.split(",")[1] || "");
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+        resolve(new Blob([bytes], { type: "image/png" }));
+        return;
+      }
+      canvas.toBlob((blob) => resolve(blob), "image/png", 0.96);
+    });
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  async function exportTodayImage(button) {
+    if (button) {
+      button.disabled = true;
+      button.classList.add("loading");
+    }
+    try {
+      const data = readTodayData();
+      const stats = buildStats(data);
+      const canvas = buildTodayShareCanvas(data, stats);
+      const blob = await canvasToBlob(canvas);
+      if (!blob) throw new Error("Canvas export failed");
+      const filename = `MochiStudy-${data.today}-今日学习报告.png`;
+      const file = typeof File !== "undefined" ? new File([blob], filename, { type: "image/png" }) : null;
+      if (file && navigator.canShare?.({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: "今日学习报告", text: "MochiStudy 今日学习报告" });
+          window.MochiApp?.toast?.("今日学习长图已打开分享");
+          return;
+        } catch (err) {
+          if (err?.name === "AbortError") {
+            window.MochiApp?.toast?.("已取消分享");
+            return;
+          }
+        }
+      }
+      downloadBlob(blob, filename);
+      window.MochiApp?.toast?.("今日学习长图已导出");
+    } catch (err) {
+      console.error(err);
+      window.MochiApp?.toast?.("导出失败，请稍后再试");
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.classList.remove("loading");
+      }
+    }
   }
 
   function renderStats(stats) {
@@ -353,9 +692,14 @@
             <h2>今日学习</h2>
             <p>${data.today} · 给家长和学生看的当日学习报告</p>
           </div>
-          <button class="btn btn-outline btn-sm" data-route="home" type="button">
-            <span class="material-symbols-outlined">add_circle</span>继续学习
-          </button>
+          <div class="today-title-actions">
+            <button class="btn btn-primary btn-sm" data-today-export-image type="button">
+              <span class="material-symbols-outlined">ios_share</span>导出长图
+            </button>
+            <button class="btn btn-outline btn-sm" data-route="home" type="button">
+              <span class="material-symbols-outlined">add_circle</span>继续学习
+            </button>
+          </div>
         </div>
         ${renderStats(stats)}
         ${renderSubjectBars(data.cards)}
@@ -363,6 +707,9 @@
         ${renderCardList(data.cards)}
       </div>
     `;
+    container.querySelector("[data-today-export-image]")?.addEventListener("click", (event) => {
+      exportTodayImage(event.currentTarget);
+    });
   }
 
   window.MochiTodayStudy = { render };
