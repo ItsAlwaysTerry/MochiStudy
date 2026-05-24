@@ -80,6 +80,7 @@
     lottery: {
       smallPerDraw: 5,
       bigPerDraw: 1,
+      pityThreshold: 5,
     },
   };
   const LOTTERY_CONFIG_DEFAULTS = {
@@ -707,6 +708,7 @@
       lotteryTickets: 0,
       usedLotteryCount: 0,
       carriedLotteryDraws: 0,
+      pityCurrent: 0,
     };
   }
 
@@ -727,6 +729,7 @@
       lotteryTickets: Number(saved?.lotteryTickets || 0),
       usedLotteryCount: Number(saved?.usedLotteryCount || 0),
       carriedLotteryDraws: Number(saved?.carriedLotteryDraws || 0),
+      pityCurrent: Number(saved?.pityCurrent || 0),
     };
   }
 
@@ -963,6 +966,8 @@
     }
   }
 
+  // ── LOTTERY: 命运信封系统 ──────────────────────────────────────────
+
   function showLotteryOverlay() {
     const overlay = document.getElementById("lottery-overlay");
     if (!overlay) return;
@@ -980,64 +985,80 @@
 
   function renderLotteryWheel() {
     const state = loadAchievementState();
-    const items = loadLotteryConfig().items;
+    const cfg = loadAchievementConfig();
+    const pityThreshold = Number(cfg.lottery?.pityThreshold || 5);
+    const pityCurrent = Number(state.pityCurrent || 0);
+    const pityPct = Math.min(100, Math.round((pityCurrent / pityThreshold) * 100));
+    const pityFull = pityCurrent >= pityThreshold;
+
     return `
-      <div class="lottery-inner" data-die-one="" data-die-two="" data-draw-count="1">
+      <div class="lottery-inner" data-die-one="" data-die-two="" data-phase="dice" data-excluded="-1" data-blessed="-1" data-upgrade="false" data-extra-pity="0" data-pity-active="${pityFull}">
         <div class="lottery-header">
           <button class="lottery-close-btn" data-action="close-lottery" type="button" aria-label="关闭抽奖">
             <span class="material-symbols-outlined">close</span>
           </button>
-          <h2 class="lottery-title">奖励跑马灯</h2>
+          <h2 class="lottery-title">命运信封</h2>
           <p class="lottery-tickets-hint">剩余 ${state.lotteryTickets || 0} 次机会</p>
         </div>
-        <div class="lottery-playfield">
-          <aside class="lottery-ritual-panel">
-            <div class="lottery-dice-panel" aria-live="polite">
-              <div class="lottery-dice-head">
-                <strong>骰子仪式</strong>
-                <span data-dice-chances>骰子机会 2/2</span>
-              </div>
-              <div class="lottery-dice">
-                <div class="lottery-die-slot">
-                  <span class="lottery-die" data-die="1">?</span>
-                  <button class="btn btn-soft btn-sm" data-action="roll-die" data-die-index="1" type="button">摇第一颗</button>
-                </div>
-                <div class="lottery-die-slot">
-                  <span class="lottery-die" data-die="2">?</span>
-                  <button class="btn btn-soft btn-sm" data-action="roll-die" data-die-index="2" type="button">摇第二颗</button>
-                </div>
-              </div>
-              <p class="lottery-dice-hint">两颗骰子点数 ≤4 或 ≥10，本张券奖励翻倍。</p>
+
+        <div class="lottery-pity-bar">
+          <span class="pity-label">运气槽</span>
+          <div class="pity-track"><div class="pity-fill" style="width:${pityPct}%"></div></div>
+          <span class="${pityFull ? "pity-guaranteed" : "pity-count"}">${pityFull ? "🌟 满槽！必得大奖" : `${pityCurrent}/${pityThreshold}`}</span>
+        </div>
+
+        <div class="lottery-dice-panel" aria-live="polite">
+          <div class="lottery-dice-head">
+            <strong>骰子仪式</strong>
+            <span data-dice-chances>还剩 2 颗未摇</span>
+          </div>
+          <div class="lottery-dice">
+            <div class="lottery-die-slot">
+              <span class="lottery-die" data-die="1">?</span>
+              <button class="btn btn-soft btn-sm" data-action="roll-die" data-die-index="1" type="button">摇第一颗</button>
             </div>
-            <button class="lottery-muyu" data-action="tap-muyu" type="button" aria-label="敲木鱼">
-              <span class="muyu-head"></span>
-              <span class="muyu-stick"></span>
-              <strong>敲木鱼</strong>
-              <small>静心一下，不消耗机会</small>
-            </button>
-          </aside>
-          <div class="lottery-main-panel">
-            <div class="lottery-grid" id="lottery-grid">
-              ${items.map((item, index) => renderLotteryCell(item, index)).join("")}
+            <div class="lottery-die-slot">
+              <span class="lottery-die" data-die="2">?</span>
+              <button class="btn btn-soft btn-sm" data-action="roll-die" data-die-index="2" type="button">摇第二颗</button>
+            </div>
+          </div>
+          <p class="lottery-dice-hint">对子→提示最佳 · 顺子→排除最差 · 11~12点→奖励升档 · 2~3点→运气+1</p>
+        </div>
+
+        <div class="lottery-envelopes" id="lottery-envelopes" hidden>
+          <p class="lottery-pick-hint">点击一个信封，揭开命运</p>
+          <div class="lottery-envelopes-row">
+            <div class="envelope" data-card-index="0" data-action="pick-envelope">
+              <div class="envelope-inner">
+                <div class="envelope-front"><span class="envelope-mark">✉</span></div>
+                <div class="envelope-back"></div>
+              </div>
+            </div>
+            <div class="envelope" data-card-index="1" data-action="pick-envelope">
+              <div class="envelope-inner">
+                <div class="envelope-front"><span class="envelope-mark">✉</span></div>
+                <div class="envelope-back"></div>
+              </div>
+            </div>
+            <div class="envelope" data-card-index="2" data-action="pick-envelope">
+              <div class="envelope-inner">
+                <div class="envelope-front"><span class="envelope-mark">✉</span></div>
+                <div class="envelope-back"></div>
+              </div>
             </div>
           </div>
         </div>
+
         <div id="lottery-result" class="lottery-result" hidden></div>
-        <button class="btn btn-primary lottery-spin-btn" id="lottery-spin-btn" data-action="spin-lottery" type="button" disabled>
-          <span class="material-symbols-outlined">casino</span>
-          先摇完两颗骰子
+        <div id="lottery-again-area" hidden></div>
+
+        <button class="lottery-muyu" data-action="tap-muyu" type="button" aria-label="敲木鱼">
+          <span class="muyu-head"></span>
+          <span class="muyu-stick"></span>
+          <strong>敲木鱼</strong>
+          <small>静心，不消耗机会</small>
         </button>
       </div>
-    `;
-  }
-
-  function renderLotteryCell(item, index) {
-    return `
-      <article class="lottery-cell" data-lottery-index="${index}" style="--item-color:${escapeHtml(item.color || lotteryColorForType(item.type))}">
-        <span class="lottery-cell-index">${String(index + 1).padStart(2, "0")}</span>
-        <strong>${escapeHtml(item.label || "")}</strong>
-        <small>${lotteryTypeLabel(item)} · 权重 ${Number(item.weight || 0)}</small>
-      </article>
     `;
   }
 
@@ -1047,113 +1068,78 @@
 
   function bindLotteryOverlay(overlay) {
     overlay.onclick = (event) => {
-      const action = event.target.closest("[data-action]")?.dataset.action;
-      if (action === "close-lottery") {
-        hideLotteryOverlay();
-        return;
-      }
-      if (action === "spin-lottery") {
-        spinWheel();
+      const actionEl = event.target.closest("[data-action]");
+      if (!actionEl) return;
+      const action = actionEl.dataset.action;
+      if (action === "close-lottery") { hideLotteryOverlay(); return; }
+      if (action === "spin-lottery") { showLotteryOverlay(); return; } // "再来一次"
+      if (action === "pick-envelope") {
+        const cardIndex = Number(actionEl.closest(".envelope")?.dataset.cardIndex ?? -1);
+        if (cardIndex >= 0) pickEnvelope(cardIndex);
         return;
       }
       if (action === "roll-die") {
-        rollSingleDie(Number(event.target.closest("[data-action]")?.dataset.dieIndex || 0));
+        rollSingleDie(Number(actionEl.dataset.dieIndex || 0));
         return;
       }
       if (action === "tap-muyu") {
-        tapMuyu(event.target.closest(".lottery-muyu"));
+        tapMuyu(actionEl.closest(".lottery-muyu"));
       }
     };
   }
 
-  function drawWheel(rotationAngle) {
-    const canvas = document.getElementById("lottery-canvas");
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    const items = loadLotteryConfig().items;
-    const totalWeight = items.reduce((sum, item) => sum + Number(item.weight || 0), 0);
-    if (!items.length || totalWeight <= 0) return;
-    const cx = canvas.width / 2;
-    const cy = canvas.height / 2;
-    const radius = cx - 8;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // ── Prize helpers ──────────────────────────────────────────────────
 
-    let startAngle = rotationAngle;
-    items.forEach((item) => {
-      const sliceAngle = (Number(item.weight || 0) / totalWeight) * 2 * Math.PI;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.arc(cx, cy, radius, startAngle, startAngle + sliceAngle);
-      ctx.closePath();
-      ctx.fillStyle = item.color || "#864d61";
-      ctx.fill();
-      ctx.strokeStyle = "rgba(255,255,255,0.3)";
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(startAngle + sliceAngle / 2);
-      ctx.textAlign = "right";
-      ctx.fillStyle = "#fff";
-      ctx.font = "bold 13px sans-serif";
-      ctx.shadowColor = "rgba(0,0,0,0.4)";
-      ctx.shadowBlur = 3;
-      const label = String(item.label || "");
-      const text = label.length > 8 ? `${label.slice(0, 8)}...` : label;
-      ctx.fillText(text, radius - 12, 5);
-      ctx.restore();
-
-      startAngle += sliceAngle;
-    });
-
-    ctx.beginPath();
-    ctx.arc(cx, cy, 24, 0, 2 * Math.PI);
-    ctx.fillStyle = "#1e1220";
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(cx, cy, 18, 0, 2 * Math.PI);
-    ctx.fillStyle = "#864d61";
-    ctx.fill();
+  function getPrizeTier(item) {
+    if (!item) return 0;
+    if (item.type === "bigReward") return 3;
+    if (item.type === "reward") return 2;
+    return 1;
   }
 
   function selectLotteryItem(items) {
     const totalWeight = items.reduce((sum, item) => sum + Number(item.weight || 0), 0);
     let rand = Math.random() * totalWeight;
-    for (let index = 0; index < items.length; index += 1) {
-      rand -= Number(items[index].weight || 0);
-      if (rand <= 0) return index;
+    for (let i = 0; i < items.length; i += 1) {
+      rand -= Number(items[i].weight || 0);
+      if (rand <= 0) return i;
     }
     return Math.max(0, items.length - 1);
   }
 
+  function selectBigRewardItem(items) {
+    const big = items.filter((i) => i.type === "bigReward");
+    if (big.length) return items.indexOf(big[Math.floor(Math.random() * big.length)]);
+    const reward = items.filter((i) => i.type === "reward");
+    if (reward.length) return items.indexOf(reward[Math.floor(Math.random() * reward.length)]);
+    return selectLotteryItem(items);
+  }
+
+  function upgradeItemTier(item, allItems) {
+    if (!item || !allItems?.length) return item;
+    if (item.type === "bigReward") return item;
+    const targetType = item.type === "reward" ? "bigReward" : "reward";
+    const candidates = allItems.filter((i) => i.type === targetType);
+    if (!candidates.length) return item;
+    return candidates[Math.floor(Math.random() * candidates.length)];
+  }
+
+  function renderEnvelopeBack(item, upgraded) {
+    if (!item) return '<div class="envelope-prize-empty">—</div>';
+    const color = escapeHtml(item.color || lotteryColorForType(item.type));
+    return `
+      <div class="envelope-prize" style="--item-color:${color}">
+        ${upgraded ? '<span class="envelope-upgrade-badge">↑ 升档</span>' : ""}
+        <span class="envelope-tier-badge">${escapeHtml(lotteryTypeLabel(item))}</span>
+        <strong class="envelope-prize-label">${escapeHtml(item.label || "")}</strong>
+      </div>
+    `;
+  }
+
+  // ── Dice ──────────────────────────────────────────────────────────
+
   function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
-  }
-
-  function rollLotteryDice() {
-    const first = 1 + Math.floor(Math.random() * 6);
-    const second = 1 + Math.floor(Math.random() * 6);
-    const sum = first + second;
-    return { first, second, sum, bonus: sum <= 4 || sum >= 10 };
-  }
-
-  function setLotteryDice(first, second) {
-    const firstEl = document.querySelector("[data-die='1']");
-    const secondEl = document.querySelector("[data-die='2']");
-    if (firstEl) firstEl.textContent = String(first);
-    if (secondEl) secondEl.textContent = String(second);
-  }
-
-  async function animateDiceRoll(finalRoll) {
-    for (let step = 0; step < 14; step += 1) {
-      setLotteryDice(1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6));
-      await sleep(54 + step * 12);
-    }
-    setLotteryDice(finalRoll.first, finalRoll.second);
-    const hint = document.querySelector(".lottery-dice-hint");
-    if (hint) hint.textContent = finalRoll.bonus ? `点数 ${finalRoll.sum}，触发加倍！本张券抽 2 次` : `点数 ${finalRoll.sum}，本张券抽 1 次`;
   }
 
   async function rollSingleDie(index) {
@@ -1164,6 +1150,7 @@
     if (!inner || !dieEl || !button || button.disabled) return;
     button.disabled = true;
     button.textContent = "摇动中...";
+    const FACES = ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
     let value = 1;
     for (let step = 0; step < 13; step += 1) {
       value = 1 + Math.floor(Math.random() * 6);
@@ -1173,52 +1160,234 @@
     }
     dieEl.classList.remove("rolling");
     inner.dataset[index === 1 ? "dieOne" : "dieTwo"] = String(value);
-    button.textContent = "已锁定";
+    button.textContent = `已锁定 ${FACES[value - 1]}`;
     updateDiceState();
   }
 
   function updateDiceState() {
     const inner = document.querySelector(".lottery-inner");
     if (!inner) return;
-    const values = [Number(inner.dataset.dieOne || 0), Number(inner.dataset.dieTwo || 0)];
-    const rolled = values.filter(Boolean).length;
+    const d1 = Number(inner.dataset.dieOne || 0);
+    const d2 = Number(inner.dataset.dieTwo || 0);
+    const rolledCount = [d1, d2].filter(Boolean).length;
     const chanceEl = document.querySelector("[data-dice-chances]");
-    if (chanceEl) chanceEl.textContent = `骰子机会 ${2 - rolled}/2`;
-    const hint = document.querySelector(".lottery-dice-hint");
-    const spinButton = document.getElementById("lottery-spin-btn");
-    if (rolled < 2) {
-      if (hint) hint.textContent = "两颗骰子点数 <=4 或 >=10，本张券奖励翻倍。";
-      if (spinButton) {
-        spinButton.disabled = true;
-        spinButton.innerHTML = `<span class="material-symbols-outlined">casino</span>先摇完两颗骰子`;
-      }
-      return;
-    }
-    const sum = values[0] + values[1];
-    const bonus = sum <= 4 || sum >= 10;
-    inner.dataset.drawCount = bonus ? "2" : "1";
-    if (hint) hint.textContent = bonus ? `点数 ${sum}，触发加倍！真正抽奖 2 次` : `点数 ${sum}，真正抽奖 1 次`;
-    if (spinButton) {
-      spinButton.disabled = false;
-      spinButton.innerHTML = `<span class="material-symbols-outlined">casino</span>${bonus ? "开始 2 次跑马灯" : "开始跑马灯抽奖"}`;
-    }
+    if (chanceEl && rolledCount < 2) chanceEl.textContent = `还剩 ${2 - rolledCount} 颗未摇`;
+    if (rolledCount < 2) return;
+    activateLotteryEnvelopes(inner, d1, d2);
   }
 
-  function resetDiceModule() {
+  // ── Envelope activation (骰子效果) ────────────────────────────────
+
+  function activateLotteryEnvelopes(inner, d1, d2) {
+    const sum = d1 + d2;
+    const isPair = d1 === d2;
+    const isStraight = Math.abs(d1 - d2) === 1;
+    const isHigh = sum >= 11;
+    const isLow = sum <= 3;
+
+    const state = loadAchievementState();
+    const cfg = loadAchievementConfig();
+    const pityThreshold = Number(cfg.lottery?.pityThreshold || 5);
+    const pityActive = Number(state.pityCurrent || 0) >= pityThreshold;
+
+    const items = loadLotteryConfig().items;
+    if (!items.length) return;
+
+    // Assign 3 prizes; pity forces a big reward into slot 0
+    const prizeIndices = [0, 1, 2].map(() => selectLotteryItem(items));
+    if (pityActive) prizeIndices[0] = selectBigRewardItem(items);
+    const prizes = prizeIndices.map((i) => items[i]);
+    const tiers = prizes.map(getPrizeTier);
+
+    // Dice effects
+    let blessedIndex = -1;
+    let excludedIndex = -1;
+
+    if (isPair) {
+      // Hint the best card with a glow
+      blessedIndex = pityActive ? 0 : tiers.indexOf(Math.max(...tiers));
+    }
+    if (isStraight) {
+      // Auto-reveal and exclude the worst card
+      const minTier = Math.min(...tiers);
+      excludedIndex = tiers.lastIndexOf(minTier);
+      if (pityActive && excludedIndex === 0) {
+        // Don't exclude the guaranteed big-reward slot
+        const alt = tiers.indexOf(minTier, 1);
+        excludedIndex = alt >= 0 ? alt : 2;
+      }
+    }
+
+    // Store card data in dataset
+    inner.dataset.card0 = JSON.stringify(prizes[0]);
+    inner.dataset.card1 = JSON.stringify(prizes[1]);
+    inner.dataset.card2 = JSON.stringify(prizes[2]);
+    inner.dataset.blessed = String(blessedIndex);
+    inner.dataset.excluded = String(excludedIndex);
+    inner.dataset.upgrade = String(isHigh);
+    inner.dataset.extraPity = String(isLow ? 1 : 0);
+    inner.dataset.pityActive = String(pityActive);
+    inner.dataset.phase = "ready";
+
+    // Update dice status text
+    const chanceEl = document.querySelector("[data-dice-chances]");
+    if (chanceEl) chanceEl.textContent = "信封已生成";
+    const hint = document.querySelector(".lottery-dice-hint");
+    if (hint) {
+      let msg = `点数 ${sum}`;
+      if (isPair) msg += " — 对子！最佳信封已标记 ✦";
+      else if (isStraight) msg += " — 顺子！最差选项已排除";
+      else if (isHigh) msg += " — 高点！奖励将升一档 ↑";
+      else if (isLow) msg += " — 低点，运气槽 +1";
+      hint.textContent = msg;
+    }
+
+    // Show envelope area
+    const envelopesEl = document.getElementById("lottery-envelopes");
+    if (!envelopesEl) return;
+    envelopesEl.hidden = false;
+
+    envelopesEl.querySelectorAll(".envelope").forEach((env, i) => {
+      if (i === blessedIndex) env.classList.add("blessed");
+      if (isHigh) env.classList.add("lucky");
+      if (i === excludedIndex) {
+        env.classList.add("excluded");
+        env.dataset.excluded = "true";
+        const back = env.querySelector(".envelope-back");
+        if (back) back.innerHTML = renderEnvelopeBack(prizes[i], false);
+        setTimeout(() => env.classList.add("flipped"), 350);
+      }
+    });
+  }
+
+  // ── Pick & Reveal ──────────────────────────────────────────────────
+
+  async function pickEnvelope(cardIndex) {
     const inner = document.querySelector(".lottery-inner");
-    if (!inner) return;
-    inner.dataset.dieOne = "";
-    inner.dataset.dieTwo = "";
-    inner.dataset.drawCount = "1";
-    document.querySelectorAll(".lottery-die").forEach((die) => {
-      die.textContent = "?";
-      die.classList.remove("rolling");
+    if (!inner || inner.dataset.phase !== "ready") return;
+    const envEl = document.querySelector(`[data-card-index="${cardIndex}"]`);
+    if (!envEl || envEl.dataset.excluded === "true" || envEl.classList.contains("flipped")) return;
+
+    inner.dataset.phase = "picking";
+
+    // Lock all envelopes
+    document.querySelectorAll(".envelope").forEach((env) => {
+      env.removeAttribute("data-action");
+      env.style.cursor = "default";
     });
-    document.querySelectorAll("[data-action='roll-die']").forEach((button) => {
-      button.disabled = false;
-      button.textContent = button.dataset.dieIndex === "1" ? "摇第一颗" : "摇第二颗";
-    });
-    updateDiceState();
+
+    const prizes = [
+      JSON.parse(inner.dataset.card0 || "null"),
+      JSON.parse(inner.dataset.card1 || "null"),
+      JSON.parse(inner.dataset.card2 || "null"),
+    ];
+    const items = loadLotteryConfig().items;
+    const isHigh = inner.dataset.upgrade === "true";
+    const excludedIndex = Number(inner.dataset.excluded ?? -1);
+
+    // Compute final prize (upgrade if high roll)
+    let finalPrize = prizes[cardIndex];
+    let wasUpgraded = false;
+    if (isHigh && finalPrize) {
+      const upgraded = upgradeItemTier(finalPrize, items);
+      if (upgraded !== finalPrize) { finalPrize = upgraded; wasUpgraded = true; }
+    }
+
+    // Flip chosen envelope
+    const chosenBack = envEl.querySelector(".envelope-back");
+    if (chosenBack) chosenBack.innerHTML = renderEnvelopeBack(finalPrize, wasUpgraded);
+    envEl.classList.add("flipped");
+    await sleep(750);
+
+    // Flip remaining non-excluded envelopes
+    for (let i = 0; i < 3; i++) {
+      if (i === cardIndex || i === excludedIndex) continue;
+      const otherEnv = document.querySelector(`[data-card-index="${i}"]`);
+      const otherBack = otherEnv?.querySelector(".envelope-back");
+      if (otherBack) otherBack.innerHTML = renderEnvelopeBack(prizes[i], false);
+      if (otherEnv) { otherEnv.classList.add("flipped"); await sleep(450); }
+    }
+
+    await sleep(200);
+
+    // C: 近失效应 — compare chosen tier vs best unchosen
+    const chosenTier = getPrizeTier(finalPrize);
+    const otherTiers = [0, 1, 2]
+      .filter((i) => i !== cardIndex && i !== excludedIndex)
+      .map((i) => getPrizeTier(prizes[i]));
+    if (otherTiers.length > 0) {
+      const bestOther = Math.max(...otherTiers);
+      if (bestOther > chosenTier) showNearMissEffect("差一步！");
+      else if (chosenTier > bestOther) showNearMissEffect("就是这张！", true);
+      await sleep(1400);
+    }
+
+    onEnvelopeReveal(finalPrize, prizes, inner, wasUpgraded);
+  }
+
+  function showNearMissEffect(text, isWin = false) {
+    const splash = document.createElement("div");
+    splash.className = `near-miss-splash${isWin ? " is-win" : ""}`;
+    splash.innerHTML = `<div class="near-miss-text">${escapeHtml(text)}</div>`;
+    document.body.appendChild(splash);
+    setTimeout(() => splash.remove(), 1500);
+  }
+
+  function onEnvelopeReveal(finalPrize, _prizes, inner, wasUpgraded) {
+    const state = loadAchievementState();
+    const cfg = loadAchievementConfig();
+    const pityThreshold = Number(cfg.lottery?.pityThreshold || 5);
+    const pityActive = inner.dataset.pityActive === "true";
+    const isLow = Number(inner.dataset.extraPity || 0) > 0;
+
+    // B: 保底计数更新
+    if (pityActive || finalPrize?.type === "bigReward") {
+      state.pityCurrent = 0;
+    } else {
+      state.pityCurrent = Math.min(
+        pityThreshold,
+        Number(state.pityCurrent || 0) + 1 + (isLow ? 1 : 0)
+      );
+    }
+
+    state.lotteryTickets = Math.max(0, Number(state.lotteryTickets || 0) - 1);
+    state.usedLotteryCount = Number(state.usedLotteryCount || 0) + 1;
+    saveAchievementState(state);
+    if (finalPrize) saveLotteryHistory(finalPrize);
+
+    // Result card
+    const resultEl = document.getElementById("lottery-result");
+    if (resultEl) {
+      resultEl.hidden = false;
+      const prizeColor = escapeHtml(finalPrize?.color || lotteryColorForType(finalPrize?.type));
+      resultEl.innerHTML = `
+        <div class="lottery-result-inner">
+          ${pityActive ? '<p class="lottery-result-pity-banner">🌟 运气槽满，保底触发！</p>' : ""}
+          ${wasUpgraded ? '<p class="lottery-result-upgrade">↑ 骰子高点，奖励已升档</p>' : ""}
+          <p class="lottery-result-item" style="--item-color:${prizeColor}">
+            <span>${escapeHtml(lotteryTypeLabel(finalPrize))}</span>${escapeHtml(finalPrize?.label || "")}
+          </p>
+          ${!pityActive && state.pityCurrent > 0
+            ? `<p class="lottery-result-pity-hint">运气槽 ${state.pityCurrent} / ${pityThreshold}</p>`
+            : ""}
+        </div>
+      `;
+    }
+
+    const hint = document.querySelector(".lottery-tickets-hint");
+    if (hint) hint.textContent = `剩余 ${state.lotteryTickets} 次机会`;
+
+    const againArea = document.getElementById("lottery-again-area");
+    if (againArea) {
+      againArea.hidden = false;
+      againArea.innerHTML = state.lotteryTickets > 0
+        ? `<button class="btn btn-primary lottery-spin-btn" data-action="spin-lottery" type="button">再来一次</button>`
+        : `<p class="muted lottery-done-msg">暂时没有机会了，继续学习获得更多！</p>`;
+    }
+
+    inner.dataset.phase = "done";
+    updateNavBadge();
+    if (currentRoute() === "achievements") renderAchievements(document.getElementById("view"));
   }
 
   function tapMuyu(button) {
@@ -1233,111 +1402,10 @@
     setTimeout(() => float.remove(), 900);
   }
 
-  function setLotteryActiveCell(index, className = "active") {
-    document.querySelectorAll(".lottery-cell").forEach((cell) => {
-      cell.classList.remove("active", "winner");
-    });
-    const cell = document.querySelector(`[data-lottery-index="${index}"]`);
-    if (cell) cell.classList.add(className);
-  }
-
-  function animateLotteryGrid(targetIndex, itemCount, round = 0) {
-    return new Promise((resolve) => {
-      const currentIndex = Math.max(0, Number(_lotteryCursorIndex || 0));
-      const offset = (targetIndex - currentIndex + itemCount) % itemCount;
-      const totalSteps = itemCount * (3 + round) + offset;
-      let step = 0;
-      const tick = () => {
-        _lotteryCursorIndex = (_lotteryCursorIndex + 1) % itemCount;
-        setLotteryActiveCell(_lotteryCursorIndex);
-        const progress = step / Math.max(1, totalSteps);
-        const delay = 70 + Math.round((progress ** 2.2) * 260);
-        step += 1;
-        if (step <= totalSteps) {
-          setTimeout(tick, delay);
-        } else {
-          _lotteryCursorIndex = targetIndex;
-          setLotteryActiveCell(targetIndex, "winner");
-          resolve();
-        }
-      };
-      tick();
-    });
-  }
-
-  async function spinWheel() {
-    const state = loadAchievementState();
-    if ((state.lotteryTickets || 0) <= 0) return;
-    const inner = document.querySelector(".lottery-inner");
-    const drawCount = Math.max(1, Number(inner?.dataset.drawCount || 0));
-    if (!Number(inner?.dataset.dieOne || 0) || !Number(inner?.dataset.dieTwo || 0)) return;
-    const spinButton = document.getElementById("lottery-spin-btn");
-    if (spinButton) {
-      spinButton.disabled = true;
-      spinButton.innerHTML = "跑马灯抽奖中...";
-    }
-    const items = loadLotteryConfig().items;
-    const totalWeight = items.reduce((sum, item) => sum + Number(item.weight || 0), 0);
-    if (!items.length || totalWeight <= 0) return;
-
-    const diceSum = Number(inner?.dataset.dieOne || 0) + Number(inner?.dataset.dieTwo || 0);
-    const roll = { sum: diceSum, bonus: drawCount > 1 };
-    const selectedItems = [];
-    for (let draw = 0; draw < drawCount; draw += 1) {
-      if (spinButton) spinButton.innerHTML = drawCount > 1 ? `第 ${draw + 1} 次跑马灯...` : "跑马灯抽奖中...";
-      const selectedIndex = selectLotteryItem(items);
-      await animateLotteryGrid(selectedIndex, items.length, draw);
-      selectedItems.push(items[selectedIndex]);
-      await sleep(520);
-    }
-    onSpinEnd(selectedItems, roll);
-  }
-
-  function onSpinEnd(items, roll) {
-    const state = loadAchievementState();
-    state.lotteryTickets = Math.max(0, Number(state.lotteryTickets || 0) - 1);
-    state.usedLotteryCount = Number(state.usedLotteryCount || 0) + 1;
-    saveAchievementState(state);
-    items.forEach((item) => saveLotteryHistory(item));
-
-    const resultEl = document.getElementById("lottery-result");
-    if (resultEl) {
-      resultEl.hidden = false;
-      resultEl.innerHTML = `
-        <div class="lottery-result-inner">
-          <p class="lottery-result-label">${roll.bonus ? `骰子 ${roll.sum} 点，加倍成功` : `骰子 ${roll.sum} 点`}</p>
-          <div class="lottery-result-list">
-            ${items.map((item) => `
-              <p class="lottery-result-item" style="--item-color:${escapeHtml(item.color || lotteryColorForType(item.type))}">
-                <span>${lotteryTypeLabel(item)}</span>${escapeHtml(item.label || "")}
-              </p>
-            `).join("")}
-          </div>
-          <p class="lottery-result-type">${roll.bonus ? "本张券获得 2 次奖励" : "本张券获得 1 次奖励"}</p>
-        </div>
-      `;
-    }
-
-    const hint = document.querySelector(".lottery-tickets-hint");
-    if (hint) hint.textContent = `剩余 ${state.lotteryTickets} 次机会`;
-    const spinButton = document.getElementById("lottery-spin-btn");
-    if (spinButton) {
-      spinButton.innerHTML = state.lotteryTickets > 0 ? "再摇一次" : "没有机会了";
-      spinButton.disabled = state.lotteryTickets <= 0;
-    }
-    if (state.lotteryTickets > 0) resetDiceModule();
-    updateNavBadge();
-    if (currentRoute() === "achievements") renderAchievements(document.getElementById("view"));
-  }
-
   function saveLotteryHistory(item) {
     try {
       const history = JSON.parse(localStorage.getItem("lottery_history") || "[]");
-      history.unshift({
-        date: todayKey(),
-        label: item.label,
-        type: item.type,
-      });
+      history.unshift({ date: todayKey(), label: item.label, type: item.type });
       localStorage.setItem("lottery_history", JSON.stringify(history.slice(0, 50)));
     } catch {
       // Lottery history is optional.
@@ -3470,7 +3538,6 @@
   let _audioCtx = null;
   let _reminderInterval = null;
   let _wheelCurrentAngleDeg = 0;
-  let _lotteryCursorIndex = 0;
   let _reminderCount = 0;
   const REMINDER_MAX = 10;
   const REMINDER_INTERVAL = 30;
