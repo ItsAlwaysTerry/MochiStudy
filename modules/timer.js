@@ -21,7 +21,7 @@
     restStartedAtMs: null,
     restDurationSecs: 0,
     microGoal: "",
-    freeMode: false,
+    freeMode: true,
     pendingRestMins: null,
     pendingActualMins: null,
     todayPomodoros: 0,
