@@ -1019,6 +1019,7 @@
           <div class="pity-track"><div class="pity-fill" style="width:${pityPct}%"></div></div>
           <span class="${pityFull ? "pity-guaranteed" : "pity-count"}">${pityFull ? "🌟 满槽！必得大奖" : `${pityCurrent}/${pityThreshold}`}</span>
         </div>
+        <p class="pity-hint-text">连续没中大奖时积累 · 满格必得大奖</p>
 
         <div class="lottery-phase" id="lp-showcase">
           <p class="phase-label">奖励池 — 看清楚再出发</p>
@@ -1042,21 +1043,28 @@
             </div>
             <p class="lottery-dice-result" id="lottery-dice-result">两颗都摇完才能洗牌</p>
           </div>
+          <div class="lottery-dice-tip">
+            <span class="dice-tip-rule">合计 ≤2 或 ≥11</span>
+            <span class="dice-tip-arrow">→</span>
+            <span class="dice-tip-effect">🎉 翻牌时额外多翻一张再选</span>
+          </div>
           <button class="lottery-action-btn" data-action="phase-to-draw" id="btn-phase-draw" type="button" disabled>洗牌！🃏</button>
         </div>
 
         <div class="lottery-phase" id="lp-draw" hidden>
-          <p class="phase-label">从牌堆里抽 5 张</p>
-          <div class="lottery-draw-area">
-            <div class="lottery-deck" id="lottery-deck">
-              <div class="deck-card deck-card--1"></div>
-              <div class="deck-card deck-card--2"></div>
-              <div class="deck-card deck-card--3"></div>
+          <p class="phase-label">从摊开的牌里选 5 张手牌</p>
+          <div class="lottery-spread" id="lottery-spread"></div>
+          <div class="lottery-hand-area">
+            <p class="hand-hint">手牌 <span id="hand-count">0</span>/5 — 点击上方牌面加入手牌</p>
+            <div class="lottery-hand-slots" id="lottery-hand-slots">
+              <div class="hand-slot" data-slot="0"></div>
+              <div class="hand-slot" data-slot="1"></div>
+              <div class="hand-slot" data-slot="2"></div>
+              <div class="hand-slot" data-slot="3"></div>
+              <div class="hand-slot" data-slot="4"></div>
             </div>
-            <div class="lottery-hand" id="lottery-hand"></div>
           </div>
-          <button class="lottery-action-btn" data-action="draw-card" id="btn-draw-card" type="button">抽一张 ✋</button>
-          <button class="lottery-action-btn" data-action="phase-to-pick" id="btn-phase-pick" type="button" hidden>从这 5 张里选 →</button>
+          <button class="lottery-action-btn" data-action="phase-to-pick" id="btn-phase-pick" type="button" hidden>开始翻牌 →</button>
         </div>
 
         <div class="lottery-phase" id="lp-pick" hidden>
@@ -1067,11 +1075,6 @@
             <button class="btn btn-soft" data-action="keep-card" type="button">就这张 ✓</button>
             <button class="btn btn-primary" data-action="flip-another" type="button">再翻一张</button>
           </div>
-        </div>
-
-        <div class="lottery-phase" id="lp-result" hidden>
-          <div id="lottery-result" class="lottery-result"></div>
-          <div id="lottery-again-area"></div>
         </div>
       </div>
 
@@ -1112,7 +1115,10 @@
         return;
       }
       if (action === "phase-to-draw") { phaseToDraw(); return; }
-      if (action === "draw-card") { drawCard(); return; }
+      if (action === "select-spread-card") {
+        selectSpreadCard(Number(actionEl.closest(".spread-card")?.dataset.spreadIndex ?? -1));
+        return;
+      }
       if (action === "phase-to-pick") { phaseToPick(); return; }
       if (action === "flip-pick-card") {
         flipPickCard(Number(actionEl.closest(".pick-card")?.dataset.cardIndex ?? -1));
@@ -1122,6 +1128,10 @@
       if (action === "flip-another") { flipAnother(); return; }
       if (action === "choose-final") {
         chooseFinalCard(Number(actionEl.closest(".pick-card")?.dataset.cardIndex ?? -1));
+        return;
+      }
+      if (action === "share-result") {
+        shareResult(JSON.parse(actionEl.closest("[data-prize]")?.dataset.prize || "null"));
         return;
       }
       if (action === "tap-muyu-float") {
@@ -1221,48 +1231,79 @@
     showPhase("lp-dice");
   }
 
+  // ── Draw phase: spread + select ────────────────────────────────────
+
   function phaseToDraw() {
     const inner = document.querySelector(".lottery-inner");
     if (!inner) return;
     const items = loadLotteryConfig().items;
     if (!items.length) return;
     const pityActive = inner.dataset.pityActive === "true";
-    const prizes = Array.from({ length: 5 }, () => items[selectLotteryItem(items)]);
+
+    // Pad spread to at least 8 cards for visual richness
+    const spreadCount = Math.max(items.length, 8);
+    const allPrizes = Array.from({ length: spreadCount }, () => items[selectLotteryItem(items)]);
+    // Pity: force a bigReward into a random slot
     if (pityActive) {
-      const slot = Math.floor(Math.random() * 5);
-      prizes[slot] = items[selectBigRewardItem(items)];
+      const slot = Math.floor(Math.random() * spreadCount);
+      allPrizes[slot] = items[selectBigRewardItem(items)];
     }
-    inner.dataset.drawnPrizes = JSON.stringify(prizes);
-    inner.dataset.drawnCount = "0";
+    inner.dataset.allPrizes = JSON.stringify(allPrizes);
+    inner.dataset.selectedIndices = JSON.stringify([]);
+
+    // Build spread cards HTML
+    const spreadEl = document.getElementById("lottery-spread");
+    if (spreadEl) {
+      spreadEl.innerHTML = allPrizes.map((_, i) => `
+        <div class="spread-card is-piled" data-spread-index="${i}" data-action="select-spread-card"
+             style="--pile-tx:${Math.round((Math.random() - 0.5) * 60)}px;--pile-ty:${Math.round((Math.random() - 0.5) * 40)}px;--pile-rot:${Math.round((Math.random() - 0.5) * 28)}deg">
+          <span class="spread-card-mark">🂠</span>
+        </div>
+      `).join("");
+    }
+
     showPhase("lp-draw");
-    const deck = document.getElementById("lottery-deck");
-    if (deck) {
-      deck.classList.add("shuffling");
-      setTimeout(() => deck.classList.remove("shuffling"), 700);
-    }
+
+    // Animate: pile → spread (staggered)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const cards = document.querySelectorAll(".spread-card.is-piled");
+        cards.forEach((card, i) => {
+          setTimeout(() => card.classList.remove("is-piled"), 80 + i * 55);
+        });
+      });
+    });
   }
 
-  function drawCard() {
+  function selectSpreadCard(spreadIndex) {
     const inner = document.querySelector(".lottery-inner");
     if (!inner) return;
-    let drawn = Number(inner.dataset.drawnCount || 0);
-    if (drawn >= 5) return;
-    drawn += 1;
-    inner.dataset.drawnCount = String(drawn);
-    const hand = document.getElementById("lottery-hand");
-    if (hand) {
-      const card = document.createElement("div");
-      card.className = "hand-card";
-      card.textContent = "?";
-      hand.appendChild(card);
-      requestAnimationFrame(() => card.classList.add("hand-card--in"));
+    let selected;
+    try { selected = JSON.parse(inner.dataset.selectedIndices || "[]"); } catch { selected = []; }
+    if (selected.includes(spreadIndex) || selected.length >= 5 || spreadIndex < 0) return;
+
+    // Mark card as selected (visually flies to hand)
+    const card = document.querySelector(`.spread-card[data-spread-index="${spreadIndex}"]`);
+    if (!card) return;
+    card.classList.add("is-selected");
+    card.removeAttribute("data-action");
+
+    selected.push(spreadIndex);
+    inner.dataset.selectedIndices = JSON.stringify(selected);
+
+    // Fill next empty hand slot
+    const count = selected.length;
+    const countEl = document.getElementById("hand-count");
+    if (countEl) countEl.textContent = String(count);
+    const slot = document.querySelector(`.hand-slot[data-slot="${count - 1}"]`);
+    if (slot) {
+      slot.textContent = "🂠";
+      slot.classList.add("filled");
     }
-    const deck = document.getElementById("lottery-deck");
-    if (deck && drawn >= 5) deck.classList.add("deck--empty");
-    const drawBtn = document.getElementById("btn-draw-card");
-    const pickBtn = document.getElementById("btn-phase-pick");
-    if (drawn >= 5) {
-      if (drawBtn) drawBtn.hidden = true;
+
+    // Show action button when 5 selected
+    if (count >= 5) {
+      const pickBtn = document.getElementById("btn-phase-pick");
       if (pickBtn) pickBtn.hidden = false;
     }
   }
@@ -1270,8 +1311,10 @@
   function phaseToPick() {
     const inner = document.querySelector(".lottery-inner");
     if (!inner) return;
-    let prizes;
-    try { prizes = JSON.parse(inner.dataset.drawnPrizes || "[]"); } catch { prizes = []; }
+    let allPrizes, selectedIndices;
+    try { allPrizes = JSON.parse(inner.dataset.allPrizes || "[]"); } catch { allPrizes = []; }
+    try { selectedIndices = JSON.parse(inner.dataset.selectedIndices || "[]"); } catch { selectedIndices = []; }
+    const prizes = selectedIndices.map((i) => allPrizes[i]).filter(Boolean);
     const bonusFlip = inner.dataset.bonusFlip === "true";
     _pickState = { prizes, bonusFlip, flipsUsed: 0, flippedIndices: [], deciding: false, choosing: false };
     const labelEl = document.getElementById("pick-phase-label");
@@ -1373,6 +1416,7 @@
     if (chosenCard && !chosenCard.classList.contains("pick-card--chosen")) {
       chosenCard.classList.add("pick-card--chosen");
     }
+    // Reveal remaining cards one by one (slower for drama)
     const allCards = document.querySelectorAll(".pick-card");
     for (const card of allCards) {
       const i = Number(card.dataset.cardIndex);
@@ -1380,9 +1424,10 @@
       const back = card.querySelector(".pick-card-back");
       if (back) back.innerHTML = renderCardBack(_pickState.prizes[i]);
       card.classList.add("pick-card--flipped", "pick-card--other");
-      await sleep(360);
+      await sleep(480);
     }
-    await sleep(400);
+    await sleep(500);
+    // Near-miss effect
     const chosenTier = getPrizeTier(chosenPrize);
     const otherTiers = _pickState.prizes
       .map((p, i) => (i === chosenIndex ? -1 : getPrizeTier(p)))
@@ -1392,7 +1437,7 @@
       if (bestOther > chosenTier) showNearMissEffect("差一步！");
       else if (chosenTier > bestOther) showNearMissEffect("就是最好的！", true);
     }
-    await sleep(1200);
+    await sleep(1400);
     showLotteryResult(chosenPrize);
   }
 
@@ -1419,12 +1464,16 @@
     state.usedLotteryCount = Number(state.usedLotteryCount || 0) + 1;
     saveAchievementState(state);
     if (chosenPrize) saveLotteryHistory(chosenPrize);
-    showPhase("lp-result");
-    const resultEl = document.getElementById("lottery-result");
-    if (resultEl) {
+
+    // Show result as floating overlay on top of pick cards (cards remain visible)
+    const overlay = document.getElementById("lottery-overlay");
+    if (overlay) {
       const prizeColor = escapeHtml(chosenPrize?.color || lotteryColorForType(chosenPrize?.type));
-      resultEl.innerHTML = `
-        <div class="lottery-result-inner">
+      const prizeJson = escapeHtml(JSON.stringify(chosenPrize || null));
+      const panel = document.createElement("div");
+      panel.className = "lottery-result-overlay";
+      panel.innerHTML = `
+        <div class="lottery-result-panel" data-prize="${prizeJson}">
           ${pityActive ? '<p class="lottery-result-pity-banner">🌟 运气槽满，保底触发！</p>' : ""}
           <p class="lottery-result-item" style="--item-color:${prizeColor}">
             <span>${escapeHtml(lotteryTypeLabel(chosenPrize))}</span>${escapeHtml(chosenPrize?.label || "")}
@@ -1432,20 +1481,120 @@
           ${!pityActive && state.pityCurrent > 0
             ? `<p class="lottery-result-pity-hint">运气槽 ${state.pityCurrent} / ${pityThreshold}</p>`
             : ""}
+          <div class="lottery-result-actions">
+            <button class="btn btn-soft lottery-share-btn" data-action="share-result" type="button">📋 复制分享图</button>
+            ${state.lotteryTickets > 0
+              ? `<button class="btn btn-primary lottery-spin-btn" data-action="spin-lottery" type="button">再来一次</button>`
+              : `<p class="muted lottery-done-msg">暂时没有机会了，继续学习获得更多！</p>`}
+          </div>
         </div>
       `;
+      overlay.appendChild(panel);
     }
+
     const hint = document.querySelector(".lottery-tickets-hint");
     if (hint) hint.textContent = `剩余 ${state.lotteryTickets} 次机会`;
-    const againArea = document.getElementById("lottery-again-area");
-    if (againArea) {
-      againArea.innerHTML = state.lotteryTickets > 0
-        ? `<button class="btn btn-primary lottery-spin-btn" data-action="spin-lottery" type="button">再来一次</button>`
-        : `<p class="muted lottery-done-msg">暂时没有机会了，继续学习获得更多！</p>`;
-    }
     if (inner) inner.dataset.phase = "done";
     updateNavBadge();
     if (currentRoute() === "achievements") renderAchievements(document.getElementById("view"));
+  }
+
+  async function shareResult(prize) {
+    if (!prize) return;
+    const W = 480, H = 300;
+    const canvas = document.createElement("canvas");
+    canvas.width = W * 2;
+    canvas.height = H * 2;
+    canvas.style.width = W + "px";
+    canvas.style.height = H + "px";
+    const ctx = canvas.getContext("2d");
+    ctx.scale(2, 2); // retina
+
+    // Background
+    ctx.fillStyle = "#120c10";
+    ctx.fillRect(0, 0, W, H);
+
+    // Decorative gradient circle
+    const grad = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, 200);
+    grad.addColorStop(0, (prize.color || "#864d61") + "33");
+    grad.addColorStop(1, "transparent");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Title
+    ctx.fillStyle = "rgba(255,255,255,0.35)";
+    ctx.font = "bold 13px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("MochiStudy 抽奖结果", W / 2, 36);
+
+    // Prize card
+    const cardX = 60, cardY = 60, cardW = W - 120, cardH = 160, cardR = 18;
+    ctx.beginPath();
+    ctx.moveTo(cardX + cardR, cardY);
+    ctx.lineTo(cardX + cardW - cardR, cardY);
+    ctx.quadraticCurveTo(cardX + cardW, cardY, cardX + cardW, cardY + cardR);
+    ctx.lineTo(cardX + cardW, cardY + cardH - cardR);
+    ctx.quadraticCurveTo(cardX + cardW, cardY + cardH, cardX + cardW - cardR, cardY + cardH);
+    ctx.lineTo(cardX + cardR, cardY + cardH);
+    ctx.quadraticCurveTo(cardX, cardY + cardH, cardX, cardY + cardH - cardR);
+    ctx.lineTo(cardX, cardY + cardR);
+    ctx.quadraticCurveTo(cardX, cardY, cardX + cardR, cardY);
+    ctx.closePath();
+    const itemColor = prize.color || "#864d61";
+    ctx.fillStyle = itemColor + "22";
+    ctx.fill();
+    ctx.strokeStyle = itemColor + "88";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Type badge
+    const typeLabel = lotteryTypeLabel(prize);
+    ctx.font = "bold 11px sans-serif";
+    const labelW = ctx.measureText(typeLabel).width + 20;
+    const bx = W / 2 - labelW / 2, by = cardY + 20;
+    ctx.fillStyle = itemColor + "44";
+    ctx.beginPath();
+    ctx.roundRect(bx, by, labelW, 22, 11);
+    ctx.fill();
+    ctx.fillStyle = itemColor;
+    ctx.textAlign = "center";
+    ctx.fillText(typeLabel, W / 2, by + 14.5);
+
+    // Prize label (wrap if needed)
+    ctx.fillStyle = "#fffaf4";
+    ctx.font = "bold 22px sans-serif";
+    const prizeLabel = prize.label || "";
+    const maxW = cardW - 32;
+    if (ctx.measureText(prizeLabel).width <= maxW) {
+      ctx.fillText(prizeLabel, W / 2, cardY + 100);
+    } else {
+      // Simple two-line wrap
+      const half = Math.floor(prizeLabel.length / 2);
+      ctx.font = "bold 18px sans-serif";
+      ctx.fillText(prizeLabel.slice(0, half), W / 2, cardY + 90);
+      ctx.fillText(prizeLabel.slice(half), W / 2, cardY + 114);
+    }
+
+    // Footer date
+    ctx.fillStyle = "rgba(255,255,255,0.25)";
+    ctx.font = "12px sans-serif";
+    ctx.fillText(new Date().toLocaleDateString("zh-CN"), W / 2, H - 18);
+
+    // Copy to clipboard
+    const shareBtn = document.querySelector(".lottery-share-btn");
+    if (shareBtn) { shareBtn.disabled = true; shareBtn.textContent = "复制中…"; }
+    try {
+      const blob = await new Promise((res) => canvas.toBlob(res, "image/png"));
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      if (shareBtn) { shareBtn.textContent = "✓ 已复制到剪贴板"; }
+    } catch {
+      // Fallback: download
+      const a = document.createElement("a");
+      a.href = canvas.toDataURL("image/png");
+      a.download = `mochi-prize-${Date.now()}.png`;
+      a.click();
+      if (shareBtn) { shareBtn.textContent = "✓ 已保存图片"; }
+    }
   }
 
   function tapMuyuFloat(el) {
@@ -1459,6 +1608,7 @@
     el.appendChild(float);
     setTimeout(() => float.remove(), 900);
   }
+
 
   function initMuyuFloat() {
     const floatEl = document.getElementById("lottery-muyu-float");
