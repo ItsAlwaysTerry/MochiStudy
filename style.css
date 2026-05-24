@@ -3249,32 +3249,19 @@ button {
   to   { transform: scale(1); }
 }
 
-/* ── Result overlay ─────────────────────────────────────────────── */
-
-.lottery-result-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 750;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  background: rgba(12, 6, 14, 0.82);
-  animation: result-pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
+/* ── Result panel (in-flow below pick cards) ────────────────────── */
 
 .lottery-result-panel {
-  width: 100%;
-  max-width: 400px;
-  padding: 24px 20px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 22px;
-  background: #1e1228;
+  margin-top: 20px;
+  padding: 20px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   text-align: center;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+  animation: result-pop 0.36s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .lottery-result-actions {
@@ -3421,14 +3408,15 @@ button {
 
 .muyu-float-inner {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0;
+  width: 64px;
+  height: 52px;
+  cursor: inherit;
 }
 
 .muyu-float-head {
-  position: relative;
+  position: absolute;
+  bottom: 0;
+  left: 0;
   width: 50px;
   height: 42px;
   border-radius: 50% 50% 44% 44%;
@@ -3458,35 +3446,41 @@ button {
 .muyu-blush--l { left: 4px; }
 .muyu-blush--r { right: 4px; }
 
-.muyu-float-stick {
+/* Mallet: shaft (handle, top) → head (ball, bottom), angled from upper-right toward body */
+.muyu-float-mallet {
+  position: absolute;
+  right: 2px;
+  top: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  transform: rotate(-22deg);
+  transform: rotate(-38deg);
   transform-origin: top center;
+  transition: transform 0.18s ease;
 }
 
-.muyu-float-inner.tapped .muyu-float-stick {
+.muyu-float-inner.tapped .muyu-float-mallet {
   animation: muyu-hit-float 0.28s ease;
 }
 
 @keyframes muyu-hit-float {
-  50% { transform: rotate(-5deg) translateY(9px); }
-}
-
-.muyu-mallet-head {
-  width: 15px;
-  height: 15px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #d8a85f, #9a6535);
-  box-shadow: 0 3px 7px rgba(0, 0, 0, 0.24);
+  40% { transform: rotate(-58deg); }
 }
 
 .muyu-mallet-shaft {
   width: 5px;
-  height: 24px;
+  height: 22px;
   border-radius: 999px;
   background: #c4895a;
+}
+
+.muyu-mallet-head {
+  width: 14px;
+  height: 14px;
+  margin-top: -1px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #d8a85f, #9a6535);
+  box-shadow: 0 3px 7px rgba(0, 0, 0, 0.3);
 }
 
 

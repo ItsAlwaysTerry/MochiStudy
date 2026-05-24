@@ -1085,9 +1085,9 @@
             <span class="muyu-blush muyu-blush--r"></span>
             <span class="muyu-hollow"></span>
           </div>
-          <div class="muyu-float-stick">
-            <div class="muyu-mallet-head"></div>
+          <div class="muyu-float-mallet">
             <div class="muyu-mallet-shaft"></div>
+            <div class="muyu-mallet-head"></div>
           </div>
         </div>
       </div>
@@ -1131,7 +1131,7 @@
         return;
       }
       if (action === "share-result") {
-        shareResult(JSON.parse(actionEl.closest("[data-prize]")?.dataset.prize || "null"));
+        shareResult(actionEl.closest(".lottery-result-panel"));
         return;
       }
       if (action === "tap-muyu-float") {
@@ -1438,7 +1438,7 @@
       else if (chosenTier > bestOther) showNearMissEffect("就是最好的！", true);
     }
     await sleep(1400);
-    showLotteryResult(chosenPrize);
+    showLotteryResult(chosenPrize, chosenIndex, _pickState?.prizes || []);
   }
 
   function showNearMissEffect(text, isWin = false) {
@@ -1449,7 +1449,7 @@
     setTimeout(() => splash.remove(), 1500);
   }
 
-  function showLotteryResult(chosenPrize) {
+  function showLotteryResult(chosenPrize, chosenIndex, allPrizes) {
     const inner = document.querySelector(".lottery-inner");
     const state = loadAchievementState();
     const cfg = loadAchievementConfig();
@@ -1465,31 +1465,33 @@
     saveAchievementState(state);
     if (chosenPrize) saveLotteryHistory(chosenPrize);
 
-    // Show result as floating overlay on top of pick cards (cards remain visible)
-    const overlay = document.getElementById("lottery-overlay");
-    if (overlay) {
+    // Append result panel in-flow inside lp-pick (below the visible cards)
+    const pickPhase = document.getElementById("lp-pick");
+    if (pickPhase) {
       const prizeColor = escapeHtml(chosenPrize?.color || lotteryColorForType(chosenPrize?.type));
-      const prizeJson = escapeHtml(JSON.stringify(chosenPrize || null));
       const panel = document.createElement("div");
-      panel.className = "lottery-result-overlay";
+      panel.className = "lottery-result-panel";
+      panel.dataset.chosenPrize = JSON.stringify(chosenPrize || null);
+      panel.dataset.chosenIndex = String(chosenIndex ?? -1);
+      panel.dataset.allPrizes = JSON.stringify(allPrizes || []);
       panel.innerHTML = `
-        <div class="lottery-result-panel" data-prize="${prizeJson}">
-          ${pityActive ? '<p class="lottery-result-pity-banner">🌟 运气槽满，保底触发！</p>' : ""}
-          <p class="lottery-result-item" style="--item-color:${prizeColor}">
-            <span>${escapeHtml(lotteryTypeLabel(chosenPrize))}</span>${escapeHtml(chosenPrize?.label || "")}
-          </p>
-          ${!pityActive && state.pityCurrent > 0
-            ? `<p class="lottery-result-pity-hint">运气槽 ${state.pityCurrent} / ${pityThreshold}</p>`
-            : ""}
-          <div class="lottery-result-actions">
-            <button class="btn btn-soft lottery-share-btn" data-action="share-result" type="button">📋 复制分享图</button>
-            ${state.lotteryTickets > 0
-              ? `<button class="btn btn-primary lottery-spin-btn" data-action="spin-lottery" type="button">再来一次</button>`
-              : `<p class="muted lottery-done-msg">暂时没有机会了，继续学习获得更多！</p>`}
-          </div>
+        ${pityActive ? '<p class="lottery-result-pity-banner">🌟 运气槽满，保底触发！</p>' : ""}
+        <p class="lottery-result-item" style="--item-color:${prizeColor}">
+          <span>${escapeHtml(lotteryTypeLabel(chosenPrize))}</span>${escapeHtml(chosenPrize?.label || "")}
+        </p>
+        ${!pityActive && state.pityCurrent > 0
+          ? `<p class="lottery-result-pity-hint">运气槽 ${state.pityCurrent} / ${pityThreshold}</p>`
+          : ""}
+        <div class="lottery-result-actions">
+          <button class="btn btn-soft lottery-share-btn" data-action="share-result" type="button">📋 复制分享图</button>
+          ${state.lotteryTickets > 0
+            ? `<button class="btn btn-primary lottery-spin-btn" data-action="spin-lottery" type="button">再来一次</button>`
+            : `<p class="muted lottery-done-msg">暂时没有机会了，继续学习获得更多！</p>`}
         </div>
       `;
-      overlay.appendChild(panel);
+      pickPhase.appendChild(panel);
+      // Scroll the panel into view smoothly
+      setTimeout(() => panel.scrollIntoView({ behavior: "smooth", block: "nearest" }), 80);
     }
 
     const hint = document.querySelector(".lottery-tickets-hint");
@@ -1499,96 +1501,132 @@
     if (currentRoute() === "achievements") renderAchievements(document.getElementById("view"));
   }
 
-  async function shareResult(prize) {
-    if (!prize) return;
-    const W = 480, H = 300;
+  async function shareResult(panelEl) {
+    if (!panelEl) return;
+    let chosenPrize, chosenIndex, allPrizes;
+    try { chosenPrize = JSON.parse(panelEl.dataset.chosenPrize || "null"); } catch { chosenPrize = null; }
+    chosenIndex = Number(panelEl.dataset.chosenIndex ?? -1);
+    try { allPrizes = JSON.parse(panelEl.dataset.allPrizes || "[]"); } catch { allPrizes = []; }
+    if (!chosenPrize) return;
+
+    const W = 480, H = 360;
     const canvas = document.createElement("canvas");
     canvas.width = W * 2;
     canvas.height = H * 2;
-    canvas.style.width = W + "px";
-    canvas.style.height = H + "px";
     const ctx = canvas.getContext("2d");
-    ctx.scale(2, 2); // retina
+    ctx.scale(2, 2);
 
     // Background
     ctx.fillStyle = "#120c10";
     ctx.fillRect(0, 0, W, H);
-
-    // Decorative gradient circle
-    const grad = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, 200);
-    grad.addColorStop(0, (prize.color || "#864d61") + "33");
+    const grad = ctx.createRadialGradient(W / 2, 130, 0, W / 2, 130, 220);
+    grad.addColorStop(0, (chosenPrize.color || "#864d61") + "44");
     grad.addColorStop(1, "transparent");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
 
-    // Title
-    ctx.fillStyle = "rgba(255,255,255,0.35)";
+    // Header
+    ctx.fillStyle = "rgba(255,255,255,0.3)";
     ctx.font = "bold 13px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("MochiStudy 抽奖结果", W / 2, 36);
+    ctx.fillText("MochiStudy 抽奖结果", W / 2, 30);
 
-    // Prize card
-    const cardX = 60, cardY = 60, cardW = W - 120, cardH = 160, cardR = 18;
+    // ── Chosen prize card (large) ──────────────────────────────────
+    const itemColor = chosenPrize.color || "#864d61";
+    const cX = 60, cY = 46, cW = W - 120, cH = 138, cR = 16;
     ctx.beginPath();
-    ctx.moveTo(cardX + cardR, cardY);
-    ctx.lineTo(cardX + cardW - cardR, cardY);
-    ctx.quadraticCurveTo(cardX + cardW, cardY, cardX + cardW, cardY + cardR);
-    ctx.lineTo(cardX + cardW, cardY + cardH - cardR);
-    ctx.quadraticCurveTo(cardX + cardW, cardY + cardH, cardX + cardW - cardR, cardY + cardH);
-    ctx.lineTo(cardX + cardR, cardY + cardH);
-    ctx.quadraticCurveTo(cardX, cardY + cardH, cardX, cardY + cardH - cardR);
-    ctx.lineTo(cardX, cardY + cardR);
-    ctx.quadraticCurveTo(cardX, cardY, cardX + cardR, cardY);
-    ctx.closePath();
-    const itemColor = prize.color || "#864d61";
-    ctx.fillStyle = itemColor + "22";
+    ctx.roundRect(cX, cY, cW, cH, cR);
+    ctx.fillStyle = itemColor + "28";
     ctx.fill();
-    ctx.strokeStyle = itemColor + "88";
+    ctx.strokeStyle = itemColor + "aa";
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // Type badge
-    const typeLabel = lotteryTypeLabel(prize);
+    // Badge
+    const typeLabel = lotteryTypeLabel(chosenPrize);
     ctx.font = "bold 11px sans-serif";
-    const labelW = ctx.measureText(typeLabel).width + 20;
-    const bx = W / 2 - labelW / 2, by = cardY + 20;
-    ctx.fillStyle = itemColor + "44";
+    const badgeW = ctx.measureText(typeLabel).width + 20;
+    ctx.fillStyle = itemColor + "55";
     ctx.beginPath();
-    ctx.roundRect(bx, by, labelW, 22, 11);
+    ctx.roundRect(W / 2 - badgeW / 2, cY + 16, badgeW, 20, 10);
     ctx.fill();
     ctx.fillStyle = itemColor;
-    ctx.textAlign = "center";
-    ctx.fillText(typeLabel, W / 2, by + 14.5);
+    ctx.fillText(typeLabel, W / 2, cY + 29);
 
-    // Prize label (wrap if needed)
+    // Prize label
     ctx.fillStyle = "#fffaf4";
     ctx.font = "bold 22px sans-serif";
-    const prizeLabel = prize.label || "";
-    const maxW = cardW - 32;
-    if (ctx.measureText(prizeLabel).width <= maxW) {
-      ctx.fillText(prizeLabel, W / 2, cardY + 100);
+    const pLabel = chosenPrize.label || "";
+    if (ctx.measureText(pLabel).width <= cW - 24) {
+      ctx.fillText(pLabel, W / 2, cY + 90);
     } else {
-      // Simple two-line wrap
-      const half = Math.floor(prizeLabel.length / 2);
-      ctx.font = "bold 18px sans-serif";
-      ctx.fillText(prizeLabel.slice(0, half), W / 2, cardY + 90);
-      ctx.fillText(prizeLabel.slice(half), W / 2, cardY + 114);
+      const half = Math.ceil(pLabel.length / 2);
+      ctx.font = "bold 17px sans-serif";
+      ctx.fillText(pLabel.slice(0, half), W / 2, cY + 82);
+      ctx.fillText(pLabel.slice(half), W / 2, cY + 104);
     }
 
-    // Footer date
-    ctx.fillStyle = "rgba(255,255,255,0.25)";
-    ctx.font = "12px sans-serif";
-    ctx.fillText(new Date().toLocaleDateString("zh-CN"), W / 2, H - 18);
+    // ── "错过了" missed cards row ──────────────────────────────────
+    const missedPrizes = allPrizes.filter((_, i) => i !== chosenIndex);
+    if (missedPrizes.length > 0) {
+      ctx.fillStyle = "rgba(255,255,255,0.28)";
+      ctx.font = "11px sans-serif";
+      ctx.fillText("这轮错过了：", W / 2, cY + cH + 22);
+
+      const mCount = Math.min(missedPrizes.length, 4);
+      const mCardW = 78, mCardH = 58, mGap = 10;
+      const totalMW = mCount * mCardW + (mCount - 1) * mGap;
+      const mStartX = (W - totalMW) / 2;
+      const mY = cY + cH + 30;
+
+      missedPrizes.slice(0, mCount).forEach((mp, mi) => {
+        if (!mp) return;
+        const mc = mp.color || "#864d61";
+        const mx = mStartX + mi * (mCardW + mGap);
+        ctx.beginPath();
+        ctx.roundRect(mx, mY, mCardW, mCardH, 8);
+        ctx.fillStyle = mc + "18";
+        ctx.fill();
+        ctx.strokeStyle = mc + "55";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Type micro badge
+        ctx.font = "bold 8px sans-serif";
+        ctx.fillStyle = mc + "cc";
+        ctx.textAlign = "center";
+        ctx.fillText(lotteryTypeLabel(mp), mx + mCardW / 2, mY + 13);
+
+        // Label (truncate if needed)
+        ctx.fillStyle = "rgba(255,255,255,0.65)";
+        ctx.font = "10px sans-serif";
+        const ml = mp.label || "";
+        const maxMW = mCardW - 8;
+        if (ctx.measureText(ml).width <= maxMW) {
+          ctx.fillText(ml, mx + mCardW / 2, mY + 36);
+        } else {
+          const mhalf = Math.ceil(ml.length / 2);
+          ctx.font = "9px sans-serif";
+          ctx.fillText(ml.slice(0, mhalf), mx + mCardW / 2, mY + 29);
+          ctx.fillText(ml.slice(mhalf), mx + mCardW / 2, mY + 42);
+        }
+      });
+    }
+
+    // Footer
+    ctx.fillStyle = "rgba(255,255,255,0.22)";
+    ctx.font = "11px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(new Date().toLocaleDateString("zh-CN"), W / 2, H - 14);
 
     // Copy to clipboard
-    const shareBtn = document.querySelector(".lottery-share-btn");
+    const shareBtn = panelEl.querySelector(".lottery-share-btn");
     if (shareBtn) { shareBtn.disabled = true; shareBtn.textContent = "复制中…"; }
     try {
       const blob = await new Promise((res) => canvas.toBlob(res, "image/png"));
       await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
       if (shareBtn) { shareBtn.textContent = "✓ 已复制到剪贴板"; }
     } catch {
-      // Fallback: download
       const a = document.createElement("a");
       a.href = canvas.toDataURL("image/png");
       a.download = `mochi-prize-${Date.now()}.png`;
