@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --bg: #fff9f0;
   --surface: #ffffff;
   --surface-low: #f9f3ea;
@@ -2817,157 +2817,312 @@ button {
   transform: rotate(6deg) scale(1.06);
 }
 
-.lottery-dice-hint {
+.lottery-dice-result {
   margin: 10px 0 0;
   color: rgba(255, 255, 255, 0.68);
   font-size: 12px;
   line-height: 1.5;
+  text-align: center;
+  min-height: 18px;
 }
 
-/* ── A: 命运信封 (Three Envelopes) ────────────────────────────── */
+/* ── Phase structure ────────────────────────────────────────── */
 
-.lottery-envelopes {
+.lottery-action-btn {
+  display: block;
   width: 100%;
+  padding: 14px;
+  border: 0;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #864d61, #c0425a);
+  color: #fff;
+  cursor: pointer;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  transition: opacity 0.15s ease, transform 0.12s ease;
 }
 
-.lottery-pick-hint {
+.lottery-action-btn:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: scale(1.01);
+}
+
+.lottery-action-btn:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+.phase-label {
   margin: 0 0 10px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.phase-hint {
+  margin: 0 0 10px;
+  color: rgba(255, 255, 255, 0.7);
   font-size: 13px;
   text-align: center;
 }
 
-.lottery-envelopes-row {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
+.pity-tease {
+  margin: 6px 0 0;
+  color: #f5c518;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
 }
 
-/* 3D flip card */
-.envelope {
+/* ── Showcase grid ──────────────────────────────────────────── */
+
+.lottery-showcase-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.showcase-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 8px;
+  border: 1px solid color-mix(in srgb, var(--item-color, #864d61) 30%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--item-color, #864d61) 10%, rgba(0, 0, 0, 0.2));
+  text-align: center;
+}
+
+.showcase-type {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--item-color, #864d61) 20%, transparent);
+  color: color-mix(in srgb, var(--item-color, #864d61) 85%, #fff);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.showcase-label {
+  color: #fffaf4;
+  font-size: 12px;
+  line-height: 1.35;
+  word-break: break-all;
+}
+
+/* ── Draw phase: deck + hand ────────────────────────────────── */
+
+.lottery-draw-area {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.lottery-deck {
   position: relative;
-  width: 120px;
-  height: 150px;
-  perspective: 800px;
+  width: 72px;
+  height: 96px;
+  flex-shrink: 0;
+}
+
+.deck-card {
+  position: absolute;
+  inset: 0;
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  background: linear-gradient(155deg, #2d1b3a, #1e1228);
+  transition: opacity 0.3s ease;
+}
+
+.deck-card--1 { transform: translate(-3px, -3px); }
+.deck-card--2 { transform: translate(0, 0); }
+.deck-card--3 { transform: translate(3px, 3px); }
+
+.deck--empty .deck-card {
+  opacity: 0.18;
+}
+
+@keyframes shuffling-anim {
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  25%  { transform: translate(-5px, -2px) rotate(-4deg); }
+  50%  { transform: translate(5px, 2px) rotate(4deg); }
+  75%  { transform: translate(-3px, 4px) rotate(-2deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+.shuffling .deck-card {
+  animation: shuffling-anim 0.35s ease 2;
+}
+
+.lottery-hand {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  flex: 1;
+}
+
+.hand-card {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 62px;
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: linear-gradient(155deg, #2d1b3a, #1e1228);
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 18px;
+  font-weight: 900;
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.28s ease, transform 0.28s ease;
+}
+
+.hand-card--in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Pick phase: 5-card row with 3D flip ────────────────────── */
+
+.lottery-pick-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 56px;
+  flex-wrap: wrap;
+}
+
+.pick-card {
+  position: relative;
+  width: 66px;
+  height: 90px;
+  perspective: 700px;
   cursor: pointer;
 }
 
-.envelope-inner {
+.pick-card-inner {
   position: relative;
   width: 100%;
   height: 100%;
   transform-style: preserve-3d;
-  transition: transform 0.62s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.envelope.flipped .envelope-inner {
+.pick-card--flipped .pick-card-inner {
   transform: rotateY(180deg);
 }
 
-.envelope-front,
-.envelope-back {
+.pick-card-front,
+.pick-card-back {
   position: absolute;
   inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border-radius: 16px;
-  padding: 12px 8px;
+  border-radius: 10px;
+  padding: 6px;
   backface-visibility: hidden;
 }
 
-.envelope-front {
+.pick-card-front {
   border: 2px solid rgba(255, 255, 255, 0.14);
-  background: linear-gradient(160deg, #2d1b3a, #1e1228);
+  background: linear-gradient(155deg, #2d1b3a, #1e1228);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.envelope:not(.excluded):not(.flipped) .envelope-front:hover {
-  border-color: rgba(255, 255, 255, 0.32);
-  box-shadow: 0 0 18px rgba(255, 255, 255, 0.08);
+.pick-card[data-action="flip-pick-card"]:hover .pick-card-front {
+  border-color: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 16px rgba(255, 255, 255, 0.07);
 }
 
-.envelope-back {
+.pick-card-back {
   transform: rotateY(180deg);
-  border: 2px solid color-mix(in srgb, var(--item-color, #864d61) 60%, transparent);
-  background: linear-gradient(160deg, #1e1228, #150d20);
+  border: 2px solid color-mix(in srgb, var(--item-color, #864d61) 55%, transparent);
+  background: linear-gradient(155deg, #1e1228, #150d20);
 }
 
-.envelope-mark {
-  font-size: 2.2rem;
-  opacity: 0.55;
-  user-select: none;
+.pick-card-mark {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 22px;
+  font-weight: 900;
 }
 
-/* Prize content inside back */
-.envelope-prize {
+.card-back-prize {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   text-align: center;
 }
 
-.envelope-tier-badge {
-  padding: 2px 8px;
+.card-back-tier {
+  padding: 1px 5px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--item-color, #864d61) 22%, transparent);
   color: color-mix(in srgb, var(--item-color, #864d61) 80%, #fff);
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 800;
 }
 
-.envelope-prize-label {
+.card-back-label {
   color: #fffaf4;
-  font-size: 13px;
-  line-height: 1.4;
+  font-size: 10px;
+  line-height: 1.3;
   word-break: break-all;
 }
 
-.envelope-upgrade-badge {
-  padding: 2px 6px;
-  border-radius: 6px;
-  background: rgba(245, 197, 24, 0.2);
-  color: #f5c518;
-  font-size: 11px;
-  font-weight: 800;
+.pick-card--chosen .pick-card-inner {
+  border-radius: 10px;
+  box-shadow: 0 0 0 3px #f5c518, 0 0 22px rgba(245, 197, 24, 0.5);
 }
 
-/* D: Dice effects on envelopes */
-
-/* 对子: best card glows */
-.envelope.blessed .envelope-front {
-  border-color: rgba(245, 197, 24, 0.7);
-  animation: envelope-blessed-glow 1.6s ease-in-out infinite;
-}
-
-@keyframes envelope-blessed-glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 197, 24, 0); }
-  50% { box-shadow: 0 0 20px 4px rgba(245, 197, 24, 0.4); }
-}
-
-/* 顺子: excluded card (already flipped, greyed out) */
-.envelope.excluded {
-  opacity: 0.45;
-  filter: grayscale(0.7);
+.pick-card--other {
+  opacity: 0.4;
+  filter: grayscale(0.5);
   cursor: default;
 }
 
-/* 11-12: sparkle hint on all cards */
-.envelope.lucky .envelope-front::after {
-  content: "✨";
-  position: absolute;
-  top: -8px;
-  right: -6px;
-  font-size: 1rem;
-  animation: lucky-float 1.2s ease-in-out infinite;
+@keyframes pick-choosable-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 197, 24, 0.3); }
+  50%       { box-shadow: 0 0 0 7px rgba(245, 197, 24, 0); }
 }
 
-@keyframes lucky-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
+.pick-card--choosable .pick-card-inner {
+  border-radius: 10px;
+  animation: pick-choosable-pulse 1.2s ease-in-out infinite;
 }
+
+.pick-choose-btn {
+  position: absolute;
+  bottom: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 5px 8px;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.lottery-flip-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  padding-top: 4px;
+}
+
+/* C: Near-miss splash ─────────────────────────────────────────── */
 
 /* C: Near-miss splash ─────────────────────────────────────────── */
 
@@ -3088,67 +3243,92 @@ button {
   text-align: center;
 }
 
-.lottery-muyu {
-  position: relative;
-  display: grid;
-  min-height: 90px;
-  justify-items: center;
-  gap: 4px;
-  padding: 12px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 18px;
-  background: linear-gradient(180deg, rgba(255, 236, 198, 0.1), rgba(255, 255, 255, 0.04));
-  color: #fffaf4;
-  cursor: pointer;
-}
+/* ── Muyu float widget (draggable) ─────────────────────────── */
 
-.muyu-head {
-  position: relative;
-  width: 56px;
-  height: 36px;
-  border-radius: 32px 32px 22px 22px;
-  background: linear-gradient(180deg, #9f6a3e, #5b3421);
-  box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.14), 0 8px 18px rgba(0, 0, 0, 0.22);
-}
-
-.muyu-head::before {
-  content: "";
+.lottery-muyu-float {
   position: absolute;
-  inset: 11px auto auto 17px;
-  width: 20px;
-  height: 9px;
-  border-radius: 999px;
-  background: rgba(38, 21, 14, 0.38);
+  bottom: 70px;
+  right: 12px;
+  z-index: 10;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
 }
 
-.muyu-stick {
+.lottery-muyu-float:active {
+  cursor: grabbing;
+}
+
+.muyu-float-inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.muyu-float-head {
+  position: relative;
+  width: 50px;
+  height: 42px;
+  border-radius: 50% 50% 44% 44%;
+  background: linear-gradient(170deg, #c68c4e, #7a4624);
+  box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.18), 0 6px 16px rgba(0, 0, 0, 0.32);
+}
+
+.muyu-hollow {
   position: absolute;
   top: 14px;
-  right: 36px;
-  width: 44px;
-  height: 7px;
+  left: 14px;
+  width: 22px;
+  height: 9px;
   border-radius: 999px;
-  background: #d8a85f;
-  transform: rotate(-28deg);
-  transform-origin: right center;
+  background: rgba(30, 14, 6, 0.44);
 }
 
-.lottery-muyu.tapped .muyu-stick {
-  animation: muyu-hit 0.28s ease;
+.muyu-blush {
+  position: absolute;
+  bottom: 8px;
+  width: 9px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(210, 70, 70, 0.35);
 }
 
-@keyframes muyu-hit {
-  50% { transform: rotate(-6deg) translateY(9px); }
+.muyu-blush--l { left: 4px; }
+.muyu-blush--r { right: 4px; }
+
+.muyu-float-stick {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: rotate(-22deg);
+  transform-origin: top center;
 }
 
-.lottery-muyu strong {
-  font-size: 13px;
+.muyu-float-inner.tapped .muyu-float-stick {
+  animation: muyu-hit-float 0.28s ease;
 }
 
-.lottery-muyu small {
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 11px;
+@keyframes muyu-hit-float {
+  50% { transform: rotate(-5deg) translateY(9px); }
 }
+
+.muyu-mallet-head {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #d8a85f, #9a6535);
+  box-shadow: 0 3px 7px rgba(0, 0, 0, 0.24);
+}
+
+.muyu-mallet-shaft {
+  width: 5px;
+  height: 24px;
+  border-radius: 999px;
+  background: #c4895a;
+}
+
 
 .muyu-merit {
   position: absolute;

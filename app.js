@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   const GAME_CONFIG_DEFAULTS = {
     farm: {
       harvestTarget: 15,
@@ -966,14 +966,16 @@
     }
   }
 
-  // ── LOTTERY: 命运信封系统 ──────────────────────────────────────────
+  // ── LOTTERY: 命运牌局 ─────────────────────────────────────────────
 
   function showLotteryOverlay() {
     const overlay = document.getElementById("lottery-overlay");
     if (!overlay) return;
+    _pickState = null;
     overlay.hidden = false;
     overlay.innerHTML = renderLotteryWheel();
     bindLotteryOverlay(overlay);
+    initMuyuFloat();
   }
 
   function hideLotteryOverlay() {
@@ -981,6 +983,7 @@
     if (!overlay) return;
     overlay.hidden = true;
     overlay.innerHTML = "";
+    _pickState = null;
   }
 
   function renderLotteryWheel() {
@@ -990,14 +993,24 @@
     const pityCurrent = Number(state.pityCurrent || 0);
     const pityPct = Math.min(100, Math.round((pityCurrent / pityThreshold) * 100));
     const pityFull = pityCurrent >= pityThreshold;
+    const items = loadLotteryConfig().items;
+
+    const showcaseCards = items.map((item) => {
+      const color = escapeHtml(item.color || lotteryColorForType(item.type));
+      return `
+        <div class="showcase-card" style="--item-color:${color}">
+          <span class="showcase-type">${escapeHtml(lotteryTypeLabel(item))}</span>
+          <strong class="showcase-label">${escapeHtml(item.label || "")}</strong>
+        </div>`;
+    }).join("");
 
     return `
-      <div class="lottery-inner" data-die-one="" data-die-two="" data-phase="dice" data-excluded="-1" data-blessed="-1" data-upgrade="false" data-extra-pity="0" data-pity-active="${pityFull}">
+      <div class="lottery-inner" data-die-one="" data-die-two="" data-phase="showcase" data-bonus-flip="false" data-pity-active="${pityFull}">
         <div class="lottery-header">
           <button class="lottery-close-btn" data-action="close-lottery" type="button" aria-label="关闭抽奖">
             <span class="material-symbols-outlined">close</span>
           </button>
-          <h2 class="lottery-title">命运信封</h2>
+          <h2 class="lottery-title">命运牌局</h2>
           <p class="lottery-tickets-hint">剩余 ${state.lotteryTickets || 0} 次机会</p>
         </div>
 
@@ -1007,57 +1020,73 @@
           <span class="${pityFull ? "pity-guaranteed" : "pity-count"}">${pityFull ? "🌟 满槽！必得大奖" : `${pityCurrent}/${pityThreshold}`}</span>
         </div>
 
-        <div class="lottery-dice-panel" aria-live="polite">
-          <div class="lottery-dice-head">
-            <strong>骰子仪式</strong>
-            <span data-dice-chances>还剩 2 颗未摇</span>
-          </div>
-          <div class="lottery-dice">
-            <div class="lottery-die-slot">
-              <span class="lottery-die" data-die="1">?</span>
-              <button class="btn btn-soft btn-sm" data-action="roll-die" data-die-index="1" type="button">摇第一颗</button>
-            </div>
-            <div class="lottery-die-slot">
-              <span class="lottery-die" data-die="2">?</span>
-              <button class="btn btn-soft btn-sm" data-action="roll-die" data-die-index="2" type="button">摇第二颗</button>
-            </div>
-          </div>
-          <p class="lottery-dice-hint">对子→提示最佳 · 顺子→排除最差 · 11~12点→奖励升档 · 2~3点→运气+1</p>
+        <div class="lottery-phase" id="lp-showcase">
+          <p class="phase-label">奖励池 — 看清楚再出发</p>
+          <div class="lottery-showcase-grid">${showcaseCards}</div>
+          ${pityFull ? '<p class="pity-tease">✨ 运气已满，此次必得大奖</p>' : ""}
+          <button class="lottery-action-btn" data-action="phase-to-dice" type="button">看好了，摇骰子！🎲</button>
         </div>
 
-        <div class="lottery-envelopes" id="lottery-envelopes" hidden>
-          <p class="lottery-pick-hint">点击一个信封，揭开命运</p>
-          <div class="lottery-envelopes-row">
-            <div class="envelope" data-card-index="0" data-action="pick-envelope">
-              <div class="envelope-inner">
-                <div class="envelope-front"><span class="envelope-mark">✉</span></div>
-                <div class="envelope-back"></div>
+        <div class="lottery-phase" id="lp-dice" hidden>
+          <p class="phase-label">骰子仪式</p>
+          <div class="lottery-dice-panel" aria-live="polite">
+            <div class="lottery-dice">
+              <div class="lottery-die-slot">
+                <span class="lottery-die" data-die="1">?</span>
+                <button class="btn btn-soft btn-sm" data-action="roll-die" data-die-index="1" type="button">摇第一颗</button>
+              </div>
+              <div class="lottery-die-slot">
+                <span class="lottery-die" data-die="2">?</span>
+                <button class="btn btn-soft btn-sm" data-action="roll-die" data-die-index="2" type="button">摇第二颗</button>
               </div>
             </div>
-            <div class="envelope" data-card-index="1" data-action="pick-envelope">
-              <div class="envelope-inner">
-                <div class="envelope-front"><span class="envelope-mark">✉</span></div>
-                <div class="envelope-back"></div>
-              </div>
+            <p class="lottery-dice-result" id="lottery-dice-result">两颗都摇完才能洗牌</p>
+          </div>
+          <button class="lottery-action-btn" data-action="phase-to-draw" id="btn-phase-draw" type="button" disabled>洗牌！🃏</button>
+        </div>
+
+        <div class="lottery-phase" id="lp-draw" hidden>
+          <p class="phase-label">从牌堆里抽 5 张</p>
+          <div class="lottery-draw-area">
+            <div class="lottery-deck" id="lottery-deck">
+              <div class="deck-card deck-card--1"></div>
+              <div class="deck-card deck-card--2"></div>
+              <div class="deck-card deck-card--3"></div>
             </div>
-            <div class="envelope" data-card-index="2" data-action="pick-envelope">
-              <div class="envelope-inner">
-                <div class="envelope-front"><span class="envelope-mark">✉</span></div>
-                <div class="envelope-back"></div>
-              </div>
-            </div>
+            <div class="lottery-hand" id="lottery-hand"></div>
+          </div>
+          <button class="lottery-action-btn" data-action="draw-card" id="btn-draw-card" type="button">抽一张 ✋</button>
+          <button class="lottery-action-btn" data-action="phase-to-pick" id="btn-phase-pick" type="button" hidden>从这 5 张里选 →</button>
+        </div>
+
+        <div class="lottery-phase" id="lp-pick" hidden>
+          <p class="phase-label" id="pick-phase-label">翻开一张，那就是你的奖励</p>
+          <div class="lottery-pick-row" id="lottery-pick-row"></div>
+          <div class="lottery-flip-choices" id="lottery-flip-choices" hidden>
+            <p class="phase-hint">骰子给了你额外一翻——</p>
+            <button class="btn btn-soft" data-action="keep-card" type="button">就这张 ✓</button>
+            <button class="btn btn-primary" data-action="flip-another" type="button">再翻一张</button>
           </div>
         </div>
 
-        <div id="lottery-result" class="lottery-result" hidden></div>
-        <div id="lottery-again-area" hidden></div>
+        <div class="lottery-phase" id="lp-result" hidden>
+          <div id="lottery-result" class="lottery-result"></div>
+          <div id="lottery-again-area"></div>
+        </div>
+      </div>
 
-        <button class="lottery-muyu" data-action="tap-muyu" type="button" aria-label="敲木鱼">
-          <span class="muyu-head"></span>
-          <span class="muyu-stick"></span>
-          <strong>敲木鱼</strong>
-          <small>静心，不消耗机会</small>
-        </button>
+      <div class="lottery-muyu-float" id="lottery-muyu-float">
+        <div class="muyu-float-inner" data-action="tap-muyu-float">
+          <div class="muyu-float-head">
+            <span class="muyu-blush muyu-blush--l"></span>
+            <span class="muyu-blush muyu-blush--r"></span>
+            <span class="muyu-hollow"></span>
+          </div>
+          <div class="muyu-float-stick">
+            <div class="muyu-mallet-head"></div>
+            <div class="muyu-mallet-shaft"></div>
+          </div>
+        </div>
       </div>
     `;
   }
@@ -1066,24 +1095,38 @@
     return item?.type === "bigReward" ? "大奖" : item?.type === "reward" ? "奖励" : "任务";
   }
 
+  function showPhase(id) {
+    document.querySelectorAll(".lottery-phase").forEach((p) => { p.hidden = p.id !== id; });
+  }
+
   function bindLotteryOverlay(overlay) {
     overlay.onclick = (event) => {
       const actionEl = event.target.closest("[data-action]");
       if (!actionEl) return;
       const action = actionEl.dataset.action;
       if (action === "close-lottery") { hideLotteryOverlay(); return; }
-      if (action === "spin-lottery") { showLotteryOverlay(); return; } // "再来一次"
-      if (action === "pick-envelope") {
-        const cardIndex = Number(actionEl.closest(".envelope")?.dataset.cardIndex ?? -1);
-        if (cardIndex >= 0) pickEnvelope(cardIndex);
-        return;
-      }
+      if (action === "spin-lottery") { showLotteryOverlay(); return; }
+      if (action === "phase-to-dice") { phaseToDice(); return; }
       if (action === "roll-die") {
         rollSingleDie(Number(actionEl.dataset.dieIndex || 0));
         return;
       }
-      if (action === "tap-muyu") {
-        tapMuyu(actionEl.closest(".lottery-muyu"));
+      if (action === "phase-to-draw") { phaseToDraw(); return; }
+      if (action === "draw-card") { drawCard(); return; }
+      if (action === "phase-to-pick") { phaseToPick(); return; }
+      if (action === "flip-pick-card") {
+        flipPickCard(Number(actionEl.closest(".pick-card")?.dataset.cardIndex ?? -1));
+        return;
+      }
+      if (action === "keep-card") { keepCard(); return; }
+      if (action === "flip-another") { flipAnother(); return; }
+      if (action === "choose-final") {
+        chooseFinalCard(Number(actionEl.closest(".pick-card")?.dataset.cardIndex ?? -1));
+        return;
+      }
+      if (action === "tap-muyu-float") {
+        tapMuyuFloat(actionEl.closest(".muyu-float-inner"));
+        return;
       }
     };
   }
@@ -1115,23 +1158,13 @@
     return selectLotteryItem(items);
   }
 
-  function upgradeItemTier(item, allItems) {
-    if (!item || !allItems?.length) return item;
-    if (item.type === "bigReward") return item;
-    const targetType = item.type === "reward" ? "bigReward" : "reward";
-    const candidates = allItems.filter((i) => i.type === targetType);
-    if (!candidates.length) return item;
-    return candidates[Math.floor(Math.random() * candidates.length)];
-  }
-
-  function renderEnvelopeBack(item, upgraded) {
-    if (!item) return '<div class="envelope-prize-empty">—</div>';
+  function renderCardBack(item) {
+    if (!item) return '<div class="card-back-prize">—</div>';
     const color = escapeHtml(item.color || lotteryColorForType(item.type));
     return `
-      <div class="envelope-prize" style="--item-color:${color}">
-        ${upgraded ? '<span class="envelope-upgrade-badge">↑ 升档</span>' : ""}
-        <span class="envelope-tier-badge">${escapeHtml(lotteryTypeLabel(item))}</span>
-        <strong class="envelope-prize-label">${escapeHtml(item.label || "")}</strong>
+      <div class="card-back-prize" style="--item-color:${color}">
+        <span class="card-back-tier">${escapeHtml(lotteryTypeLabel(item))}</span>
+        <strong class="card-back-label">${escapeHtml(item.label || "")}</strong>
       </div>
     `;
   }
@@ -1169,160 +1202,198 @@
     if (!inner) return;
     const d1 = Number(inner.dataset.dieOne || 0);
     const d2 = Number(inner.dataset.dieTwo || 0);
-    const rolledCount = [d1, d2].filter(Boolean).length;
-    const chanceEl = document.querySelector("[data-dice-chances]");
-    if (chanceEl && rolledCount < 2) chanceEl.textContent = `还剩 ${2 - rolledCount} 颗未摇`;
-    if (rolledCount < 2) return;
-    activateLotteryEnvelopes(inner, d1, d2);
+    if (!d1 || !d2) return;
+    const sum = d1 + d2;
+    const bonusFlip = sum <= 2 || sum >= 11;
+    inner.dataset.bonusFlip = String(bonusFlip);
+    const resultEl = document.getElementById("lottery-dice-result");
+    if (resultEl) {
+      let msg = `点数合计 ${sum}`;
+      if (bonusFlip) msg += " — 🎉 骰子开光！翻牌时可以多翻一张再选";
+      else msg += " — 翻开一张就是你的";
+      resultEl.textContent = msg;
+    }
+    const drawBtn = document.getElementById("btn-phase-draw");
+    if (drawBtn) drawBtn.disabled = false;
   }
 
-  // ── Envelope activation (骰子效果) ────────────────────────────────
+  function phaseToDice() {
+    showPhase("lp-dice");
+  }
 
-  function activateLotteryEnvelopes(inner, d1, d2) {
-    const sum = d1 + d2;
-    const isPair = d1 === d2;
-    const isStraight = Math.abs(d1 - d2) === 1;
-    const isHigh = sum >= 11;
-    const isLow = sum <= 3;
-
-    const state = loadAchievementState();
-    const cfg = loadAchievementConfig();
-    const pityThreshold = Number(cfg.lottery?.pityThreshold || 5);
-    const pityActive = Number(state.pityCurrent || 0) >= pityThreshold;
-
+  function phaseToDraw() {
+    const inner = document.querySelector(".lottery-inner");
+    if (!inner) return;
     const items = loadLotteryConfig().items;
     if (!items.length) return;
-
-    // Assign 3 prizes; pity forces a big reward into slot 0
-    const prizeIndices = [0, 1, 2].map(() => selectLotteryItem(items));
-    if (pityActive) prizeIndices[0] = selectBigRewardItem(items);
-    const prizes = prizeIndices.map((i) => items[i]);
-    const tiers = prizes.map(getPrizeTier);
-
-    // Dice effects
-    let blessedIndex = -1;
-    let excludedIndex = -1;
-
-    if (isPair) {
-      // Hint the best card with a glow
-      blessedIndex = pityActive ? 0 : tiers.indexOf(Math.max(...tiers));
+    const pityActive = inner.dataset.pityActive === "true";
+    const prizes = Array.from({ length: 5 }, () => items[selectLotteryItem(items)]);
+    if (pityActive) {
+      const slot = Math.floor(Math.random() * 5);
+      prizes[slot] = items[selectBigRewardItem(items)];
     }
-    if (isStraight) {
-      // Auto-reveal and exclude the worst card
-      const minTier = Math.min(...tiers);
-      excludedIndex = tiers.lastIndexOf(minTier);
-      if (pityActive && excludedIndex === 0) {
-        // Don't exclude the guaranteed big-reward slot
-        const alt = tiers.indexOf(minTier, 1);
-        excludedIndex = alt >= 0 ? alt : 2;
-      }
+    inner.dataset.drawnPrizes = JSON.stringify(prizes);
+    inner.dataset.drawnCount = "0";
+    showPhase("lp-draw");
+    const deck = document.getElementById("lottery-deck");
+    if (deck) {
+      deck.classList.add("shuffling");
+      setTimeout(() => deck.classList.remove("shuffling"), 700);
     }
-
-    // Store card data in dataset
-    inner.dataset.card0 = JSON.stringify(prizes[0]);
-    inner.dataset.card1 = JSON.stringify(prizes[1]);
-    inner.dataset.card2 = JSON.stringify(prizes[2]);
-    inner.dataset.blessed = String(blessedIndex);
-    inner.dataset.excluded = String(excludedIndex);
-    inner.dataset.upgrade = String(isHigh);
-    inner.dataset.extraPity = String(isLow ? 1 : 0);
-    inner.dataset.pityActive = String(pityActive);
-    inner.dataset.phase = "ready";
-
-    // Update dice status text
-    const chanceEl = document.querySelector("[data-dice-chances]");
-    if (chanceEl) chanceEl.textContent = "信封已生成";
-    const hint = document.querySelector(".lottery-dice-hint");
-    if (hint) {
-      let msg = `点数 ${sum}`;
-      if (isPair) msg += " — 对子！最佳信封已标记 ✦";
-      else if (isStraight) msg += " — 顺子！最差选项已排除";
-      else if (isHigh) msg += " — 高点！奖励将升一档 ↑";
-      else if (isLow) msg += " — 低点，运气槽 +1";
-      hint.textContent = msg;
-    }
-
-    // Show envelope area
-    const envelopesEl = document.getElementById("lottery-envelopes");
-    if (!envelopesEl) return;
-    envelopesEl.hidden = false;
-
-    envelopesEl.querySelectorAll(".envelope").forEach((env, i) => {
-      if (i === blessedIndex) env.classList.add("blessed");
-      if (isHigh) env.classList.add("lucky");
-      if (i === excludedIndex) {
-        env.classList.add("excluded");
-        env.dataset.excluded = "true";
-        const back = env.querySelector(".envelope-back");
-        if (back) back.innerHTML = renderEnvelopeBack(prizes[i], false);
-        setTimeout(() => env.classList.add("flipped"), 350);
-      }
-    });
   }
 
-  // ── Pick & Reveal ──────────────────────────────────────────────────
-
-  async function pickEnvelope(cardIndex) {
+  function drawCard() {
     const inner = document.querySelector(".lottery-inner");
-    if (!inner || inner.dataset.phase !== "ready") return;
-    const envEl = document.querySelector(`[data-card-index="${cardIndex}"]`);
-    if (!envEl || envEl.dataset.excluded === "true" || envEl.classList.contains("flipped")) return;
+    if (!inner) return;
+    let drawn = Number(inner.dataset.drawnCount || 0);
+    if (drawn >= 5) return;
+    drawn += 1;
+    inner.dataset.drawnCount = String(drawn);
+    const hand = document.getElementById("lottery-hand");
+    if (hand) {
+      const card = document.createElement("div");
+      card.className = "hand-card";
+      card.textContent = "?";
+      hand.appendChild(card);
+      requestAnimationFrame(() => card.classList.add("hand-card--in"));
+    }
+    const deck = document.getElementById("lottery-deck");
+    if (deck && drawn >= 5) deck.classList.add("deck--empty");
+    const drawBtn = document.getElementById("btn-draw-card");
+    const pickBtn = document.getElementById("btn-phase-pick");
+    if (drawn >= 5) {
+      if (drawBtn) drawBtn.hidden = true;
+      if (pickBtn) pickBtn.hidden = false;
+    }
+  }
 
-    inner.dataset.phase = "picking";
+  function phaseToPick() {
+    const inner = document.querySelector(".lottery-inner");
+    if (!inner) return;
+    let prizes;
+    try { prizes = JSON.parse(inner.dataset.drawnPrizes || "[]"); } catch { prizes = []; }
+    const bonusFlip = inner.dataset.bonusFlip === "true";
+    _pickState = { prizes, bonusFlip, flipsUsed: 0, flippedIndices: [], deciding: false, choosing: false };
+    const labelEl = document.getElementById("pick-phase-label");
+    if (labelEl) {
+      labelEl.textContent = bonusFlip
+        ? "骰子开光！翻一张看看，还能再翻一张选最好的"
+        : "翻开一张，那就是你的奖励";
+    }
+    const row = document.getElementById("lottery-pick-row");
+    if (row) {
+      row.innerHTML = prizes.map((_, i) => `
+        <div class="pick-card" data-card-index="${i}" data-action="flip-pick-card">
+          <div class="pick-card-inner">
+            <div class="pick-card-front"><span class="pick-card-mark">?</span></div>
+            <div class="pick-card-back"></div>
+          </div>
+        </div>
+      `).join("");
+    }
+    showPhase("lp-pick");
+  }
 
-    // Lock all envelopes
-    document.querySelectorAll(".envelope").forEach((env) => {
-      env.removeAttribute("data-action");
-      env.style.cursor = "default";
+  async function flipPickCard(index) {
+    if (!_pickState) return;
+    if (_pickState.deciding) return;
+    if (index < 0 || index >= _pickState.prizes.length) return;
+    if (_pickState.flippedIndices.includes(index)) return;
+    if (!_pickState.bonusFlip && _pickState.flipsUsed >= 1) return;
+    if (_pickState.bonusFlip && _pickState.flipsUsed >= 2) return;
+    _pickState.flipsUsed += 1;
+    _pickState.flippedIndices.push(index);
+    const isChoosing = _pickState.choosing;
+    const cardEl = document.querySelector(`.pick-card[data-card-index="${index}"]`);
+    if (cardEl) {
+      const back = cardEl.querySelector(".pick-card-back");
+      if (back) back.innerHTML = renderCardBack(_pickState.prizes[index]);
+      cardEl.classList.add("pick-card--flipped");
+      cardEl.removeAttribute("data-action");
+    }
+    await sleep(500);
+    if (_pickState.bonusFlip && _pickState.flipsUsed === 1 && !isChoosing) {
+      _pickState.deciding = true;
+      const choices = document.getElementById("lottery-flip-choices");
+      if (choices) choices.hidden = false;
+    } else if (isChoosing && _pickState.flipsUsed === 2) {
+      _pickState.choosing = false;
+      _pickState.flippedIndices.forEach((fi) => {
+        const fc = document.querySelector(`.pick-card[data-card-index="${fi}"]`);
+        if (fc) {
+          const btn = document.createElement("button");
+          btn.className = "btn btn-primary pick-choose-btn";
+          btn.dataset.action = "choose-final";
+          btn.textContent = "选这张";
+          fc.appendChild(btn);
+          fc.classList.add("pick-card--choosable");
+        }
+      });
+      const labelEl = document.getElementById("pick-phase-label");
+      if (labelEl) labelEl.textContent = "选一张你想要的 →";
+    } else {
+      await finalizeWithPrize(_pickState.prizes[index], index);
+    }
+  }
+
+  function keepCard() {
+    if (!_pickState || !_pickState.deciding) return;
+    _pickState.deciding = false;
+    const chosenIndex = _pickState.flippedIndices[0];
+    const choices = document.getElementById("lottery-flip-choices");
+    if (choices) choices.hidden = true;
+    finalizeWithPrize(_pickState.prizes[chosenIndex], chosenIndex);
+  }
+
+  function flipAnother() {
+    if (!_pickState || !_pickState.deciding) return;
+    _pickState.deciding = false;
+    _pickState.choosing = true;
+    const choices = document.getElementById("lottery-flip-choices");
+    if (choices) choices.hidden = true;
+    const labelEl = document.getElementById("pick-phase-label");
+    if (labelEl) labelEl.textContent = "再翻一张，然后选你想要的那张";
+  }
+
+  async function chooseFinalCard(index) {
+    if (!_pickState) return;
+    document.querySelectorAll(".pick-card--flipped").forEach((card) => {
+      const i = Number(card.dataset.cardIndex);
+      card.classList.remove("pick-card--choosable");
+      if (i === index) card.classList.add("pick-card--chosen");
+      else card.classList.add("pick-card--other");
     });
+    await sleep(400);
+    await finalizeWithPrize(_pickState.prizes[index], index);
+  }
 
-    const prizes = [
-      JSON.parse(inner.dataset.card0 || "null"),
-      JSON.parse(inner.dataset.card1 || "null"),
-      JSON.parse(inner.dataset.card2 || "null"),
-    ];
-    const items = loadLotteryConfig().items;
-    const isHigh = inner.dataset.upgrade === "true";
-    const excludedIndex = Number(inner.dataset.excluded ?? -1);
-
-    // Compute final prize (upgrade if high roll)
-    let finalPrize = prizes[cardIndex];
-    let wasUpgraded = false;
-    if (isHigh && finalPrize) {
-      const upgraded = upgradeItemTier(finalPrize, items);
-      if (upgraded !== finalPrize) { finalPrize = upgraded; wasUpgraded = true; }
+  async function finalizeWithPrize(chosenPrize, chosenIndex) {
+    if (!_pickState) return;
+    const chosenCard = document.querySelector(`.pick-card[data-card-index="${chosenIndex}"]`);
+    if (chosenCard && !chosenCard.classList.contains("pick-card--chosen")) {
+      chosenCard.classList.add("pick-card--chosen");
     }
-
-    // Flip chosen envelope
-    const chosenBack = envEl.querySelector(".envelope-back");
-    if (chosenBack) chosenBack.innerHTML = renderEnvelopeBack(finalPrize, wasUpgraded);
-    envEl.classList.add("flipped");
-    await sleep(750);
-
-    // Flip remaining non-excluded envelopes
-    for (let i = 0; i < 3; i++) {
-      if (i === cardIndex || i === excludedIndex) continue;
-      const otherEnv = document.querySelector(`[data-card-index="${i}"]`);
-      const otherBack = otherEnv?.querySelector(".envelope-back");
-      if (otherBack) otherBack.innerHTML = renderEnvelopeBack(prizes[i], false);
-      if (otherEnv) { otherEnv.classList.add("flipped"); await sleep(450); }
+    const allCards = document.querySelectorAll(".pick-card");
+    for (const card of allCards) {
+      const i = Number(card.dataset.cardIndex);
+      if (_pickState.flippedIndices.includes(i)) continue;
+      const back = card.querySelector(".pick-card-back");
+      if (back) back.innerHTML = renderCardBack(_pickState.prizes[i]);
+      card.classList.add("pick-card--flipped", "pick-card--other");
+      await sleep(360);
     }
-
-    await sleep(200);
-
-    // C: 近失效应 — compare chosen tier vs best unchosen
-    const chosenTier = getPrizeTier(finalPrize);
-    const otherTiers = [0, 1, 2]
-      .filter((i) => i !== cardIndex && i !== excludedIndex)
-      .map((i) => getPrizeTier(prizes[i]));
+    await sleep(400);
+    const chosenTier = getPrizeTier(chosenPrize);
+    const otherTiers = _pickState.prizes
+      .map((p, i) => (i === chosenIndex ? -1 : getPrizeTier(p)))
+      .filter((t) => t >= 0);
     if (otherTiers.length > 0) {
       const bestOther = Math.max(...otherTiers);
       if (bestOther > chosenTier) showNearMissEffect("差一步！");
-      else if (chosenTier > bestOther) showNearMissEffect("就是这张！", true);
-      await sleep(1400);
+      else if (chosenTier > bestOther) showNearMissEffect("就是最好的！", true);
     }
-
-    onEnvelopeReveal(finalPrize, prizes, inner, wasUpgraded);
+    await sleep(1200);
+    showLotteryResult(chosenPrize);
   }
 
   function showNearMissEffect(text, isWin = false) {
@@ -1333,39 +1404,30 @@
     setTimeout(() => splash.remove(), 1500);
   }
 
-  function onEnvelopeReveal(finalPrize, _prizes, inner, wasUpgraded) {
+  function showLotteryResult(chosenPrize) {
+    const inner = document.querySelector(".lottery-inner");
     const state = loadAchievementState();
     const cfg = loadAchievementConfig();
     const pityThreshold = Number(cfg.lottery?.pityThreshold || 5);
-    const pityActive = inner.dataset.pityActive === "true";
-    const isLow = Number(inner.dataset.extraPity || 0) > 0;
-
-    // B: 保底计数更新
-    if (pityActive || finalPrize?.type === "bigReward") {
+    const pityActive = inner?.dataset.pityActive === "true";
+    if (pityActive || chosenPrize?.type === "bigReward") {
       state.pityCurrent = 0;
     } else {
-      state.pityCurrent = Math.min(
-        pityThreshold,
-        Number(state.pityCurrent || 0) + 1 + (isLow ? 1 : 0)
-      );
+      state.pityCurrent = Math.min(pityThreshold, Number(state.pityCurrent || 0) + 1);
     }
-
     state.lotteryTickets = Math.max(0, Number(state.lotteryTickets || 0) - 1);
     state.usedLotteryCount = Number(state.usedLotteryCount || 0) + 1;
     saveAchievementState(state);
-    if (finalPrize) saveLotteryHistory(finalPrize);
-
-    // Result card
+    if (chosenPrize) saveLotteryHistory(chosenPrize);
+    showPhase("lp-result");
     const resultEl = document.getElementById("lottery-result");
     if (resultEl) {
-      resultEl.hidden = false;
-      const prizeColor = escapeHtml(finalPrize?.color || lotteryColorForType(finalPrize?.type));
+      const prizeColor = escapeHtml(chosenPrize?.color || lotteryColorForType(chosenPrize?.type));
       resultEl.innerHTML = `
         <div class="lottery-result-inner">
           ${pityActive ? '<p class="lottery-result-pity-banner">🌟 运气槽满，保底触发！</p>' : ""}
-          ${wasUpgraded ? '<p class="lottery-result-upgrade">↑ 骰子高点，奖励已升档</p>' : ""}
           <p class="lottery-result-item" style="--item-color:${prizeColor}">
-            <span>${escapeHtml(lotteryTypeLabel(finalPrize))}</span>${escapeHtml(finalPrize?.label || "")}
+            <span>${escapeHtml(lotteryTypeLabel(chosenPrize))}</span>${escapeHtml(chosenPrize?.label || "")}
           </p>
           ${!pityActive && state.pityCurrent > 0
             ? `<p class="lottery-result-pity-hint">运气槽 ${state.pityCurrent} / ${pityThreshold}</p>`
@@ -1373,33 +1435,85 @@
         </div>
       `;
     }
-
     const hint = document.querySelector(".lottery-tickets-hint");
     if (hint) hint.textContent = `剩余 ${state.lotteryTickets} 次机会`;
-
     const againArea = document.getElementById("lottery-again-area");
     if (againArea) {
-      againArea.hidden = false;
       againArea.innerHTML = state.lotteryTickets > 0
         ? `<button class="btn btn-primary lottery-spin-btn" data-action="spin-lottery" type="button">再来一次</button>`
         : `<p class="muted lottery-done-msg">暂时没有机会了，继续学习获得更多！</p>`;
     }
-
-    inner.dataset.phase = "done";
+    if (inner) inner.dataset.phase = "done";
     updateNavBadge();
     if (currentRoute() === "achievements") renderAchievements(document.getElementById("view"));
   }
 
-  function tapMuyu(button) {
-    if (!button) return;
-    button.classList.remove("tapped");
-    void button.offsetWidth;
-    button.classList.add("tapped");
+  function tapMuyuFloat(el) {
+    if (!el) return;
+    el.classList.remove("tapped");
+    void el.offsetWidth;
+    el.classList.add("tapped");
     const float = document.createElement("span");
     float.className = "muyu-merit";
     float.textContent = "功德 +1";
-    button.appendChild(float);
+    el.appendChild(float);
     setTimeout(() => float.remove(), 900);
+  }
+
+  function initMuyuFloat() {
+    const floatEl = document.getElementById("lottery-muyu-float");
+    if (!floatEl) return;
+    let dragging = false;
+    let hasMoved = false;
+    let startX = 0, startY = 0, origLeft = 0, origTop = 0;
+    function getPointer(e) { return e.touches ? e.touches[0] : e; }
+    floatEl.addEventListener("mousedown", onStart);
+    floatEl.addEventListener("touchstart", onStart, { passive: true });
+    function onStart(e) {
+      const p = getPointer(e);
+      startX = p.clientX;
+      startY = p.clientY;
+      const rect = floatEl.getBoundingClientRect();
+      origLeft = rect.left;
+      origTop = rect.top;
+      dragging = true;
+      hasMoved = false;
+      floatEl.style.right = "auto";
+      floatEl.style.bottom = "auto";
+      floatEl.style.left = origLeft + "px";
+      floatEl.style.top = origTop + "px";
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("touchmove", onMove, { passive: true });
+      document.addEventListener("mouseup", onEnd);
+      document.addEventListener("touchend", onEnd);
+    }
+    function onMove(e) {
+      if (!dragging) return;
+      const p = getPointer(e);
+      const dx = p.clientX - startX;
+      const dy = p.clientY - startY;
+      if (Math.abs(dx) > 4 || Math.abs(dy) > 4) hasMoved = true;
+      if (!hasMoved) return;
+      const newLeft = Math.max(0, Math.min(window.innerWidth - 64, origLeft + dx));
+      const newTop = Math.max(0, Math.min(window.innerHeight - 80, origTop + dy));
+      floatEl.style.left = newLeft + "px";
+      floatEl.style.top = newTop + "px";
+    }
+    function onEnd() {
+      if (hasMoved) {
+        const blockClick = (ce) => {
+          ce.stopPropagation();
+          floatEl.removeEventListener("click", blockClick, true);
+        };
+        floatEl.addEventListener("click", blockClick, true);
+      }
+      dragging = false;
+      hasMoved = false;
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("touchmove", onMove);
+      document.removeEventListener("mouseup", onEnd);
+      document.removeEventListener("touchend", onEnd);
+    }
   }
 
   function saveLotteryHistory(item) {
@@ -1411,6 +1525,7 @@
       // Lottery history is optional.
     }
   }
+
 
   let learnActiveTab = "today";
 
@@ -3539,6 +3654,7 @@
   let _reminderInterval = null;
   let _wheelCurrentAngleDeg = 0;
   let _reminderCount = 0;
+  let _pickState = null;
   const REMINDER_MAX = 10;
   const REMINDER_INTERVAL = 30;
 
