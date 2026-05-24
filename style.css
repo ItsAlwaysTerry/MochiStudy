@@ -2659,10 +2659,10 @@ button {
 .lottery-inner {
   display: flex;
   width: 100%;
-  max-width: 380px;
+  max-width: 720px;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
 }
 
 .lottery-header {
@@ -2695,6 +2695,110 @@ button {
   margin: 4px 0 0;
   color: rgba(255, 255, 255, 0.46);
   font-size: 13px;
+}
+
+.lottery-dice-panel {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.06);
+  text-align: center;
+}
+
+.lottery-dice {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.lottery-die {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border: 2px solid rgba(134, 77, 97, 0.25);
+  border-radius: 16px;
+  background: #fffaf4;
+  color: var(--primary-dark);
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 30px;
+  font-weight: 800;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+}
+
+.lottery-dice-hint {
+  margin: 10px 0 0;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.lottery-grid {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.lottery-cell {
+  position: relative;
+  min-height: 96px;
+  padding: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 246, 235, 0.88));
+  color: #211b17;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--item-color) 18%, transparent);
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+
+.lottery-cell::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 6px;
+  border-radius: 14px 0 0 14px;
+  background: var(--item-color);
+}
+
+.lottery-cell-index {
+  display: inline-flex;
+  margin-bottom: 8px;
+  color: color-mix(in srgb, var(--item-color) 72%, #211b17);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.lottery-cell strong {
+  display: block;
+  color: #211b17;
+  font-size: 14px;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.lottery-cell small {
+  display: block;
+  margin-top: 8px;
+  color: rgba(33, 27, 23, 0.58);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.lottery-cell.active {
+  transform: translateY(-3px) scale(1.02);
+  border-color: rgba(255, 255, 255, 0.82);
+  background: #fff;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--item-color) 34%, transparent), 0 18px 38px rgba(0, 0, 0, 0.24);
+}
+
+.lottery-cell.winner {
+  transform: translateY(-4px) scale(1.04);
+  border-color: #fff;
+  background: color-mix(in srgb, var(--item-color) 18%, #fff);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--item-color) 42%, transparent), 0 22px 44px rgba(0, 0, 0, 0.28);
 }
 
 .lottery-wheel-wrap {
@@ -2750,9 +2854,30 @@ button {
 }
 
 .lottery-result-item {
-  margin: 0 0 4px;
-  font-size: 22px;
+  margin: 0 0 8px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #211b17;
+  font-size: 17px;
   font-weight: 800;
+  line-height: 1.35;
+}
+
+.lottery-result-item span {
+  display: inline-flex;
+  margin-right: 8px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--item-color) 16%, #fff);
+  color: color-mix(in srgb, var(--item-color) 72%, #211b17);
+  font-size: 11px;
+  vertical-align: 1px;
+}
+
+.lottery-result-list {
+  display: grid;
+  gap: 8px;
 }
 
 .lottery-result-type {
@@ -2766,6 +2891,216 @@ button {
   padding: 14px;
   border-radius: 16px;
   font-size: 16px;
+}
+
+.lottery-overlay {
+  align-items: center;
+  padding: 16px;
+}
+
+.lottery-inner {
+  max-width: 920px;
+  max-height: calc(100vh - 32px);
+  gap: 12px;
+  overflow: auto;
+}
+
+.lottery-header {
+  min-height: 38px;
+}
+
+.lottery-playfield {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.lottery-ritual-panel,
+.lottery-main-panel {
+  min-width: 0;
+}
+
+.lottery-ritual-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.lottery-dice-panel {
+  padding: 12px;
+}
+
+.lottery-dice-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  color: #fff;
+}
+
+.lottery-dice-head strong {
+  font-size: 15px;
+}
+
+.lottery-dice-head span {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.lottery-dice {
+  gap: 10px;
+}
+
+.lottery-die-slot {
+  display: grid;
+  flex: 1;
+  justify-items: center;
+  gap: 8px;
+}
+
+.lottery-die-slot .btn {
+  width: 100%;
+  min-height: 34px;
+  padding: 7px 8px;
+  font-size: 12px;
+}
+
+.lottery-die.rolling {
+  transform: rotate(6deg) scale(1.06);
+}
+
+.lottery-muyu {
+  position: relative;
+  display: grid;
+  min-height: 118px;
+  justify-items: center;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 236, 198, 0.14), rgba(255, 255, 255, 0.05));
+  color: #fffaf4;
+  cursor: pointer;
+}
+
+.muyu-head {
+  position: relative;
+  width: 72px;
+  height: 46px;
+  border-radius: 42px 42px 30px 30px;
+  background: linear-gradient(180deg, #9f6a3e, #5b3421);
+  box-shadow: inset 0 -8px 0 rgba(0, 0, 0, 0.14), 0 12px 24px rgba(0, 0, 0, 0.22);
+}
+
+.muyu-head::before {
+  content: "";
+  position: absolute;
+  inset: 15px auto auto 23px;
+  width: 26px;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(38, 21, 14, 0.38);
+}
+
+.muyu-stick {
+  position: absolute;
+  top: 18px;
+  right: 44px;
+  width: 54px;
+  height: 8px;
+  border-radius: 999px;
+  background: #d8a85f;
+  transform: rotate(-28deg);
+  transform-origin: right center;
+}
+
+.lottery-muyu.tapped .muyu-stick {
+  animation: muyu-hit 0.28s ease;
+}
+
+@keyframes muyu-hit {
+  50% {
+    transform: rotate(-6deg) translateY(11px);
+  }
+}
+
+.lottery-muyu strong {
+  font-size: 14px;
+}
+
+.lottery-muyu small {
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 12px;
+}
+
+.muyu-merit {
+  position: absolute;
+  top: 10px;
+  right: 18px;
+  color: #f6d376;
+  font-size: 13px;
+  font-weight: 900;
+  pointer-events: none;
+  animation: merit-float 0.9s ease forwards;
+}
+
+@keyframes merit-float {
+  to {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+}
+
+.lottery-main-panel {
+  display: grid;
+  align-content: stretch;
+}
+
+.lottery-grid {
+  max-height: min(54vh, 430px);
+  overflow: auto;
+  padding: 2px;
+}
+
+.lottery-cell {
+  min-height: 78px;
+  padding: 10px 10px 10px 13px;
+}
+
+.lottery-result {
+  padding: 12px;
+}
+
+.lottery-result-label {
+  margin-bottom: 8px;
+}
+
+.lottery-result-item {
+  margin-bottom: 6px;
+  padding: 7px 10px;
+  font-size: 15px;
+}
+
+@media (max-width: 640px) {
+  .lottery-inner {
+    max-height: calc(100vh - 20px);
+  }
+
+  .lottery-playfield {
+    grid-template-columns: 1fr;
+  }
+
+  .lottery-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-height: 38vh;
+  }
+
+  .lottery-cell {
+    min-height: 88px;
+  }
 }
 
 .milestone-row {

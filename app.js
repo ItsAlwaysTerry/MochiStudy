@@ -980,30 +980,72 @@
 
   function renderLotteryWheel() {
     const state = loadAchievementState();
+    const items = loadLotteryConfig().items;
     return `
-      <div class="lottery-inner">
+      <div class="lottery-inner" data-die-one="" data-die-two="" data-draw-count="1">
         <div class="lottery-header">
           <button class="lottery-close-btn" data-action="close-lottery" type="button" aria-label="关闭抽奖">
             <span class="material-symbols-outlined">close</span>
           </button>
-          <h2 class="lottery-title">抽奖转盘</h2>
+          <h2 class="lottery-title">奖励跑马灯</h2>
           <p class="lottery-tickets-hint">剩余 ${state.lotteryTickets || 0} 次机会</p>
         </div>
-        <div class="lottery-wheel-wrap">
-          <div class="lottery-pointer">▼</div>
-          <canvas id="lottery-canvas" width="320" height="320"></canvas>
+        <div class="lottery-playfield">
+          <aside class="lottery-ritual-panel">
+            <div class="lottery-dice-panel" aria-live="polite">
+              <div class="lottery-dice-head">
+                <strong>骰子仪式</strong>
+                <span data-dice-chances>骰子机会 2/2</span>
+              </div>
+              <div class="lottery-dice">
+                <div class="lottery-die-slot">
+                  <span class="lottery-die" data-die="1">?</span>
+                  <button class="btn btn-soft btn-sm" data-action="roll-die" data-die-index="1" type="button">摇第一颗</button>
+                </div>
+                <div class="lottery-die-slot">
+                  <span class="lottery-die" data-die="2">?</span>
+                  <button class="btn btn-soft btn-sm" data-action="roll-die" data-die-index="2" type="button">摇第二颗</button>
+                </div>
+              </div>
+              <p class="lottery-dice-hint">两颗骰子点数 ≤4 或 ≥10，本张券奖励翻倍。</p>
+            </div>
+            <button class="lottery-muyu" data-action="tap-muyu" type="button" aria-label="敲木鱼">
+              <span class="muyu-head"></span>
+              <span class="muyu-stick"></span>
+              <strong>敲木鱼</strong>
+              <small>静心一下，不消耗机会</small>
+            </button>
+          </aside>
+          <div class="lottery-main-panel">
+            <div class="lottery-grid" id="lottery-grid">
+              ${items.map((item, index) => renderLotteryCell(item, index)).join("")}
+            </div>
+          </div>
         </div>
         <div id="lottery-result" class="lottery-result" hidden></div>
-        <button class="btn btn-primary lottery-spin-btn" id="lottery-spin-btn" data-action="spin-lottery" type="button" ${(state.lotteryTickets || 0) <= 0 ? "disabled" : ""}>
+        <button class="btn btn-primary lottery-spin-btn" id="lottery-spin-btn" data-action="spin-lottery" type="button" disabled>
           <span class="material-symbols-outlined">casino</span>
-          开始抽奖
+          先摇完两颗骰子
         </button>
       </div>
     `;
   }
 
+  function renderLotteryCell(item, index) {
+    return `
+      <article class="lottery-cell" data-lottery-index="${index}" style="--item-color:${escapeHtml(item.color || lotteryColorForType(item.type))}">
+        <span class="lottery-cell-index">${String(index + 1).padStart(2, "0")}</span>
+        <strong>${escapeHtml(item.label || "")}</strong>
+        <small>${lotteryTypeLabel(item)} · 权重 ${Number(item.weight || 0)}</small>
+      </article>
+    `;
+  }
+
+  function lotteryTypeLabel(item) {
+    return item?.type === "bigReward" ? "大奖" : item?.type === "reward" ? "奖励" : "任务";
+  }
+
   function bindLotteryOverlay(overlay) {
-    drawWheel((_wheelCurrentAngleDeg * Math.PI) / 180);
     overlay.onclick = (event) => {
       const action = event.target.closest("[data-action]")?.dataset.action;
       if (action === "close-lottery") {
@@ -1012,6 +1054,14 @@
       }
       if (action === "spin-lottery") {
         spinWheel();
+        return;
+      }
+      if (action === "roll-die") {
+        rollSingleDie(Number(event.target.closest("[data-action]")?.dataset.dieIndex || 0));
+        return;
+      }
+      if (action === "tap-muyu") {
+        tapMuyu(event.target.closest(".lottery-muyu"));
       }
     };
   }
@@ -1078,57 +1128,192 @@
     return Math.max(0, items.length - 1);
   }
 
-  function spinWheel() {
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  function rollLotteryDice() {
+    const first = 1 + Math.floor(Math.random() * 6);
+    const second = 1 + Math.floor(Math.random() * 6);
+    const sum = first + second;
+    return { first, second, sum, bonus: sum <= 4 || sum >= 10 };
+  }
+
+  function setLotteryDice(first, second) {
+    const firstEl = document.querySelector("[data-die='1']");
+    const secondEl = document.querySelector("[data-die='2']");
+    if (firstEl) firstEl.textContent = String(first);
+    if (secondEl) secondEl.textContent = String(second);
+  }
+
+  async function animateDiceRoll(finalRoll) {
+    for (let step = 0; step < 14; step += 1) {
+      setLotteryDice(1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6));
+      await sleep(54 + step * 12);
+    }
+    setLotteryDice(finalRoll.first, finalRoll.second);
+    const hint = document.querySelector(".lottery-dice-hint");
+    if (hint) hint.textContent = finalRoll.bonus ? `点数 ${finalRoll.sum}，触发加倍！本张券抽 2 次` : `点数 ${finalRoll.sum}，本张券抽 1 次`;
+  }
+
+  async function rollSingleDie(index) {
+    if (index !== 1 && index !== 2) return;
+    const inner = document.querySelector(".lottery-inner");
+    const dieEl = document.querySelector(`[data-die="${index}"]`);
+    const button = document.querySelector(`[data-action="roll-die"][data-die-index="${index}"]`);
+    if (!inner || !dieEl || !button || button.disabled) return;
+    button.disabled = true;
+    button.textContent = "摇动中...";
+    let value = 1;
+    for (let step = 0; step < 13; step += 1) {
+      value = 1 + Math.floor(Math.random() * 6);
+      dieEl.textContent = String(value);
+      dieEl.classList.toggle("rolling", step % 2 === 0);
+      await sleep(48 + step * 11);
+    }
+    dieEl.classList.remove("rolling");
+    inner.dataset[index === 1 ? "dieOne" : "dieTwo"] = String(value);
+    button.textContent = "已锁定";
+    updateDiceState();
+  }
+
+  function updateDiceState() {
+    const inner = document.querySelector(".lottery-inner");
+    if (!inner) return;
+    const values = [Number(inner.dataset.dieOne || 0), Number(inner.dataset.dieTwo || 0)];
+    const rolled = values.filter(Boolean).length;
+    const chanceEl = document.querySelector("[data-dice-chances]");
+    if (chanceEl) chanceEl.textContent = `骰子机会 ${2 - rolled}/2`;
+    const hint = document.querySelector(".lottery-dice-hint");
+    const spinButton = document.getElementById("lottery-spin-btn");
+    if (rolled < 2) {
+      if (hint) hint.textContent = "两颗骰子点数 <=4 或 >=10，本张券奖励翻倍。";
+      if (spinButton) {
+        spinButton.disabled = true;
+        spinButton.innerHTML = `<span class="material-symbols-outlined">casino</span>先摇完两颗骰子`;
+      }
+      return;
+    }
+    const sum = values[0] + values[1];
+    const bonus = sum <= 4 || sum >= 10;
+    inner.dataset.drawCount = bonus ? "2" : "1";
+    if (hint) hint.textContent = bonus ? `点数 ${sum}，触发加倍！真正抽奖 2 次` : `点数 ${sum}，真正抽奖 1 次`;
+    if (spinButton) {
+      spinButton.disabled = false;
+      spinButton.innerHTML = `<span class="material-symbols-outlined">casino</span>${bonus ? "开始 2 次跑马灯" : "开始跑马灯抽奖"}`;
+    }
+  }
+
+  function resetDiceModule() {
+    const inner = document.querySelector(".lottery-inner");
+    if (!inner) return;
+    inner.dataset.dieOne = "";
+    inner.dataset.dieTwo = "";
+    inner.dataset.drawCount = "1";
+    document.querySelectorAll(".lottery-die").forEach((die) => {
+      die.textContent = "?";
+      die.classList.remove("rolling");
+    });
+    document.querySelectorAll("[data-action='roll-die']").forEach((button) => {
+      button.disabled = false;
+      button.textContent = button.dataset.dieIndex === "1" ? "摇第一颗" : "摇第二颗";
+    });
+    updateDiceState();
+  }
+
+  function tapMuyu(button) {
+    if (!button) return;
+    button.classList.remove("tapped");
+    void button.offsetWidth;
+    button.classList.add("tapped");
+    const float = document.createElement("span");
+    float.className = "muyu-merit";
+    float.textContent = "功德 +1";
+    button.appendChild(float);
+    setTimeout(() => float.remove(), 900);
+  }
+
+  function setLotteryActiveCell(index, className = "active") {
+    document.querySelectorAll(".lottery-cell").forEach((cell) => {
+      cell.classList.remove("active", "winner");
+    });
+    const cell = document.querySelector(`[data-lottery-index="${index}"]`);
+    if (cell) cell.classList.add(className);
+  }
+
+  function animateLotteryGrid(targetIndex, itemCount, round = 0) {
+    return new Promise((resolve) => {
+      const currentIndex = Math.max(0, Number(_lotteryCursorIndex || 0));
+      const offset = (targetIndex - currentIndex + itemCount) % itemCount;
+      const totalSteps = itemCount * (3 + round) + offset;
+      let step = 0;
+      const tick = () => {
+        _lotteryCursorIndex = (_lotteryCursorIndex + 1) % itemCount;
+        setLotteryActiveCell(_lotteryCursorIndex);
+        const progress = step / Math.max(1, totalSteps);
+        const delay = 70 + Math.round((progress ** 2.2) * 260);
+        step += 1;
+        if (step <= totalSteps) {
+          setTimeout(tick, delay);
+        } else {
+          _lotteryCursorIndex = targetIndex;
+          setLotteryActiveCell(targetIndex, "winner");
+          resolve();
+        }
+      };
+      tick();
+    });
+  }
+
+  async function spinWheel() {
     const state = loadAchievementState();
     if ((state.lotteryTickets || 0) <= 0) return;
+    const inner = document.querySelector(".lottery-inner");
+    const drawCount = Math.max(1, Number(inner?.dataset.drawCount || 0));
+    if (!Number(inner?.dataset.dieOne || 0) || !Number(inner?.dataset.dieTwo || 0)) return;
     const spinButton = document.getElementById("lottery-spin-btn");
-    if (spinButton) spinButton.disabled = true;
+    if (spinButton) {
+      spinButton.disabled = true;
+      spinButton.innerHTML = "跑马灯抽奖中...";
+    }
     const items = loadLotteryConfig().items;
     const totalWeight = items.reduce((sum, item) => sum + Number(item.weight || 0), 0);
     if (!items.length || totalWeight <= 0) return;
-    const selectedIndex = selectLotteryItem(items);
-    let angleSum = 0;
-    for (let index = 0; index < selectedIndex; index += 1) {
-      angleSum += (Number(items[index].weight || 0) / totalWeight) * 360;
+
+    const diceSum = Number(inner?.dataset.dieOne || 0) + Number(inner?.dataset.dieTwo || 0);
+    const roll = { sum: diceSum, bonus: drawCount > 1 };
+    const selectedItems = [];
+    for (let draw = 0; draw < drawCount; draw += 1) {
+      if (spinButton) spinButton.innerHTML = drawCount > 1 ? `第 ${draw + 1} 次跑马灯...` : "跑马灯抽奖中...";
+      const selectedIndex = selectLotteryItem(items);
+      await animateLotteryGrid(selectedIndex, items.length, draw);
+      selectedItems.push(items[selectedIndex]);
+      await sleep(520);
     }
-    const sliceAngle = (Number(items[selectedIndex].weight || 0) / totalWeight) * 360;
-    const targetAngle = angleSum + sliceAngle / 2;
-    const spinDeg = 360 * 5 + ((360 - targetAngle + 270) % 360);
-    const startAngle = _wheelCurrentAngleDeg;
-    const endAngle = startAngle + spinDeg;
-    const duration = 4000;
-    const start = performance.now();
-    const ease = (t) => 1 - ((1 - t) ** 3);
-    const animate = (now) => {
-      const progress = Math.min((now - start) / duration, 1);
-      const current = startAngle + ease(progress) * spinDeg;
-      drawWheel((current * Math.PI) / 180);
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      } else {
-        _wheelCurrentAngleDeg = endAngle % 360;
-        onSpinEnd(items[selectedIndex]);
-      }
-    };
-    requestAnimationFrame(animate);
+    onSpinEnd(selectedItems, roll);
   }
 
-  function onSpinEnd(item) {
+  function onSpinEnd(items, roll) {
     const state = loadAchievementState();
     state.lotteryTickets = Math.max(0, Number(state.lotteryTickets || 0) - 1);
     state.usedLotteryCount = Number(state.usedLotteryCount || 0) + 1;
     saveAchievementState(state);
-    saveLotteryHistory(item);
+    items.forEach((item) => saveLotteryHistory(item));
 
     const resultEl = document.getElementById("lottery-result");
     if (resultEl) {
-      const typeLabel = item.type === "bigReward" ? "大奖" : item.type === "reward" ? "奖励" : "任务";
       resultEl.hidden = false;
       resultEl.innerHTML = `
         <div class="lottery-result-inner">
-          <p class="lottery-result-label">恭喜获得</p>
-          <p class="lottery-result-item" style="color:${item.color || "#fff"}">${escapeHtml(item.label || "")}</p>
-          <p class="lottery-result-type">${typeLabel}</p>
+          <p class="lottery-result-label">${roll.bonus ? `骰子 ${roll.sum} 点，加倍成功` : `骰子 ${roll.sum} 点`}</p>
+          <div class="lottery-result-list">
+            ${items.map((item) => `
+              <p class="lottery-result-item" style="--item-color:${escapeHtml(item.color || lotteryColorForType(item.type))}">
+                <span>${lotteryTypeLabel(item)}</span>${escapeHtml(item.label || "")}
+              </p>
+            `).join("")}
+          </div>
+          <p class="lottery-result-type">${roll.bonus ? "本张券获得 2 次奖励" : "本张券获得 1 次奖励"}</p>
         </div>
       `;
     }
@@ -1137,9 +1322,10 @@
     if (hint) hint.textContent = `剩余 ${state.lotteryTickets} 次机会`;
     const spinButton = document.getElementById("lottery-spin-btn");
     if (spinButton) {
-      spinButton.innerHTML = state.lotteryTickets > 0 ? "再抽一次" : "没有机会了";
+      spinButton.innerHTML = state.lotteryTickets > 0 ? "再摇一次" : "没有机会了";
       spinButton.disabled = state.lotteryTickets <= 0;
     }
+    if (state.lotteryTickets > 0) resetDiceModule();
     updateNavBadge();
     if (currentRoute() === "achievements") renderAchievements(document.getElementById("view"));
   }
@@ -3284,6 +3470,7 @@
   let _audioCtx = null;
   let _reminderInterval = null;
   let _wheelCurrentAngleDeg = 0;
+  let _lotteryCursorIndex = 0;
   let _reminderCount = 0;
   const REMINDER_MAX = 10;
   const REMINDER_INTERVAL = 30;
