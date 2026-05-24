@@ -1200,6 +1200,168 @@ button {
   font-weight: 800;
 }
 
+/* ── Home AI Guide Card ─────────────────────────────────────── */
+
+.home-ai-guide {
+  border: 1px solid var(--outline);
+  border-radius: 14px;
+  background: var(--surface);
+  padding: 0;
+  overflow: hidden;
+}
+
+.home-ai-guide-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.home-ai-guide-summary::-webkit-details-marker { display: none; }
+
+.home-ai-guide-summary .material-symbols-outlined:first-child {
+  font-size: 18px;
+  color: var(--primary);
+  font-variation-settings: "FILL" 1;
+}
+
+.home-ai-guide-arrow {
+  margin-left: auto;
+  font-size: 18px;
+  transition: transform 0.2s ease;
+}
+
+.home-ai-guide[open] .home-ai-guide-arrow {
+  transform: rotate(180deg);
+}
+
+.home-ai-guide-body {
+  padding: 4px 14px 14px;
+  border-top: 1px solid var(--outline);
+}
+
+.home-ai-guide-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.home-ai-guide-step {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.home-ai-guide-step .step-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  margin-top: 2px;
+}
+
+.home-ai-guide-step strong {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+
+.home-ai-guide-step p {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.home-ai-guide-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--outline);
+}
+
+.home-ai-guide-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  flex: 1;
+  margin: 0;
+}
+
+/* ── Settings AI Prompt Section ─────────────────────────────── */
+
+.ai-prompt-entry {
+  border: 1px solid var(--outline);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.ai-prompt-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ai-prompt-summary::-webkit-details-marker { display: none; }
+
+.ai-prompt-icon {
+  font-size: 20px;
+  color: var(--primary);
+  font-variation-settings: "FILL" 1;
+  flex-shrink: 0;
+}
+
+.ai-prompt-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ai-prompt-meta strong {
+  font-size: 14px;
+}
+
+.ai-prompt-copy-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.ai-prompt-steps {
+  padding: 10px 14px 14px;
+  border-top: 1px solid var(--outline);
+  background: var(--surface-alt, rgba(0,0,0,0.02));
+}
+
+.ai-prompt-steps p {
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ── Settings Select Wide ─────────────────────────────────── */
+
 .settings-select-wide {
   min-width: 220px;
 }

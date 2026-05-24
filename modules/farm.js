@@ -384,6 +384,49 @@
     `;
   }
 
+  function renderAiGuideCard() {
+    return `
+      <details class="card home-ai-guide">
+        <summary class="home-ai-guide-summary">
+          <span class="material-symbols-outlined">school</span>
+          <span>怎么用 AI 家教学习？</span>
+          <span class="home-ai-guide-arrow material-symbols-outlined">expand_more</span>
+        </summary>
+        <div class="home-ai-guide-body">
+          <div class="home-ai-guide-steps">
+            <div class="home-ai-guide-step">
+              <span class="step-num">1</span>
+              <div>
+                <strong>学新题</strong>
+                <p>打开 AI 家教 → 发图片或描述题目 → 按引导一步步做题 → AI 自动生成记录块 → 复制粘贴到上面导入框</p>
+              </div>
+            </div>
+            <div class="home-ai-guide-step">
+              <span class="step-num">2</span>
+              <div>
+                <strong>复习旧卡点</strong>
+                <p>在「学习」页找到待复习项 → 点「复制材料」→ 粘贴给复习 AI → 按引导复习 → 把 AI 输出粘贴回来导入</p>
+              </div>
+            </div>
+            <div class="home-ai-guide-step">
+              <span class="step-num">3</span>
+              <div>
+                <strong>记录自动更新</strong>
+                <p>每次导入后，农场、学习档案、复习优先级全部自动更新，不需要手动操作</p>
+              </div>
+            </div>
+          </div>
+          <div class="home-ai-guide-actions">
+            <p class="home-ai-guide-hint">两个 AI Prompt 在「设置 → AI 使用指南」里可以复制</p>
+            <button class="btn btn-soft btn-sm" data-route="settings" type="button">
+              <span class="material-symbols-outlined">arrow_forward</span>去设置页复制 Prompt
+            </button>
+          </div>
+        </div>
+      </details>
+    `;
+  }
+
   function renderFarm(container) {
     const state = readState();
     const farmLv = getFarmLevel(state.totalHarvests);
@@ -435,6 +478,7 @@
             `
           }
           ${hasRecords ? renderTodayReviewCard() : (holiday ? renderGuideCard() : "")}
+          ${renderAiGuideCard()}
         </div>
         <div class="home-right-stack">
           <section class="card mini-farm-card">

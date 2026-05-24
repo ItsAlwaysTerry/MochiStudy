@@ -3624,6 +3624,44 @@
             </select>
           </div>
         </section>
+        <section class="card" style="grid-column:1 / -1">
+          <h3>AI 使用指南</h3>
+          <p class="muted" style="margin-top:4px">两个 AI Prompt，分别用于学新题和复习旧卡点。复制后粘贴到 Claude 的「项目说明」里，即可激活对应的 AI 角色。</p>
+          <div class="ai-guide-prompts" style="margin-top:16px;display:flex;flex-direction:column;gap:12px">
+            <details class="ai-prompt-entry">
+              <summary class="ai-prompt-summary">
+                <span class="ai-prompt-icon material-symbols-outlined">psychology</span>
+                <div class="ai-prompt-meta">
+                  <strong>高中理科 AI 家教</strong>
+                  <span class="muted" style="font-size:12px">学新题时用 · 诊断学生状态 → 脚手架引导 → 总结套路 → 输出 MOCHI-RECORD</span>
+                </div>
+                <button class="btn btn-soft btn-sm ai-prompt-copy-btn" data-action="copy-ai-prompt" data-prompt-path="./skill/gaokao私教.md" type="button">
+                  <span class="material-symbols-outlined">content_copy</span>复制 Prompt
+                </button>
+              </summary>
+              <div class="ai-prompt-steps">
+                <p><strong>使用方法：</strong>在 Claude 新建一个项目，把 Prompt 粘贴进「项目说明」。之后在项目里发题目图片，AI 会自动按流程引导做题，最后输出可粘贴进导入框的 MOCHI-RECORD。</p>
+                <p class="muted" style="font-size:12px;margin-top:6px">流程：读题诊断 → 脚手架提问（空白/错误/卡步三种模式）→ 引导解题 → 总结3步套路 → 出变式题检验 → 输出记录</p>
+              </div>
+            </details>
+            <details class="ai-prompt-entry">
+              <summary class="ai-prompt-summary">
+                <span class="ai-prompt-icon material-symbols-outlined">replay</span>
+                <div class="ai-prompt-meta">
+                  <strong>高考复习 AI 私教</strong>
+                  <span class="muted" style="font-size:12px">复习时用 · 读取学习档案 → 针对历史卡点出题 → 输出增强版 MOCHI-RECORD</span>
+                </div>
+                <button class="btn btn-soft btn-sm ai-prompt-copy-btn" data-action="copy-ai-prompt" data-prompt-path="./skill/gaokao复习私教.md" type="button">
+                  <span class="material-symbols-outlined">content_copy</span>复制 Prompt
+                </button>
+              </summary>
+              <div class="ai-prompt-steps">
+                <p><strong>使用方法：</strong>在「学习」页找到待复习的知识点，点「复制材料」，把内容粘贴给这个 AI。复习结束后把 AI 输出的记录粘贴回复习页导入。</p>
+                <p class="muted" style="font-size:12px;margin-top:6px">流程：读取历史卡点 → 选1-2个优先复习点 → 出变式题 → 2层提示不给答案 → 复盘套路 → 输出含关键突破的记录</p>
+              </div>
+            </details>
+          </div>
+        </section>
         <section class="card">
           <h3>AI 配置</h3>
           <form id="api-form" class="form-grid" style="margin-top:18px">
@@ -4515,6 +4553,27 @@ ${record.originalQuestion || "暂无原题描述。"}
     };
   }
 
+  async function copyAiPromptFile(btn) {
+    const path = btn?.dataset?.promptPath;
+    if (!path) return;
+    const originalHtml = btn.innerHTML;
+    try {
+      const resp = await fetch(path);
+      if (!resp.ok) throw new Error("fetch failed");
+      let text = await resp.text();
+      // Strip YAML frontmatter (--- ... ---)
+      text = text.replace(/^---[\s\S]*?---\s*/m, "").trim();
+      await navigator.clipboard.writeText(text);
+      btn.innerHTML = `<span class="material-symbols-outlined">check</span>已复制`;
+      setTimeout(() => { btn.innerHTML = originalHtml; }, 2000);
+      toast("Prompt 已复制，粘贴到 Claude 项目说明里即可");
+    } catch {
+      // Fallback: open the file in a new tab
+      window.open(path, "_blank");
+      toast("已在新标签页打开，全选复制后粘贴到 Claude 项目说明");
+    }
+  }
+
   function exportData() {
     const payload = createBackupPayload();
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
@@ -5060,6 +5119,7 @@ ${record.originalQuestion || "暂无原题描述。"}
         const node = window.MochiKnowledge.getNode(action.dataset.nodeId);
         toast(`打开 AI 家教开始学习：${node.subjectLabel} · ${node.label}`);
       }
+      if (name === "copy-ai-prompt") { copyAiPromptFile(action); return; }
       if (name === "export-data") exportData();
       if (name === "clear-progress") clearProgressData();
       if (name === "factory-reset" || name === "clear-data") factoryResetData();
