@@ -282,6 +282,10 @@
           <div class="timer-rest-bar">
             <div class="timer-rest-fill" style="width:${pct}%"></div>
           </div>
+          <button class="btn btn-outline timer-skip-rest-btn" data-action="skip-rest" type="button">
+            <span class="material-symbols-outlined">skip_next</span>
+            跳过休息
+          </button>
           <div class="timer-rest-tips">
             <div class="rest-tip rest-tip-do">
               <span class="rest-tip-icon">✅</span>

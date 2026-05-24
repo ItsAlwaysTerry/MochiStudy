@@ -313,6 +313,20 @@
     fullRender();
   }
 
+  function skipRest() {
+    if (state.phase !== "resting") return;
+    clearInterval(interval);
+    state.running = false;
+    state.phase = "setup";
+    state.remaining = 0;
+    state.restStartedAtMs = null;
+    state.restDurationSecs = 0;
+    window.MochiApp?.stopRestReminder?.();
+    window.MochiApp?.exitFocusMode?.();
+    window.MochiApp?.toast?.("已跳过休息，可以开始下一轮了");
+    fullRender();
+  }
+
   function updateTimerDom() {
     if (state.phase === "focusing") syncFocusElapsed();
     if (state.phase === "resting") syncRestRemaining();
@@ -372,6 +386,7 @@
     else if (action === "stop-and-rest") stopAndRest();
     else if (action === "give-up") giveUp();
     else if (action === "confirm-rest") confirmRest();
+    else if (action === "skip-rest") skipRest();
     else if (action === "keep-focusing") keepFocusing();
     else if (action === "end-today") endToday();
   }
@@ -392,5 +407,5 @@
     }
   });
 
-  window.MochiTimer = { getState, handleAction, calcStats, startFocus, togglePause, stopAndRest, confirmRest, keepFocusing, giveUp, endToday };
+  window.MochiTimer = { getState, handleAction, calcStats, startFocus, togglePause, stopAndRest, confirmRest, skipRest, keepFocusing, giveUp, endToday };
 })();

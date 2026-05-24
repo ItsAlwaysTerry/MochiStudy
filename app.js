@@ -753,8 +753,7 @@
     return Object.values(nodeCounts).reduce((sum, count) => sum + Math.floor(count / safeThreshold(threshold)), 0);
   }
 
-  function calcAchievements() {
-    const cfg = loadAchievementConfig();
+  function buildAchievementProgress(cfg = loadAchievementConfig()) {
     const logs = readStudyLogs();
     const farmState = window.MochiFarm?.readState?.() || {};
     const farmLevel = window.MochiFarm?.getFarmLevel?.(farmState.totalHarvests || 0)?.level || 1;
@@ -765,22 +764,133 @@
         if (day === 0 || day === 6) return true;
         return getHolidays().some((h) => date >= h.start && date <= h.end);
       });
-    const focusMinutes = focusLogs.reduce((sum, log) => sum + Number(log.duration || 0), 0);
+    const focusHours = focusLogs.reduce((sum, log) => sum + Number(log.duration || 0), 0) / 60;
+    const nodeCounts = {};
+    logs.forEach((log) => {
+      if (!log.nodeLabel) return;
+      const key = `${log.subject}:${log.nodeLabel}`;
+      nodeCounts[key] = (nodeCounts[key] || 0) + 1;
+    });
+    const maxNodeRecords = Math.max(0, ...Object.values(nodeCounts));
+    const nodeBadgeCount = calcNodeRecordBadges(logs, cfg.big.nodeRecords);
 
     return {
       small: {
-        focusHours: Math.floor((focusMinutes / 60) / safeThreshold(cfg.small.focusHours)),
-        studyDays: Math.floor(validDays.length / safeThreshold(cfg.small.studyDays)),
-        recordCount: Math.floor(logs.length / safeThreshold(cfg.small.recordCount)),
-        balancedWeeks: Math.floor(calcBalancedWeeks(logs) / safeThreshold(cfg.small.balancedWeeks)),
-        harvests: Math.floor(Number(farmState.totalHarvests || 0) / safeThreshold(cfg.small.harvests)),
+        focusHours: {
+          value: focusHours,
+          threshold: safeThreshold(cfg.small.focusHours),
+          unit: "小时",
+          condition: `累计专注每满 ${safeThreshold(cfg.small.focusHours)} 小时，获得 1 枚小勋章。`,
+          current: `${formatProgressNumber(focusHours)} 小时专注。`,
+        },
+        studyDays: {
+          value: validDays.length,
+          threshold: safeThreshold(cfg.small.studyDays),
+          unit: "天",
+          condition: `有效学习日每满 ${safeThreshold(cfg.small.studyDays)} 天，获得 1 枚小勋章。`,
+          current: `${validDays.length} 个有效学习日。`,
+        },
+        recordCount: {
+          value: logs.length,
+          threshold: safeThreshold(cfg.small.recordCount),
+          unit: "条",
+          condition: `学习记录每满 ${safeThreshold(cfg.small.recordCount)} 条，获得 1 枚小勋章。`,
+          current: `${logs.length} 条学习记录。`,
+        },
+        balancedWeeks: {
+          value: calcBalancedWeeks(logs),
+          threshold: safeThreshold(cfg.small.balancedWeeks),
+          unit: "周",
+          condition: `三科都留下记录的均衡周每满 ${safeThreshold(cfg.small.balancedWeeks)} 周，获得 1 枚小勋章。`,
+          current: `${calcBalancedWeeks(logs)} 个均衡周。`,
+        },
+        harvests: {
+          value: Number(farmState.totalHarvests || 0),
+          threshold: safeThreshold(cfg.small.harvests),
+          unit: "次",
+          condition: `农场收获每满 ${safeThreshold(cfg.small.harvests)} 次，获得 1 枚小勋章。`,
+          current: `收获 ${Number(farmState.totalHarvests || 0)} 次。`,
+        },
       },
       big: {
-        nodeRecords: calcNodeRecordBadges(logs, cfg.big.nodeRecords),
-        totalRecords: Math.floor(logs.length / safeThreshold(cfg.big.totalRecords)),
-        focusHours: Math.floor((focusMinutes / 60) / safeThreshold(cfg.big.focusHours)),
-        farmLevel: Math.floor((Math.max(1, farmLevel) - 1) / safeThreshold(cfg.big.farmLevelStep)),
-        studyDays: Math.floor(validDays.length / safeThreshold(cfg.big.studyDays)),
+        nodeRecords: {
+          value: nodeBadgeCount,
+          threshold: safeThreshold(cfg.big.nodeRecords),
+          unit: "条",
+          condition: `同一个知识点每累计 ${safeThreshold(cfg.big.nodeRecords)} 条学习记录，获得 1 枚大勋章；多个知识点会分别计算。`,
+          current: `最高单点 ${maxNodeRecords} 条，已按此规则累计 ${nodeBadgeCount} 枚。`,
+          usesEarnedValue: true,
+        },
+        totalRecords: {
+          value: logs.length,
+          threshold: safeThreshold(cfg.big.totalRecords),
+          unit: "条",
+          condition: `总学习记录每满 ${safeThreshold(cfg.big.totalRecords)} 条，获得 1 枚大勋章。`,
+          current: `${logs.length} 条学习记录。`,
+        },
+        focusHours: {
+          value: focusHours,
+          threshold: safeThreshold(cfg.big.focusHours),
+          unit: "小时",
+          condition: `累计专注每满 ${safeThreshold(cfg.big.focusHours)} 小时，获得 1 枚大勋章。`,
+          current: `${formatProgressNumber(focusHours)} 小时专注。`,
+        },
+        farmLevel: {
+          value: Math.max(0, Math.max(1, farmLevel) - 1),
+          threshold: safeThreshold(cfg.big.farmLevelStep),
+          unit: "级",
+          condition: `农场从 Lv.1 之后每提升 ${safeThreshold(cfg.big.farmLevelStep)} 级，获得 1 枚大勋章。`,
+          current: `农场 Lv.${farmLevel}，已累计提升 ${Math.max(0, Math.max(1, farmLevel) - 1)} 级。`,
+        },
+        studyDays: {
+          value: validDays.length,
+          threshold: safeThreshold(cfg.big.studyDays),
+          unit: "天",
+          condition: `有效学习日每满 ${safeThreshold(cfg.big.studyDays)} 天，获得 1 枚大勋章。`,
+          current: `${validDays.length} 个有效学习日。`,
+        },
+      },
+    };
+  }
+
+  function formatProgressNumber(value) {
+    const num = Number(value || 0);
+    return Number.isInteger(num) ? String(num) : num.toFixed(1).replace(/\.0$/, "");
+  }
+
+  function achievementCountFromProgress(item) {
+    if (item?.usesEarnedValue) return Math.floor(Number(item.value || 0));
+    return Math.floor(Number(item?.value || 0) / safeThreshold(item?.threshold));
+  }
+
+  function achievementNextHint(item) {
+    if (!item) return "";
+    if (item.usesEarnedValue) return `任一知识点达到下一个 ${item.threshold} ${item.unit}倍数即可获得下一枚。`;
+    const threshold = safeThreshold(item.threshold);
+    const value = Number(item.value || 0);
+    const remainder = value % threshold;
+    const remaining = remainder === 0 && value > 0 ? threshold : threshold - remainder;
+    const remainingText = item.unit === "小时" ? formatProgressNumber(remaining) : Math.ceil(remaining);
+    return `距离下一枚还差 ${remainingText} ${item.unit}。`;
+  }
+
+  function calcAchievements() {
+    const progress = buildAchievementProgress(loadAchievementConfig());
+
+    return {
+      small: {
+        focusHours: achievementCountFromProgress(progress.small.focusHours),
+        studyDays: achievementCountFromProgress(progress.small.studyDays),
+        recordCount: achievementCountFromProgress(progress.small.recordCount),
+        balancedWeeks: achievementCountFromProgress(progress.small.balancedWeeks),
+        harvests: achievementCountFromProgress(progress.small.harvests),
+      },
+      big: {
+        nodeRecords: achievementCountFromProgress(progress.big.nodeRecords),
+        totalRecords: achievementCountFromProgress(progress.big.totalRecords),
+        focusHours: achievementCountFromProgress(progress.big.focusHours),
+        farmLevel: achievementCountFromProgress(progress.big.farmLevel),
+        studyDays: achievementCountFromProgress(progress.big.studyDays),
       },
     };
   }
@@ -3028,6 +3138,7 @@
     saveAchievementState(state);
     const cfg = loadAchievementConfig();
     const earned = calcAchievements();
+    const progress = buildAchievementProgress(cfg);
 
     container.innerHTML = `
       <div class="page-head">
@@ -3075,22 +3186,22 @@
       <section class="card">
         <h3 style="margin-bottom:16px">大勋章</h3>
         <div class="badge-grid">
-          ${renderBadgeItem("big", "nodeRecords", "知识深耕", `每 ${cfg.big.nodeRecords} 条/知识点`, earned.big.nodeRecords, state.recentNew?.big?.nodeRecords || 0, "book_4")}
-          ${renderBadgeItem("big", "totalRecords", "刷题达人", `每累计 ${cfg.big.totalRecords} 条记录`, earned.big.totalRecords, state.recentNew?.big?.totalRecords || 0, "edit_note")}
-          ${renderBadgeItem("big", "focusHours", "专注大师", `每累计 ${cfg.big.focusHours} 小时专注`, earned.big.focusHours, state.recentNew?.big?.focusHours || 0, "timer")}
-          ${renderBadgeItem("big", "farmLevel", "农场传说", `农场每升 ${cfg.big.farmLevelStep} 级`, earned.big.farmLevel, state.recentNew?.big?.farmLevel || 0, "agriculture")}
-          ${renderBadgeItem("big", "studyDays", "长期坚持", `每累计 ${cfg.big.studyDays} 个学习日`, earned.big.studyDays, state.recentNew?.big?.studyDays || 0, "calendar_month")}
+          ${renderBadgeItem("big", "nodeRecords", "知识深耕", `每 ${cfg.big.nodeRecords} 条/知识点`, earned.big.nodeRecords, state.recentNew?.big?.nodeRecords || 0, "book_4", progress.big.nodeRecords)}
+          ${renderBadgeItem("big", "totalRecords", "刷题达人", `每累计 ${cfg.big.totalRecords} 条记录`, earned.big.totalRecords, state.recentNew?.big?.totalRecords || 0, "edit_note", progress.big.totalRecords)}
+          ${renderBadgeItem("big", "focusHours", "专注大师", `每累计 ${cfg.big.focusHours} 小时专注`, earned.big.focusHours, state.recentNew?.big?.focusHours || 0, "timer", progress.big.focusHours)}
+          ${renderBadgeItem("big", "farmLevel", "农场传说", `农场每升 ${cfg.big.farmLevelStep} 级`, earned.big.farmLevel, state.recentNew?.big?.farmLevel || 0, "agriculture", progress.big.farmLevel)}
+          ${renderBadgeItem("big", "studyDays", "长期坚持", `每累计 ${cfg.big.studyDays} 个学习日`, earned.big.studyDays, state.recentNew?.big?.studyDays || 0, "calendar_month", progress.big.studyDays)}
         </div>
       </section>
 
       <section class="card">
         <h3 style="margin-bottom:16px">小勋章</h3>
         <div class="badge-grid">
-          ${renderBadgeItem("small", "focusHours", "专注时光", `每 ${cfg.small.focusHours} 小时专注`, earned.small.focusHours, state.recentNew?.small?.focusHours || 0, "local_fire_department")}
-          ${renderBadgeItem("small", "studyDays", "坚持打卡", `每 ${cfg.small.studyDays} 个学习日`, earned.small.studyDays, state.recentNew?.small?.studyDays || 0, "check_circle")}
-          ${renderBadgeItem("small", "recordCount", "勤奋记录", `每 ${cfg.small.recordCount} 条记录`, earned.small.recordCount, state.recentNew?.small?.recordCount || 0, "menu_book")}
-          ${renderBadgeItem("small", "balancedWeeks", "均衡发展", `每 ${cfg.small.balancedWeeks} 个三科均衡周`, earned.small.balancedWeeks, state.recentNew?.small?.balancedWeeks || 0, "balance")}
-          ${renderBadgeItem("small", "harvests", "丰收季节", `每收获 ${cfg.small.harvests} 次农场`, earned.small.harvests, state.recentNew?.small?.harvests || 0, "psychiatry")}
+          ${renderBadgeItem("small", "focusHours", "专注时光", `每 ${cfg.small.focusHours} 小时专注`, earned.small.focusHours, state.recentNew?.small?.focusHours || 0, "local_fire_department", progress.small.focusHours)}
+          ${renderBadgeItem("small", "studyDays", "坚持打卡", `每 ${cfg.small.studyDays} 个学习日`, earned.small.studyDays, state.recentNew?.small?.studyDays || 0, "check_circle", progress.small.studyDays)}
+          ${renderBadgeItem("small", "recordCount", "勤奋记录", `每 ${cfg.small.recordCount} 条记录`, earned.small.recordCount, state.recentNew?.small?.recordCount || 0, "menu_book", progress.small.recordCount)}
+          ${renderBadgeItem("small", "balancedWeeks", "均衡发展", `每 ${cfg.small.balancedWeeks} 个三科均衡周`, earned.small.balancedWeeks, state.recentNew?.small?.balancedWeeks || 0, "balance", progress.small.balancedWeeks)}
+          ${renderBadgeItem("small", "harvests", "丰收季节", `每收获 ${cfg.small.harvests} 次农场`, earned.small.harvests, state.recentNew?.small?.harvests || 0, "psychiatry", progress.small.harvests)}
         </div>
       </section>
 
@@ -3127,20 +3238,29 @@
     `;
   }
 
-  function renderBadgeItem(type, key, label, desc, totalEarned, newCount, icon) {
+  function renderBadgeItem(type, key, label, desc, totalEarned, newCount, icon, progress) {
     const pendingCount = Math.max(0, Number(newCount || 0));
+    const rule = progress || {};
     return `
-      <div class="badge-item ${pendingCount > 0 ? "badge-new" : ""}" data-badge-type="${type}" data-badge-key="${key}">
-        <div class="badge-icon"><span class="material-symbols-outlined">${icon}</span></div>
-        <div class="badge-info">
-          <strong>${label}</strong>
-          <span class="muted">${desc}</span>
+      <details class="badge-item ${pendingCount > 0 ? "badge-new" : ""}" data-badge-type="${type}" data-badge-key="${key}">
+        <summary class="badge-summary-row">
+          <div class="badge-icon"><span class="material-symbols-outlined">${icon}</span></div>
+          <div class="badge-info">
+            <strong>${label}</strong>
+            <span class="muted">${desc}</span>
+          </div>
+          <div class="badge-count">
+            <span class="badge-total">x${Number(totalEarned || 0)}</span>
+            ${pendingCount > 0 ? `<span class="badge-new-tag">+${pendingCount}</span>` : ""}
+          </div>
+          <span class="material-symbols-outlined badge-expand-icon">expand_more</span>
+        </summary>
+        <div class="badge-rule">
+          <p><strong>获得条件：</strong>${escapeHtml(rule.condition || desc)}</p>
+          ${rule.current ? `<p><strong>当前累计：</strong>${escapeHtml(rule.current)}</p>` : ""}
+          <p><strong>下一枚：</strong>${escapeHtml(achievementNextHint(rule))}</p>
         </div>
-        <div class="badge-count">
-          <span class="badge-total">x${Number(totalEarned || 0)}</span>
-          ${pendingCount > 0 ? `<span class="badge-new-tag">+${pendingCount}</span>` : ""}
-        </div>
-      </div>
+      </details>
     `;
   }
   function modal(html) {
@@ -4361,6 +4481,10 @@ ${record.originalQuestion || "暂无原题描述。"}
       }
       if (name === "give-up") {
         window.MochiTimer?.handleAction?.("give-up");
+        return;
+      }
+      if (name === "skip-rest") {
+        window.MochiTimer?.handleAction?.("skip-rest");
         return;
       }
       if (name === "start-node") {
