@@ -2647,8 +2647,8 @@ button {
   position: fixed;
   inset: 0;
   z-index: 700;
-  overflow-y: auto;
-  padding: 20px 16px 100px;
+  display: flex;
+  overflow: hidden;
   background: rgba(18, 12, 16, 0.96);
 }
 
@@ -2658,12 +2658,10 @@ button {
 
 .lottery-inner {
   display: flex;
-  width: 100%;
-  max-width: 560px;
-  margin: 0 auto;
   flex-direction: column;
-  align-items: stretch;
-  gap: 14px;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 .lottery-header {
@@ -2671,7 +2669,94 @@ button {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-height: 38px;
+  padding: 14px 64px 12px;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.lottery-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.lottery-sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border-right: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.lottery-stage {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.lottery-sidebar-muyu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 16px;
+}
+
+.muyu-sidebar-label {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+@media (max-width: 680px) {
+  .lottery-overlay {
+    overflow-y: auto;
+  }
+  .lottery-inner {
+    height: auto;
+    min-height: 100%;
+  }
+  .lottery-body {
+    flex-direction: column;
+    overflow: visible;
+  }
+  .lottery-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    padding: 12px 16px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .lottery-sidebar .lottery-pity-bar {
+    flex: 1 1 100%;
+  }
+  .lottery-sidebar .pity-hint-text {
+    flex: 1 1 100%;
+  }
+  .lottery-sidebar .lottery-dice-tip {
+    flex: 1 1 100%;
+    margin-top: 0;
+  }
+  .lottery-sidebar-muyu {
+    display: none;
+  }
+  .lottery-stage {
+    padding: 16px;
+    overflow: visible;
+  }
 }
 
 .lottery-close-btn {
@@ -2994,17 +3079,17 @@ button {
 
 .lottery-pick-row {
   display: flex;
-  gap: 10px;
+  gap: 14px;
   justify-content: center;
-  margin-bottom: 56px;
+  margin-bottom: 60px;
   flex-wrap: wrap;
 }
 
 .pick-card {
   position: relative;
-  width: 66px;
-  height: 90px;
-  perspective: 700px;
+  width: 90px;
+  height: 124px;
+  perspective: 900px;
   cursor: pointer;
 }
 
@@ -3052,7 +3137,7 @@ button {
 
 .pick-card-mark {
   color: rgba(255, 255, 255, 0.3);
-  font-size: 22px;
+  font-size: 28px;
   font-weight: 900;
 }
 
@@ -3065,17 +3150,17 @@ button {
 }
 
 .card-back-tier {
-  padding: 1px 5px;
+  padding: 2px 6px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--item-color, #864d61) 22%, transparent);
   color: color-mix(in srgb, var(--item-color, #864d61) 80%, #fff);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 800;
 }
 
 .card-back-label {
   color: #fffaf4;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.3;
   word-break: break-all;
 }
@@ -3103,12 +3188,12 @@ button {
 
 .pick-choose-btn {
   position: absolute;
-  bottom: -40px;
+  bottom: -44px;
   left: 50%;
   transform: translateX(-50%);
-  padding: 5px 8px;
+  padding: 5px 10px;
   white-space: nowrap;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .lottery-flip-choices {
@@ -3170,16 +3255,16 @@ button {
 
 .spread-card {
   position: relative;
-  width: 58px;
-  height: 80px;
+  width: 70px;
+  height: 96px;
   border: 2px solid rgba(255, 255, 255, 0.16);
-  border-radius: 10px;
+  border-radius: 12px;
   background: linear-gradient(155deg, #2d1b3a, #1e1228);
   cursor: pointer;
   display: grid;
   place-items: center;
   color: rgba(255, 255, 255, 0.22);
-  font-size: 28px;
+  font-size: 32px;
   user-select: none;
   transition: transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1),
               opacity 0.3s ease,
@@ -3226,14 +3311,14 @@ button {
 }
 
 .hand-slot {
-  width: 52px;
-  height: 70px;
+  width: 62px;
+  height: 84px;
   border: 2px dashed rgba(255, 255, 255, 0.18);
-  border-radius: 8px;
+  border-radius: 10px;
   display: grid;
   place-items: center;
   color: rgba(255, 255, 255, 0.18);
-  font-size: 22px;
+  font-size: 26px;
   transition: border-color 0.2s ease, background 0.2s ease;
 }
 
@@ -3390,27 +3475,13 @@ button {
   text-align: center;
 }
 
-/* ── Muyu float widget (draggable) ─────────────────────────── */
-
-.lottery-muyu-float {
-  position: absolute;
-  bottom: 70px;
-  right: 12px;
-  z-index: 10;
-  cursor: grab;
-  user-select: none;
-  touch-action: none;
-}
-
-.lottery-muyu-float:active {
-  cursor: grabbing;
-}
+/* ── Muyu widget (sidebar) ──────────────────────────────────── */
 
 .muyu-float-inner {
   position: relative;
   width: 64px;
   height: 52px;
-  cursor: inherit;
+  cursor: pointer;
 }
 
 .muyu-float-head {

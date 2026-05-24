@@ -975,7 +975,6 @@
     overlay.hidden = false;
     overlay.innerHTML = renderLotteryWheel();
     bindLotteryOverlay(overlay);
-    initMuyuFloat();
   }
 
   function hideLotteryOverlay() {
@@ -1006,6 +1005,7 @@
 
     return `
       <div class="lottery-inner" data-die-one="" data-die-two="" data-phase="showcase" data-bonus-flip="false" data-pity-active="${pityFull}">
+
         <div class="lottery-header">
           <button class="lottery-close-btn" data-action="close-lottery" type="button" aria-label="关闭抽奖">
             <span class="material-symbols-outlined">close</span>
@@ -1014,83 +1014,94 @@
           <p class="lottery-tickets-hint">剩余 ${state.lotteryTickets || 0} 次机会</p>
         </div>
 
-        <div class="lottery-pity-bar">
-          <span class="pity-label">运气槽</span>
-          <div class="pity-track"><div class="pity-fill" style="width:${pityPct}%"></div></div>
-          <span class="${pityFull ? "pity-guaranteed" : "pity-count"}">${pityFull ? "🌟 满槽！必得大奖" : `${pityCurrent}/${pityThreshold}`}</span>
-        </div>
-        <p class="pity-hint-text">连续没中大奖时积累 · 满格必得大奖</p>
+        <div class="lottery-body">
 
-        <div class="lottery-phase" id="lp-showcase">
-          <p class="phase-label">奖励池 — 看清楚再出发</p>
-          <div class="lottery-showcase-grid">${showcaseCards}</div>
-          ${pityFull ? '<p class="pity-tease">✨ 运气已满，此次必得大奖</p>' : ""}
-          <button class="lottery-action-btn" data-action="phase-to-dice" type="button">看好了，摇骰子！🎲</button>
-        </div>
+          <aside class="lottery-sidebar">
+            <div class="lottery-pity-bar">
+              <span class="pity-label">运气槽</span>
+              <div class="pity-track"><div class="pity-fill" style="width:${pityPct}%"></div></div>
+              <span class="${pityFull ? "pity-guaranteed" : "pity-count"}">${pityFull ? "🌟 满槽！必得大奖" : `${pityCurrent}/${pityThreshold}`}</span>
+            </div>
+            <p class="pity-hint-text" style="margin:0">连续没中大奖时积累 · 满格必得大奖</p>
 
-        <div class="lottery-phase" id="lp-dice" hidden>
-          <p class="phase-label">骰子仪式</p>
-          <div class="lottery-dice-panel" aria-live="polite">
-            <div class="lottery-dice">
-              <div class="lottery-die-slot">
-                <span class="lottery-die" data-die="1">?</span>
-                <button class="btn btn-soft btn-sm" data-action="roll-die" data-die-index="1" type="button">摇第一颗</button>
-              </div>
-              <div class="lottery-die-slot">
-                <span class="lottery-die" data-die="2">?</span>
-                <button class="btn btn-soft btn-sm" data-action="roll-die" data-die-index="2" type="button">摇第二颗</button>
+            <div class="lottery-dice-tip">
+              <span class="dice-tip-rule">合计 ≤2 或 ≥11</span>
+              <span class="dice-tip-arrow">→</span>
+              <span class="dice-tip-effect">🎉 翻牌时多翻一张再选</span>
+            </div>
+
+            <div class="lottery-sidebar-muyu">
+              <p class="muyu-sidebar-label">点击积功德</p>
+              <div class="muyu-float-inner" data-action="tap-muyu-float">
+                <div class="muyu-float-head">
+                  <span class="muyu-blush muyu-blush--l"></span>
+                  <span class="muyu-blush muyu-blush--r"></span>
+                  <span class="muyu-hollow"></span>
+                </div>
+                <div class="muyu-float-mallet">
+                  <div class="muyu-mallet-shaft"></div>
+                  <div class="muyu-mallet-head"></div>
+                </div>
               </div>
             </div>
-            <p class="lottery-dice-result" id="lottery-dice-result">两颗都摇完才能洗牌</p>
-          </div>
-          <div class="lottery-dice-tip">
-            <span class="dice-tip-rule">合计 ≤2 或 ≥11</span>
-            <span class="dice-tip-arrow">→</span>
-            <span class="dice-tip-effect">🎉 翻牌时额外多翻一张再选</span>
-          </div>
-          <button class="lottery-action-btn" data-action="phase-to-draw" id="btn-phase-draw" type="button" disabled>洗牌！🃏</button>
-        </div>
+          </aside>
 
-        <div class="lottery-phase" id="lp-draw" hidden>
-          <p class="phase-label">从摊开的牌里选 5 张手牌</p>
-          <div class="lottery-spread" id="lottery-spread"></div>
-          <div class="lottery-hand-area">
-            <p class="hand-hint">手牌 <span id="hand-count">0</span>/5 — 点击上方牌面加入手牌</p>
-            <div class="lottery-hand-slots" id="lottery-hand-slots">
-              <div class="hand-slot" data-slot="0"></div>
-              <div class="hand-slot" data-slot="1"></div>
-              <div class="hand-slot" data-slot="2"></div>
-              <div class="hand-slot" data-slot="3"></div>
-              <div class="hand-slot" data-slot="4"></div>
+          <div class="lottery-stage">
+
+            <div class="lottery-phase" id="lp-showcase">
+              <p class="phase-label">奖励池 — 看清楚再出发</p>
+              <div class="lottery-showcase-grid">${showcaseCards}</div>
+              ${pityFull ? '<p class="pity-tease">✨ 运气已满，此次必得大奖</p>' : ""}
+              <button class="lottery-action-btn" data-action="phase-to-dice" type="button">看好了，摇骰子！🎲</button>
             </div>
-          </div>
-          <button class="lottery-action-btn" data-action="phase-to-pick" id="btn-phase-pick" type="button" hidden>开始翻牌 →</button>
-        </div>
 
-        <div class="lottery-phase" id="lp-pick" hidden>
-          <p class="phase-label" id="pick-phase-label">翻开一张，那就是你的奖励</p>
-          <div class="lottery-pick-row" id="lottery-pick-row"></div>
-          <div class="lottery-flip-choices" id="lottery-flip-choices" hidden>
-            <p class="phase-hint">骰子给了你额外一翻——</p>
-            <button class="btn btn-soft" data-action="keep-card" type="button">就这张 ✓</button>
-            <button class="btn btn-primary" data-action="flip-another" type="button">再翻一张</button>
-          </div>
-        </div>
-      </div>
+            <div class="lottery-phase" id="lp-dice" hidden>
+              <p class="phase-label">骰子仪式</p>
+              <div class="lottery-dice-panel" aria-live="polite">
+                <div class="lottery-dice">
+                  <div class="lottery-die-slot">
+                    <span class="lottery-die" data-die="1">?</span>
+                    <button class="btn btn-soft btn-sm" data-action="roll-die" data-die-index="1" type="button">摇第一颗</button>
+                  </div>
+                  <div class="lottery-die-slot">
+                    <span class="lottery-die" data-die="2">?</span>
+                    <button class="btn btn-soft btn-sm" data-action="roll-die" data-die-index="2" type="button">摇第二颗</button>
+                  </div>
+                </div>
+                <p class="lottery-dice-result" id="lottery-dice-result">两颗都摇完才能洗牌</p>
+              </div>
+              <button class="lottery-action-btn" data-action="phase-to-draw" id="btn-phase-draw" type="button" disabled>洗牌！🃏</button>
+            </div>
 
-      <div class="lottery-muyu-float" id="lottery-muyu-float">
-        <div class="muyu-float-inner" data-action="tap-muyu-float">
-          <div class="muyu-float-head">
-            <span class="muyu-blush muyu-blush--l"></span>
-            <span class="muyu-blush muyu-blush--r"></span>
-            <span class="muyu-hollow"></span>
-          </div>
-          <div class="muyu-float-mallet">
-            <div class="muyu-mallet-shaft"></div>
-            <div class="muyu-mallet-head"></div>
-          </div>
-        </div>
-      </div>
+            <div class="lottery-phase" id="lp-draw" hidden>
+              <p class="phase-label">从摊开的牌里选 5 张手牌</p>
+              <div class="lottery-spread" id="lottery-spread"></div>
+              <div class="lottery-hand-area">
+                <p class="hand-hint">手牌 <span id="hand-count">0</span>/5 — 点击上方牌面加入手牌</p>
+                <div class="lottery-hand-slots" id="lottery-hand-slots">
+                  <div class="hand-slot" data-slot="0"></div>
+                  <div class="hand-slot" data-slot="1"></div>
+                  <div class="hand-slot" data-slot="2"></div>
+                  <div class="hand-slot" data-slot="3"></div>
+                  <div class="hand-slot" data-slot="4"></div>
+                </div>
+              </div>
+              <button class="lottery-action-btn" data-action="phase-to-pick" id="btn-phase-pick" type="button" hidden>开始翻牌 →</button>
+            </div>
+
+            <div class="lottery-phase" id="lp-pick" hidden>
+              <p class="phase-label" id="pick-phase-label">翻开一张，那就是你的奖励</p>
+              <div class="lottery-pick-row" id="lottery-pick-row"></div>
+              <div class="lottery-flip-choices" id="lottery-flip-choices" hidden>
+                <p class="phase-hint">骰子给了你额外一翻——</p>
+                <button class="btn btn-soft" data-action="keep-card" type="button">就这张 ✓</button>
+                <button class="btn btn-primary" data-action="flip-another" type="button">再翻一张</button>
+              </div>
+            </div>
+
+          </div><!-- /.lottery-stage -->
+        </div><!-- /.lottery-body -->
+      </div><!-- /.lottery-inner -->
     `;
   }
 
