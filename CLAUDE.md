@@ -25,6 +25,8 @@ modules/
   timer.js          — 番茄钟模块（window.MochiTimer）
   pet.js            — 学习状态模块（window.MochiPet，内部兼容旧命名）
   ai.js             — AI导入解析模块（window.MochiAI）
+  reviewEngine.js   — 复习优先级算法（window.MochiReview）
+  reviewPage.js     — 复习页渲染（window.MochiReviewPage）
 assets/farm/
   crops_.png        — 星露谷物语植物精灵图（已授权）
   tools_.png
@@ -317,7 +319,17 @@ v34 之后的改动：
 
 ### V1.8 主动回忆提示 + 导入反馈补强
 
-- `modules/reviewPage.js` `startReview()`：复制复习材料后的 inline message 和 toast 明确提示“可以粘贴给复习 AI”，并提醒先自己回想 20 秒，避免点击“开始复习”被误解为已经完成复习。
+- `modules/reviewPage.js` `startReview()`：复制复习材料后的 inline message 和 toast 明确提示”可以粘贴给复习 AI”，并提醒先自己回想 20 秒，避免点击”开始复习”被误解为已经完成复习。
 - `modules/reviewPage.js` `renderImportPanel()`：复习步骤从 3 步调整为 4 步，新增主动回忆提示卡（`.review-recall-card`），在打开 AI 前先让学生尝试说出卡点。
 - `modules/reviewPage.js` 与 `app.js` 的导入失败提示补充说明必须同时包含 `---MOCHI-RECORD-START---` 和 `---MOCHI-RECORD-END---`，并指出缺失记录段时应让 AI 补上。
-- `modules/farm.js` 首页“今日复习”按钮文案由“开始复习”改为“复制材料”，更符合实际行为；`app.js` 打卡成功卡补充“已保存到学习档案，可以继续粘贴下一条”。
+- `modules/farm.js` 首页”今日复习”按钮文案由”开始复习”改为”复制材料”，更符合实际行为；`app.js` 打卡成功卡补充”已保存到学习档案，可以继续粘贴下一条”。
+
+### 当前实际状态（截至 2026-05-24）
+
+以下是版本历史之外、目前实际存在但上方未记录的功能：
+
+- **抽奖系统**：现为全屏两栏布局（`.lottery-body` flex row）。左侧 `.lottery-sidebar`（260px）放厌倦进度条 pity bar 和木鱼；右侧 `.lottery-stage` 放各阶段 UI（spread → pick → result）。已删除旧的可拖拽浮窗 `.lottery-muyu-float`，木鱼移入 sidebar 固定位置。`initMuyuFloat()` 已不调用。
+- **今日学习报告**：`app.js` 中有 `renderTodayReport()` 和 `exportTodayReportImage()`，支持生成今日学习汇总图并复制到剪贴板。入口在首页或设置页（具体看路由）。
+- **首页 AI 工作流指南**：`modules/farm.js` 中 `renderAiGuideCard()` 在首页渲染一张可折叠卡（`<details class=”card home-ai-guide”>`），展示三步使用流程，并提供跳转设置页按钮。
+- **设置页 AI Prompt 复制**：`app.js` 中 `renderSettings()` 在”AI 使用指南”section 放置两个 `<details>` 条目（高考 AI 私教 / 高考复习私教），各有”复制 Prompt”按钮；`copyAiPromptFile(btn)` 用 `fetch()` 读取 `skill/` 目录下的 `.md` 文件，剥离 YAML frontmatter 后写入剪贴板；`file://` 协议下 fallback 为 `window.open()`。
+- **番茄钟默认自由专注**：`modules/timer.js` 的 `state.freeMode` 初始值为 `true`，打开页面时默认选中”自由专注”，时间输入行隐藏。
