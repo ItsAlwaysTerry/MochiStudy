@@ -370,7 +370,12 @@
   function renderFlatList(activeItems, todaySuggestions, cooldownItems) {
     const todayKeys = new Set((todaySuggestions || []).map((s) => s.key));
     if (!activeItems.length && !todaySuggestions.length) {
-      return renderEmpty("目前没有需要处理的薄弱点，继续导入新记录吧。");
+      const hasAnyLog = (window.MochiApp?.readStudyLogs?.() || []).length > 0;
+      // 零数据（还没开始）和已追平（都复习过了）是两种不同的空，文案要分开。
+      if (!hasAnyLog) {
+        return `<div class="review-empty"><span class="material-symbols-outlined">rate_review</span><p>还没有学习记录。先去首页导入一条，复习队列会自动排起来。</p><button class="btn btn-soft btn-sm" data-route="home" type="button" style="margin-top:10px"><span class="material-symbols-outlined">upload_file</span>去导入</button></div>`;
+      }
+      return renderEmpty("目前没有需要复习的薄弱点，先去学新题吧 👍");
     }
     const allVisible = [...todaySuggestions, ...activeItems];
     const rows = allVisible.map((item) => renderReviewRow(item, todayKeys.has(item.key))).join("");
