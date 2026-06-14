@@ -367,6 +367,7 @@
           ${summaries.map((summary) => renderNodeRow(summary, subjectKey, subject.color)).join("")}
         </section>
       ` : renderEmpty(subject.label)}
+      ${renderQuizSelectBar()}
     `;
   }
 
@@ -468,15 +469,6 @@
             ${summary.entries.map((log, index) => renderStudyCard(log, subjectKey, index, summary.node.label)).join("")}
           </div>
         </details>
-        ${STATE.quizSelected.size > 0 ? `
-          <div class="quiz-select-bar">
-            <span class="quiz-select-count">已选 ${STATE.quizSelected.size} 张</span>
-            <div class="quiz-select-bar-actions">
-              <button class="btn btn-soft btn-sm" data-archive-action="quiz-clear" type="button">清空</button>
-              <button class="btn btn-primary btn-sm" data-archive-action="quiz-selected" data-review-key="${escapeHtml(summary.subject + "::" + summary.node.label)}" type="button"><span class="material-symbols-outlined">quiz</span>测这 ${STATE.quizSelected.size} 张</button>
-            </div>
-          </div>
-        ` : ""}
       </div>
     `;
   }
@@ -565,30 +557,66 @@
     window.MochiReviewPage?.openSessionForPack?.(pack, `${item.subjectLabel} · ${item.nodeLabel}`);
   }
 
-  function quizSubjectScoped(scope, count) {
+  function quizSubjectScoped(scope, count, filter = "all") {
     let items = reviewItems().filter((it) => (it.entries || []).length);
     if (scope !== "all") items = items.filter((it) => it.subject === scope);
-    if (!items.length) { window.MochiApp?.toast?.("这个范围还没有学习记录，先去学几道题"); return; }
+    if (filter === "unreviewed") items = items.filter((it) => !Number(it.reviewCount));
+    else if (filter === "lowstar") items = items.filter((it) => Number(it.lowStarCount) > 0);
+    if (!items.length) {
+      const why = filter === "unreviewed" ? "这个范围里没有「没复习过」的知识点" : filter === "lowstar" ? "这个范围里没有「有低星」的知识点" : "这个范围还没有学习记录，先去学几道题";
+      window.MochiApp?.toast?.(why);
+      return;
+    }
     const picked = pickWeakFirst(items, Math.max(1, Number(count) || 4));
     const pack = window.MochiReviewEngine?.generateSessionPack?.(picked);
     const scopeLabel = scope === "all" ? "全科" : (SUBJECTS[scope]?.label || "");
-    window.MochiReviewPage?.openSessionForPack?.(pack, `${scopeLabel}随机周测（${picked.length}个知识点）`);
+    const filterLabel = filter === "unreviewed" ? "·没复习过" : filter === "lowstar" ? "·低星" : "";
+    window.MochiReviewPage?.openSessionForPack?.(pack, `${scopeLabel}随机周测${filterLabel}（${picked.length}个知识点）`);
   }
 
-  // 多选卡片一起测：把当前展开知识点里被选中的卡片打成一个单知识点测验包。
-  function quizSelectedCards(nodeKey) {
-    const item = reviewItems().find((it) => it.key === nodeKey);
-    if (!item) { window.MochiApp?.toast?.("找不到对应知识点"); return; }
-    const chosen = (item.entries || []).filter((e) => STATE.quizSelected.has(cardId(e)));
-    if (!chosen.length) { window.MochiApp?.toast?.("还没有选中卡片"); return; }
-    const packed = {
-      ...item,
-      entries: chosen,
-      reasons: [`只针对选中的 ${chosen.length} 张卡片做一次小测`],
-    };
-    const pack = window.MochiReviewEngine?.generateNodeReviewPack?.(packed);
-    window.MochiReviewPage?.openSessionForPack?.(pack, `${item.subjectLabel} · ${item.nodeLabel}（${chosen.length}张卡）`);
+  // 把当前选中的卡片按所属知识点分组（支持跨知识点、跨科）。
+  function selectedGroups() {
+    return reviewItems()
+      .map((item) => ({ item, chosen: (item.entries || []).filter((e) => STATE.quizSelected.has(cardId(e))) }))
+      .filter((g) => g.chosen.length);
+  }
+
+  // 多选卡片一起测：单个知识点用单点包，跨知识点用综合测验包。
+  function quizSelectedCards() {
+    const groups = selectedGroups();
+    if (!groups.length) { window.MochiApp?.toast?.("还没有选中卡片"); return; }
+    const overrideItems = groups.map((g) => ({
+      ...g.item,
+      entries: g.chosen,
+      reasons: [`只针对选中的 ${g.chosen.length} 张卡片做一次小测`],
+    }));
+    const totalCards = overrideItems.reduce((sum, it) => sum + it.entries.length, 0);
+    let pack;
+    let label;
+    if (overrideItems.length === 1) {
+      pack = window.MochiReviewEngine?.generateNodeReviewPack?.(overrideItems[0]);
+      label = `${overrideItems[0].subjectLabel} · ${overrideItems[0].nodeLabel}（${totalCards}张卡）`;
+    } else {
+      pack = window.MochiReviewEngine?.generateSessionPack?.(overrideItems);
+      label = `自选测验（${overrideItems.length}个知识点 · ${totalCards}张卡）`;
+    }
+    window.MochiReviewPage?.openSessionForPack?.(pack, label);
     STATE.quizSelected.clear();
+  }
+
+  function renderQuizSelectBar() {
+    const groups = selectedGroups();
+    const cards = groups.reduce((sum, g) => sum + g.chosen.length, 0);
+    if (!cards) return "";
+    return `
+      <div class="quiz-select-bar quiz-select-bar-global">
+        <span class="quiz-select-count">已选 ${cards} 张 · ${groups.length} 个知识点</span>
+        <div class="quiz-select-bar-actions">
+          <button class="btn btn-soft btn-sm" data-archive-action="quiz-clear" type="button">清空</button>
+          <button class="btn btn-primary btn-sm" data-archive-action="quiz-selected" type="button"><span class="material-symbols-outlined">quiz</span>测这 ${cards} 张</button>
+        </div>
+      </div>
+    `;
   }
 
   // 选科目 + 题量的随机周测弹窗（自包含 overlay，模式同导出面板）。
@@ -596,8 +624,10 @@
     document.getElementById("archive-quiz-root")?.remove();
     const scopes = [["all", "全部"], ...Object.entries(SUBJECTS).map(([key, item]) => [key, item.label])];
     const counts = [2, 3, 4, 5];
+    const filters = [["all", "全部弱点"], ["unreviewed", "没复习过"], ["lowstar", "有低星"]];
     let pickedScope = STATE.activeSubject || "all";
     let pickedCount = 4;
+    let pickedFilter = "all";
     const root = document.createElement("div");
     root.id = "archive-quiz-root";
     root.className = "archive-export-root";
@@ -620,6 +650,12 @@
             ${counts.map((c) => `<button class="${c === pickedCount ? "active" : ""}" data-quiz-count="${c}" type="button">${c} 个</button>`).join("")}
           </div>
         </div>
+        <div class="quiz-sheet-field">
+          <small>只测哪类</small>
+          <div class="quiz-sheet-options">
+            ${filters.map(([v, l]) => `<button class="${v === pickedFilter ? "active" : ""}" data-quiz-filter="${v}" type="button">${l}</button>`).join("")}
+          </div>
+        </div>
         <div class="archive-export-actions">
           <button class="btn btn-primary" data-quiz-go type="button"><span class="material-symbols-outlined">casino</span>出这份周测</button>
           <button class="btn btn-outline" data-quiz-close type="button">关闭</button>
@@ -633,9 +669,11 @@
       if (scopeBtn) { pickedScope = scopeBtn.dataset.quizScope; root.innerHTML = renderSheet(); return; }
       const countBtn = event.target.closest("[data-quiz-count]");
       if (countBtn) { pickedCount = Number(countBtn.dataset.quizCount); root.innerHTML = renderSheet(); return; }
+      const filterBtn = event.target.closest("[data-quiz-filter]");
+      if (filterBtn) { pickedFilter = filterBtn.dataset.quizFilter; root.innerHTML = renderSheet(); return; }
       if (event.target.closest("[data-quiz-go]")) {
         root.remove();
-        quizSubjectScoped(pickedScope, pickedCount);
+        quizSubjectScoped(pickedScope, pickedCount, pickedFilter);
       }
     });
     document.body.appendChild(root);
@@ -915,7 +953,7 @@
         } else if (act === "quiz-subject") {
           showQuizSheet();
         } else if (act === "quiz-selected") {
-          quizSelectedCards(archiveActionButton.dataset.reviewKey || "");
+          quizSelectedCards();
         } else if (act === "quiz-clear") {
           STATE.quizSelected.clear();
           render(container);
@@ -933,7 +971,6 @@
         STATE.expandedNode = "";
         STATE.highlightNodeId = "";
         STATE.historyExpanded = false;
-        STATE.quizSelected.clear();
         render(container);
         return;
       }
@@ -941,7 +978,7 @@
       if (nodeButton) {
         const id = nodeButton.dataset.cardNode;
         const nextExpanded = STATE.expandedNode === id ? "" : id;
-        if (nextExpanded !== STATE.expandedNode) { STATE.historyExpanded = false; STATE.quizSelected.clear(); }
+        if (nextExpanded !== STATE.expandedNode) STATE.historyExpanded = false;
         STATE.expandedNode = nextExpanded;
         if (!STATE.expandedNode) STATE.highlightNodeId = "";
         render(container);

@@ -401,3 +401,7 @@ v34 之后的改动：
 - **修可见性 bug**：`#learn-content-pane .page-head { display:none }` 把整个 page-head（含原来放在 `.archive-head-actions` 里的「随机周测/导出档案」）隐藏了，所以学生看不到随机周测。把动作按钮移出 page-head，放到科目 tab 下方的可见行 `.archive-actions-row`。
 - **随机周测加选项**：点「随机周测」改为弹出自包含 overlay `showQuizSheet()`（复用 `.archive-export-root/.archive-export-sheet` 外层），可选**科目**（全部/数学/物理/化学，默认当前科目）和**题量**（2/3/4/5 个知识点），确认后 `quizSubjectScoped(scope, count)` 出包。
 - **「测这张」改为多选**：卡片 quiz 图标（`add_task`/选中 `check_circle`）改为切换 `STATE.quizSelected`(Set of cardId)；知识点摘要里出现 sticky 操作条 `.quiz-select-bar`「已选 N 张 / 清空 / 测这 N 张」；`quizSelectedCards(nodeKey)` 把选中卡片打成单知识点包。切换知识点/科目时清空选择。删除原 `quizCard()` 单卡即时函数。
+
+第三轮增强（build `20260614l`）：
+- **随机周测加"只测哪类"过滤**：`showQuizSheet` 第三个字段 `filters`（全部弱点 / 没复习过 / 有低星）；`quizSubjectScoped(scope, count, filter)` 按 `it.reviewCount` / `it.lowStarCount` 过滤后再 `pickWeakFirst`。
+- **多选改为跨知识点（甚至跨科）**：选择不再在切换节点/科目时清空（删除两处 `STATE.quizSelected.clear()`）。新增 `selectedGroups()` 把选中卡片按所属知识点分组；`quizSelectedCards()`（无参）单组用 `generateNodeReviewPack`、多组用 `generateSessionPack(overrideItems)`。选择条改为**全局浮条** `renderQuizSelectBar()`（在 `render()` 末尾输出，`.quiz-select-bar-global` 固定在视口底部、≤980px 上移到 88px 避开底部导航），显示"已选 N 张 · M 个知识点"。

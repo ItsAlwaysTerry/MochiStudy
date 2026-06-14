@@ -722,8 +722,6 @@ button {
 }
 
 .quiz-select-bar {
-  position: sticky;
-  bottom: 8px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -734,6 +732,23 @@ button {
   background: var(--tertiary, #2f6a3f);
   color: #fff;
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
+}
+
+.quiz-select-bar-global {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  z-index: 60;
+  width: min(560px, calc(100% - 32px));
+  margin-top: 0;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+}
+
+@media (max-width: 980px) {
+  .quiz-select-bar-global {
+    bottom: 88px;
+  }
 }
 
 .quiz-select-count {
