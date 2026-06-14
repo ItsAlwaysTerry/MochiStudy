@@ -285,7 +285,10 @@
             <p class="home-review-msg home-review-msg-success">${escapeAttr(HOME_REVIEW_STATE.importResult)}</p>
             <button class="btn btn-soft btn-sm" data-home-review-action="dismiss" type="button" style="margin-top:6px">继续</button>
           ` : `
-            <p class="home-review-import-hint">粘贴 AI 输出，导入结果</p>
+            <ol class="review-stepper review-stepper-compact">
+              <li class="review-step done"><span class="review-step-num"><span class="material-symbols-outlined">check</span></span><span class="review-step-text">材料已复制</span></li>
+              <li class="review-step"><span class="review-step-num">2</span><span class="review-step-text">去复习 AI 做题，再把输出（含 MOCHI-RECORD）粘到下面</span></li>
+            </ol>
             <textarea id="home-review-paste" rows="3" placeholder="粘贴 AI 输出（含 MOCHI-RECORD 那段即可）" style="width:100%;box-sizing:border-box;margin-top:8px"></textarea>
             <button class="btn btn-primary btn-sm" data-home-review-action="import" data-review-key="${escapeAttr(item.key)}" style="width:100%;margin-top:6px" type="button">
               <span class="material-symbols-outlined">download_done</span>导入复习结果
@@ -321,27 +324,14 @@
     `;
   }
 
-  function renderGuideCard() {
-    return `
-      <section class="card home-guide-card">
-        <details class="home-help-details">
-          <summary>
-            <span class="material-symbols-outlined">school</span>
-            第一次用？查看步骤
-          </summary>
-          <ol class="home-guide-steps">
-            <li>打开 <strong>AI 私教</strong>，做一道题</li>
-            <li>复制 AI 输出的 MOCHI-RECORD</li>
-            <li>粘贴到导入框，点确认导入</li>
-          </ol>
-        </details>
-      </section>
-    `;
-  }
-
   function renderStreakBanner() {
     const streak = window.MochiApp?.calcStudyStreak?.() || 0;
     const todayCount = window.MochiApp?.getTodayRecordCount?.() || 0;
+    const focusLogs = window.MochiApp?.readFocusLogs?.() || [];
+    const today = new Date().toISOString().slice(0, 10);
+    const minutes = focusLogs
+      .filter((log) => log.type === "focus" && log.completed && log.date === today)
+      .reduce((sum, log) => sum + Number(log.duration || 0), 0);
 
     const streakSub = streak >= 2
       ? `连续 ${streak} 天`
@@ -349,44 +339,71 @@
         ? "今天已经开始了"
         : "导入一条就开始生长";
 
+    const statLine = todayCount > 0 && minutes > 0
+      ? `今天 ${todayCount} 张卡片 · ${minutes} 分钟专注`
+      : `今天已导入 ${todayCount} 张卡片`;
+
     return `
       <section class="card streak-banner ${todayCount > 0 ? "" : "streak-banner-zero"}">
         <div class="streak-banner-row">
           <span class="material-symbols-outlined streak-fire-icon">${todayCount > 0 ? "local_fire_department" : "bedtime"}</span>
           <div class="streak-banner-text">
-            <strong class="streak-num">今天已导入 ${todayCount} 条记录</strong>
+            <strong class="streak-num">${escapeAttr(statLine)}</strong>
             <span class="streak-sub">${escapeAttr(streakSub)}</span>
           </div>
-          ${todayCount > 0 ? "" : `<button class="btn btn-soft btn-sm streak-zero-cta" data-action="scroll-to-import" type="button">去导入</button>`}
+          ${todayCount > 0
+            ? `<button class="btn btn-soft btn-sm" data-route="today" type="button">报告</button>`
+            : `<button class="btn btn-soft btn-sm streak-zero-cta" data-action="scroll-to-import" type="button">去导入</button>`}
         </div>
       </section>
     `;
   }
 
-  function renderTodayStudyEntry() {
+  function renderWeekTrend() {
     const logs = window.MochiApp?.readStudyLogs?.() || [];
-    const focusLogs = window.MochiApp?.readFocusLogs?.() || [];
-    const today = new Date().toISOString().slice(0, 10);
-    const todayCards = logs.filter((log) => String(log.importedAt || log.date || "").slice(0, 10) === today || String(log.date || "").slice(0, 10) === today);
-    const todayFocus = focusLogs.filter((log) => log.type === "focus" && log.completed && log.date === today);
-    const minutes = todayFocus.reduce((sum, log) => sum + Number(log.duration || 0), 0);
-    return `
-      <section class="card home-today-study-card">
-        <div>
-          <span class="material-symbols-outlined">visibility</span>
-          <div>
-            <h3>今日学习报告</h3>
-            <p>${minutes} 分钟专注 · ${todayCards.length} 张卡片</p>
+    const counts = {};
+    logs.forEach((log) => {
+      const day = String(log.date || log.importedAt || "").slice(0, 10);
+      if (day) counts[day] = (counts[day] || 0) + 1;
+    });
+    const weekdayNames = ["日", "一", "二", "三", "四", "五", "六"];
+    const today = new Date();
+    const days = [];
+    for (let i = 6; i >= 0; i -= 1) {
+      const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      days.push({ key, count: counts[key] || 0, label: weekdayNames[d.getDay()], isToday: i === 0 });
+    }
+    const max = Math.max(1, ...days.map((d) => d.count));
+    const weekTotal = days.reduce((sum, d) => sum + d.count, 0);
+    if (weekTotal === 0) return "";
+    const bars = days.map((d) => {
+      const pct = d.count === 0 ? 0 : Math.max(12, Math.round((d.count / max) * 100));
+      return `
+        <div class="week-trend-col${d.isToday ? " today" : ""}">
+          <span class="week-trend-count">${d.count || ""}</span>
+          <div class="week-trend-bar-wrap">
+            <div class="week-trend-bar" style="height:${pct}%"></div>
           </div>
+          <span class="week-trend-day">${d.label}</span>
         </div>
-        <button class="btn btn-soft btn-sm" data-route="today" type="button">查看</button>
+      `;
+    }).join("");
+    return `
+      <section class="card week-trend-card">
+        <div class="week-trend-head">
+          <span class="material-symbols-outlined">bar_chart</span>
+          <h3>本周学习</h3>
+          <span class="week-trend-total">共 ${weekTotal} 张</span>
+        </div>
+        <div class="week-trend-bars">${bars}</div>
       </section>
     `;
   }
 
-  function renderAiGuideCard() {
+  function renderAiGuideCard(open = false) {
     return `
-      <details class="card home-ai-guide">
+      <details class="card home-ai-guide"${open ? " open" : ""}>
         <summary class="home-ai-guide-summary">
           <span class="material-symbols-outlined">school</span>
           <span>怎么用 AI 家教学习？</span>
@@ -451,7 +468,6 @@
       <div class="home-flow">
         <div class="home-left-stack">
           ${renderStreakBanner()}
-          ${renderTodayStudyEntry()}
           ${holiday
             ? `
               <section class="card import-card home-import-card">
@@ -461,7 +477,7 @@
                     <h3>导入学习记录</h3>
                   </div>
                 </div>
-                <textarea id="record-paste" rows="3" placeholder="粘贴 MOCHI-RECORD"></textarea>
+                <textarea id="record-paste" rows="3" placeholder="把 AI 给你的记录整段粘进来，会自动导入"></textarea>
                 <button class="btn btn-primary" data-action="parse-record" style="width:100%;margin-top:8px">
                   <span class="material-symbols-outlined">auto_awesome</span>确认导入
                 </button>
@@ -477,8 +493,8 @@
               </section>
             `
           }
-          ${hasRecords ? renderTodayReviewCard() : (holiday ? renderGuideCard() : "")}
-          ${renderAiGuideCard()}
+          ${hasRecords ? renderTodayReviewCard() : ""}
+          ${renderAiGuideCard(!hasRecords)}
         </div>
         <div class="home-right-stack">
           <section class="card mini-farm-card">
@@ -493,6 +509,7 @@
               <div class="mini-farm-xp-fill" style="width:${harvestPct}%"></div>
             </div>
           </section>
+          ${hasRecords ? renderWeekTrend() : ""}
           <div class="home-focus-panel">
             ${window.MochiPet?.renderTimer?.(true) || ""}
           </div>
@@ -515,6 +532,27 @@
         }
       });
     });
+    // 粘贴即导入：贴进来的内容已含完整记录块时，省掉那次「确认导入」点击。
+    const pasteBox = container.querySelector("#record-paste");
+    if (pasteBox) {
+      pasteBox.addEventListener("paste", () => {
+        setTimeout(() => {
+          if (/---MOCHI-RECORD-END---/.test(pasteBox.value)) {
+            window.MochiApp?.parsePastedRecordEl?.(pasteBox, container.querySelector("#upload-result"));
+          }
+        }, 0);
+      });
+    }
+    const homeReviewPaste = container.querySelector("#home-review-paste");
+    if (homeReviewPaste) {
+      homeReviewPaste.addEventListener("paste", () => {
+        setTimeout(() => {
+          if (/---MOCHI-RECORD-END---/.test(homeReviewPaste.value)) {
+            container.querySelector('[data-home-review-action="import"]')?.click();
+          }
+        }, 0);
+      });
+    }
     window.MochiPet?.renderMiniState?.();
   }
 
@@ -576,93 +614,7 @@
   }
 
   function formatRichText(value) {
-    const escaped = escapeAttr(value).replace(/＄/g, "$");
-    return escaped.replace(/\$([^$\n]+)\$/g, (_, formula) => `<span class="math-inline">${formatInlineMath(formula)}</span>`);
-  }
-
-  function formatInlineMath(value) {
-    let text = String(value || "");
-    text = text
-      .replace(/\\cdot/g, "·")
-      .replace(/\\times/g, "×")
-      .replace(/\\div/g, "÷")
-      .replace(/\\leq/g, "≤")
-      .replace(/\\geq/g, "≥")
-      .replace(/\\neq/g, "≠")
-      .replace(/\\left/g, "")
-      .replace(/\\right/g, "")
-      .replace(/\\,/g, " ");
-    const symbols = {
-      "\\sin": "sin",
-      "\\cos": "cos",
-      "\\tan": "tan",
-      "\\ln": "ln",
-      "\\log": "log",
-      "\\rightleftharpoons": "⇌",
-      "\\alpha": "α",
-      "\\beta": "β",
-      "\\gamma": "γ",
-      "\\Gamma": "Γ",
-      "\\delta": "δ",
-      "\\Delta": "Δ",
-      "\\epsilon": "ε",
-      "\\theta": "θ",
-      "\\lambda": "λ",
-      "\\mu": "μ",
-      "\\pi": "π",
-      "\\rho": "ρ",
-      "\\sigma": "σ",
-      "\\omega": "ω",
-      "\\Omega": "Ω",
-      "\\phi": "φ",
-      "\\Phi": "Φ",
-    };
-    Object.entries(symbols).forEach(([source, target]) => {
-      text = text.replaceAll(source, target);
-    });
-    text = text.replace(/([A-Za-z0-9)]+)\^\{([^{}]+)\}/g, "$1<sup>$2</sup>");
-    text = text.replace(/([A-Za-z0-9)]+)\^([A-Za-z0-9]+)/g, "$1<sup>$2</sup>");
-    text = text.replace(/([A-Za-z0-9)]+)_\{([^{}]+)\}/g, "$1<sub>$2</sub>");
-    text = text.replace(/([A-Za-z0-9)]+)_([A-Za-z0-9]+)/g, "$1<sub>$2</sub>");
-    text = replaceMathCommand(text, "dfrac", 2, (top, bottom) => (
-      `<span class="math-frac"><span class="math-num">${top}</span><span class="math-den">${bottom}</span></span>`
-    ));
-    text = replaceMathCommand(text, "tfrac", 2, (top, bottom) => (
-      `<span class="math-frac"><span class="math-num">${top}</span><span class="math-den">${bottom}</span></span>`
-    ));
-    text = replaceMathCommand(text, "frac", 2, (top, bottom) => (
-      `<span class="math-frac"><span class="math-num">${top}</span><span class="math-den">${bottom}</span></span>`
-    ));
-    text = replaceMathCommand(text, "sqrt", 1, (radicand) => (
-      `<span class="math-sqrt"><span class="math-radicand">${radicand}</span></span>`
-    ));
-    text = replaceMathCommand(text, "dfrac", 2, (top, bottom) => (
-      `<span class="math-frac"><span class="math-num">${top}</span><span class="math-den">${bottom}</span></span>`
-    ));
-    text = replaceMathCommand(text, "tfrac", 2, (top, bottom) => (
-      `<span class="math-frac"><span class="math-num">${top}</span><span class="math-den">${bottom}</span></span>`
-    ));
-    text = replaceMathCommand(text, "frac", 2, (top, bottom) => (
-      `<span class="math-frac"><span class="math-num">${top}</span><span class="math-den">${bottom}</span></span>`
-    ));
-    text = text.replace(/\\?sqrt\s*([A-Za-z0-9]+)/g, `<span class="math-sqrt"><span class="math-radicand">$1</span></span>`);
-    return text;
-  }
-
-  function replaceMathCommand(text, command, arity, render) {
-    const slash = "\\\\?";
-    const pattern = arity === 2
-      ? new RegExp(`${slash}${command}\\s*\\{([^{}]+)\\}\\s*\\{([^{}]+)\\}`, "g")
-      : new RegExp(`${slash}${command}\\s*\\{([^{}]+)\\}`, "g");
-    let next = text;
-    for (let i = 0; i < 8; i += 1) {
-      const replaced = arity === 2
-        ? next.replace(pattern, (_, first, second) => render(first, second))
-        : next.replace(pattern, (_, first) => render(first));
-      if (replaced === next) break;
-      next = replaced;
-    }
-    return next;
+    return window.MochiApp?.formatRichText?.(value) ?? escapeAttr(value);
   }
 
   window.MochiFarm = {

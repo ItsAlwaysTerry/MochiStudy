@@ -333,3 +333,31 @@ v34 之后的改动：
 - **首页 AI 工作流指南**：`modules/farm.js` 中 `renderAiGuideCard()` 在首页渲染一张可折叠卡（`<details class=”card home-ai-guide”>`），展示三步使用流程，并提供跳转设置页按钮。
 - **设置页 AI Prompt 复制**：`app.js` 中 `renderSettings()` 在”AI 使用指南”section 放置两个 `<details>` 条目（高考 AI 私教 / 高考复习私教），各有”复制 Prompt”按钮；`copyAiPromptFile(btn)` 用 `fetch()` 读取 `skill/` 目录下的 `.md` 文件，剥离 YAML frontmatter 后写入剪贴板；`file://` 协议下 fallback 为 `window.open()`。
 - **番茄钟默认自由专注**：`modules/timer.js` 的 `state.freeMode` 初始值为 `true`，打开页面时默认选中”自由专注”，时间输入行隐藏。
+
+### V3.3 代码债治理 + 首页减负 + 本周趋势（2026-06-14）
+
+- **共享数学公式渲染**：`formatRichText`/`formatInlineMath`/`replaceMathCommand` 抽到 `app.js` 并经 `window.MochiApp` 导出（`formatRichText`/`formatInlineMath`）。`farm.js`、`reviewPage.js`、`knowledgeMap.js`、`calendar.js` 四处各自复制的约 90 行实现改为薄包装 `window.MochiApp?.formatRichText?.(value) ?? escapeHtml(value)`，共删除约 340 行重复代码，并修掉旧版里 `dfrac/tfrac/frac` 被连续写两遍的复制错误。新增渲染逻辑统一改 `app.js` 这一份。
+- **死代码清理**：`reviewPage.js` 删除无人调用的 `stars()`、`statusLabel()`（`subjectLabel()` 仍在用，保留）；`style.css` 删除已无引用的 `.home-guide-card`/`.home-help-details`/`.home-guide-steps`/`.home-guide-head`/`.home-guide-note` 规则。
+- **首页减负**：删除 `farm.js` 的 `renderGuideCard()`（“第一次用？查看步骤”小卡），与功能重叠的 `renderAiGuideCard()` 合并为一张；`renderAiGuideCard(open)` 新增 `open` 参数，首次使用（无任何记录）时默认展开，有记录后默认折叠。
+- **侧边栏头部**：`pet.js` `renderMiniState()` 把无意义的 `XP{n}`（农场等级实际由 `totalHarvests` 驱动，XP 不影响任何东西）替换为对学生更有激励的「连续{streak}天」（streak<2 时只显示收获次数）；`index.html` 静态初始值同步从 `收获0次 · XP0` 改为 `收获0次`。
+- **复习导入放宽**：知识点不匹配时不再硬拒绝、丢失学生劳动。`reviewPage.js` `importReviewResult()` 改为提示并提供「按识别到的知识点导入」按钮（新 action `import-anyway` + 新函数 `importReviewAsDetected()`），记录照实归档到 AI 识别到的知识点下、不计入本次复习项、不污染标签；首页 `importItemByKey()` 同步改为不匹配时照实导入并经 `onSuccess` 提示。
+- **本周趋势小图**：`farm.js` 新增 `renderWeekTrend()`，在首页右栏迷你农场下方渲染近 7 天每日卡片数的纯 CSS 柱状图（今日高亮、本周为 0 时不显示、仅有记录时显示）；`style.css` 新增 `.week-trend-card` 系列样式，配色用 `--primary`/`--primary-soft`。
+
+### V3.4 首页第一屏精简 + 复习傻瓜化步骤 + 缓存版本号（2026-06-14）
+
+- **首页第一屏精简**：`farm.js` 删除 `renderTodayStudyEntry()`（单独的「今日学习报告」卡）。它和 `renderStreakBanner()` 重复显示今天的数字。现把专注分钟和「报告」入口合并进 streak 横幅：横幅主文案改为「今天 N 张卡片 · M 分钟专注」（无专注时退化为「今天已导入 N 张卡片」），右侧按钮在有记录时为「报告」（`data-route="today"`）、无记录时为「去导入」。`style.css` 删除已无引用的 `.home-today-study-card` 系列规则（含 640px 媒体查询里的相关选择器，保留 `.today-title-row`）。
+- **复习剪贴板往返傻瓜化**：`reviewPage.js` `renderImportPanel()` 把原来一行 `.review-panel-hint` 提示改为三步导引 `<ol class="review-stepper">`：① 材料已复制（done 态打勾）② 打开复习 AI 先回想 20 秒再粘贴做题 ③ 把含 MOCHI-RECORD 的输出整段粘回导入。`farm.js` 首页复习卡导入态同步加 `.review-stepper.review-stepper-compact` 两步精简版，替换原 `.home-review-import-hint`。`style.css` 用 `.review-stepper`/`.review-step`/`.review-step-num`/`.review-step-text`（含 `.done` 绿色打勾态）替换 `.review-panel-hint`，并新增 compact 变体；删除 `.home-review-import-hint`。
+- **静态资源缓存版本号**：`index.html` 给 `style.css` 和全部 `modules/*.js`、`app.js` 的引用加 `?v=` 查询串，强制浏览器在每次版本变更后重新加载，避免改了源文件但页面仍用旧缓存（本地 `file://`/简单静态托管下尤其常见）。**以后每完成一轮实质改动，把这个版本号一起更新（当前为 `20260614c`，每轮递增后缀），用户刷新即可见。**
+
+### V3.5 导入成长庆祝 + 综合测验闭环（2026-06-14）
+
+- **导入成长庆祝**：`app.js` `parsePastedRecordEl()` 单条导入路径，在 `applyMochiRecord` 前后用 `window.MochiFarm.calcPlotStage(subject)` 取地块生长阶段；若跨过一个阶段则在成功卡里加一条高亮 `.checkin-growth`（如「🌱 数学地块长大了：发芽 → 幼苗」，成熟时为「🌟 …可以收获啦！」）并额外触发一次 `sparkle(result, "🌱")`，把「做题」和「看得见的成长」直接挂钩。`style.css` 新增 `.checkin-growth` 及 `checkin-pop`/`checkin-icon-pop`/`checkin-growth-pop` 三个关键帧，给成功卡和 ✓ 图标加弹入动效。阶段名常量 `STAGE_NAMES = ["荒地","种子","发芽","幼苗","开花","成熟"]`。
+- **综合测验闭环**：原来综合测验在复习页复制测验包，但做完的多条记录只能粘回首页导入框，复习页无粘回入口。`reviewPage.js` 新增 `STATE.sessionActive`：点「综合测验」后置 true，复习页顶部展开 `renderSessionPanel()`（三步 stepper + 批量 textarea + 导入按钮 + 关闭✕）。新增 `importSession()` 用导出的 `window.MochiApp.parseAllMochiRecords`/`applyMochiRecord` 在复习页内批量导入，**不调用 `parsePastedRecordEl`**（后者的 `refreshVisibleRoute()` 会把用户弹回「今日」tab 并冲掉面板）；导入后清 `sessionActive`、留在复习页、显示成功 inline 提示。`bindContainer` 新增 `session-import`/`session-dismiss` 两个 action。`style.css` 新增 `.review-session-panel`/`.review-session-head`/`.review-session-dismiss` 样式。
+
+### V3.6 第一性原理打磨现有链路（不加功能，2026-06-14）
+
+方向：纯打磨现有界面/操作逻辑的"顺手度"，不新增功能。版本号 → `20260614d`。
+
+- **导航：学习子 tab 不再被弹回。** `app.js` `renderLearn(container, tab)` 删除 `if (!tab) learnActiveTab = "today"`。原逻辑导致任何不带 tab 的刷新（`refreshVisibleRoute()`、点底部「学习」）都把正在「复习/档案」的用户强制弹回「今日」。改为不带 tab 时保留 `learnActiveTab`（模块初值仍是 "today"）。
+- **导入动作：粘贴即导入（省一次点击）。** 核心动作"粘贴→点确认导入"里那次点击多余。多处导入框新增 `paste` 监听：贴进的文本含完整 `---MOCHI-RECORD-END---` 时自动导入，按钮保留为兜底。覆盖：首页主导入框 `#record-paste`（farm.js，调 `parsePastedRecordEl`）、首页复习卡 `#home-review-paste`（farm.js，自动点击 import 按钮）、沉浸模式 `#focus-record-paste`（app.js `bindFocusOverlay`）、复习页逐项 `[data-review-input]` 与综合测验 `[data-session-input]`（reviewPage.js `bindContainer` 委托 paste，自动点击对应导入按钮）。placeholder 文案统一改成「把 AI 给你的记录整段粘进来，会自动导入」一类人话，去掉 “MOCHI-RECORD” 术语。
+- **专注：结束按钮措辞前后一致。** 专注中按钮原为「我累了，现在休息」（已替用户决定休息），但点完进 deciding 又问「开始休息 / 结束今天」，逻辑矛盾。改为中性的「结束这一轮」（图标 `stop_circle`，action 仍是 `stop-and-rest`），真正的休息/结束选择留在 deciding 屏。`app.js` 沉浸 overlay 和 `pet.js` `renderTimer` focusing 卡同步改。

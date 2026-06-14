@@ -28,6 +28,9 @@
       heatLevel2: 2,
       heatLevel3: 4,
     },
+    lottery: {
+      pickCount: 5,
+    },
     season: {
       titleThresholds: [0, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66, 78, 91, 105, 120, 140],
     },
@@ -975,6 +978,7 @@
     overlay.hidden = false;
     overlay.innerHTML = renderLotteryWheel();
     bindLotteryOverlay(overlay);
+    document.body.classList.add("lottery-mode");
   }
 
   function hideLotteryOverlay() {
@@ -983,6 +987,8 @@
     overlay.hidden = true;
     overlay.innerHTML = "";
     _pickState = null;
+    if (_bonusProceedTimer) { clearTimeout(_bonusProceedTimer); _bonusProceedTimer = null; }
+    document.body.classList.remove("lottery-mode");
   }
 
   function renderLotteryWheel() {
@@ -1011,96 +1017,55 @@
             <span class="material-symbols-outlined">close</span>
           </button>
           <h2 class="lottery-title">命运牌局</h2>
-          <p class="lottery-tickets-hint">剩余 ${state.lotteryTickets || 0} 次机会</p>
+          <div class="lottery-header-meta">
+            <span class="lottery-tickets-hint">🎟 剩余 ${state.lotteryTickets || 0} 次</span>
+            <div class="pity-inline">
+              <span class="pity-inline-label">运气槽</span>
+              <div class="pity-inline-track"><div class="pity-inline-fill" style="width:${pityPct}%"></div></div>
+              <span class="${pityFull ? "pity-inline-guaranteed" : "pity-inline-count"}">${pityFull ? "🌟满！" : `${pityCurrent}/${pityThreshold}`}</span>
+            </div>
+          </div>
         </div>
 
-        <div class="lottery-body">
+        <div class="lottery-stage">
 
-          <aside class="lottery-sidebar">
-            <div class="lottery-pity-bar">
-              <span class="pity-label">运气槽</span>
-              <div class="pity-track"><div class="pity-fill" style="width:${pityPct}%"></div></div>
-              <span class="${pityFull ? "pity-guaranteed" : "pity-count"}">${pityFull ? "🌟 满槽！必得大奖" : `${pityCurrent}/${pityThreshold}`}</span>
-            </div>
-            <p class="pity-hint-text" style="margin:0">连续没中大奖时积累 · 满格必得大奖</p>
+          <div class="lottery-phase" id="lp-showcase">
+            <p class="phase-label">奖励池 — 看清楚再出发</p>
+            <div class="lottery-showcase-grid">${showcaseCards}</div>
+            ${pityFull ? '<p class="pity-tease">✨ 运气已满，此次必得大奖</p>' : ""}
+            <button class="lottery-action-btn" data-action="phase-to-dice" type="button">看好了，摇骰子！🎲</button>
+          </div>
 
-            <div class="lottery-dice-tip">
-              <span class="dice-tip-rule">合计 ≤2 或 ≥11</span>
-              <span class="dice-tip-arrow">→</span>
-              <span class="dice-tip-effect">🎉 翻牌时多翻一张再选</span>
-            </div>
-
-            <div class="lottery-sidebar-muyu">
-              <p class="muyu-sidebar-label">点击积功德</p>
-              <div class="muyu-float-inner" data-action="tap-muyu-float">
-                <div class="muyu-float-head">
-                  <span class="muyu-blush muyu-blush--l"></span>
-                  <span class="muyu-blush muyu-blush--r"></span>
-                  <span class="muyu-hollow"></span>
+          <div class="lottery-phase" id="lp-dice" hidden>
+            <p class="phase-label">骰子仪式 — 摇出加成再翻牌</p>
+            <div class="lottery-dice-panel" aria-live="polite">
+              <div class="lottery-dice">
+                <div class="lottery-die-slot">
+                  <span class="lottery-die" data-die="1">?</span>
+                  <button class="btn btn-soft btn-sm" data-action="roll-die" data-die-index="1" type="button">摇第一颗</button>
                 </div>
-                <div class="muyu-float-mallet">
-                  <div class="muyu-mallet-shaft"></div>
-                  <div class="muyu-mallet-head"></div>
+                <div class="lottery-die-slot">
+                  <span class="lottery-die" data-die="2">?</span>
+                  <button class="btn btn-soft btn-sm" data-action="roll-die" data-die-index="2" type="button">摇第二颗</button>
                 </div>
               </div>
+              <p class="lottery-dice-result" id="lottery-dice-result">两颗都摇完才能翻牌</p>
             </div>
-          </aside>
+            <p class="dice-bonus-hint">合计 ≤2 或 ≥11 → 🎉 多翻一张再选</p>
+            <button class="lottery-action-btn" data-action="phase-to-pick-direct" id="btn-phase-pick-direct" type="button" disabled>翻牌！🃏</button>
+          </div>
 
-          <div class="lottery-stage">
-
-            <div class="lottery-phase" id="lp-showcase">
-              <p class="phase-label">奖励池 — 看清楚再出发</p>
-              <div class="lottery-showcase-grid">${showcaseCards}</div>
-              ${pityFull ? '<p class="pity-tease">✨ 运气已满，此次必得大奖</p>' : ""}
-              <button class="lottery-action-btn" data-action="phase-to-dice" type="button">看好了，摇骰子！🎲</button>
+          <div class="lottery-phase" id="lp-pick" hidden>
+            <p class="phase-label" id="pick-phase-label">翻开一张，那就是你的奖励</p>
+            <div class="lottery-pick-row" id="lottery-pick-row"></div>
+            <div class="lottery-flip-choices" id="lottery-flip-choices" hidden>
+              <p class="phase-hint">骰子给了你额外一翻——</p>
+              <button class="btn btn-soft" data-action="keep-card" type="button">就这张 ✓</button>
+              <button class="btn btn-primary" data-action="flip-another" type="button">再翻一张</button>
             </div>
+          </div>
 
-            <div class="lottery-phase" id="lp-dice" hidden>
-              <p class="phase-label">骰子仪式</p>
-              <div class="lottery-dice-panel" aria-live="polite">
-                <div class="lottery-dice">
-                  <div class="lottery-die-slot">
-                    <span class="lottery-die" data-die="1">?</span>
-                    <button class="btn btn-soft btn-sm" data-action="roll-die" data-die-index="1" type="button">摇第一颗</button>
-                  </div>
-                  <div class="lottery-die-slot">
-                    <span class="lottery-die" data-die="2">?</span>
-                    <button class="btn btn-soft btn-sm" data-action="roll-die" data-die-index="2" type="button">摇第二颗</button>
-                  </div>
-                </div>
-                <p class="lottery-dice-result" id="lottery-dice-result">两颗都摇完才能洗牌</p>
-              </div>
-              <button class="lottery-action-btn" data-action="phase-to-draw" id="btn-phase-draw" type="button" disabled>洗牌！🃏</button>
-            </div>
-
-            <div class="lottery-phase" id="lp-draw" hidden>
-              <p class="phase-label">从摊开的牌里选 5 张手牌</p>
-              <div class="lottery-spread" id="lottery-spread"></div>
-              <div class="lottery-hand-area">
-                <p class="hand-hint">手牌 <span id="hand-count">0</span>/5 — 点击上方牌面加入手牌</p>
-                <div class="lottery-hand-slots" id="lottery-hand-slots">
-                  <div class="hand-slot" data-slot="0"></div>
-                  <div class="hand-slot" data-slot="1"></div>
-                  <div class="hand-slot" data-slot="2"></div>
-                  <div class="hand-slot" data-slot="3"></div>
-                  <div class="hand-slot" data-slot="4"></div>
-                </div>
-              </div>
-              <button class="lottery-action-btn" data-action="phase-to-pick" id="btn-phase-pick" type="button" hidden>开始翻牌 →</button>
-            </div>
-
-            <div class="lottery-phase" id="lp-pick" hidden>
-              <p class="phase-label" id="pick-phase-label">翻开一张，那就是你的奖励</p>
-              <div class="lottery-pick-row" id="lottery-pick-row"></div>
-              <div class="lottery-flip-choices" id="lottery-flip-choices" hidden>
-                <p class="phase-hint">骰子给了你额外一翻——</p>
-                <button class="btn btn-soft" data-action="keep-card" type="button">就这张 ✓</button>
-                <button class="btn btn-primary" data-action="flip-another" type="button">再翻一张</button>
-              </div>
-            </div>
-
-          </div><!-- /.lottery-stage -->
-        </div><!-- /.lottery-body -->
+        </div><!-- /.lottery-stage -->
       </div><!-- /.lottery-inner -->
     `;
   }
@@ -1125,6 +1090,8 @@
         rollSingleDie(Number(actionEl.dataset.dieIndex || 0));
         return;
       }
+      if (action === "phase-to-pick-direct") { phaseToPickDirect(); return; }
+      if (action === "bonus-proceed") { phaseToPickDirect(); return; }
       if (action === "phase-to-draw") { phaseToDraw(); return; }
       if (action === "select-spread-card") {
         selectSpreadCard(Number(actionEl.closest(".spread-card")?.dataset.spreadIndex ?? -1));
@@ -1205,15 +1172,23 @@
     button.disabled = true;
     button.textContent = "摇动中...";
     const FACES = ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
+    // Delays: fast phase (steps 0-9) then deceleration (steps 10-15)
+    const DELAYS = [50, 55, 62, 70, 80, 90, 100, 112, 125, 138, 170, 220, 280, 350, 430, 520];
     let value = 1;
-    for (let step = 0; step < 13; step += 1) {
+    for (let step = 0; step < DELAYS.length; step += 1) {
       value = 1 + Math.floor(Math.random() * 6);
-      dieEl.textContent = String(value);
-      dieEl.classList.toggle("rolling", step % 2 === 0);
-      await sleep(48 + step * 11);
+      dieEl.textContent = FACES[value - 1];
+      // Rolling tilt only in fast phase
+      dieEl.classList.toggle("rolling", step < 10 && step % 2 === 0);
+      await sleep(DELAYS[step]);
     }
+    // Hold final face with a brief pause before locking
     dieEl.classList.remove("rolling");
+    await sleep(180);
     inner.dataset[index === 1 ? "dieOne" : "dieTwo"] = String(value);
+    // Visual: gold glow on locked die + fade out the roll button
+    dieEl.classList.add("locked");
+    dieEl.closest(".lottery-die-slot")?.classList.add("locked");
     button.textContent = `已锁定 ${FACES[value - 1]}`;
     updateDiceState();
   }
@@ -1227,22 +1202,51 @@
     const sum = d1 + d2;
     const bonusFlip = sum <= 2 || sum >= 11;
     inner.dataset.bonusFlip = String(bonusFlip);
+    // Replace text result with big animated sum display
     const resultEl = document.getElementById("lottery-dice-result");
     if (resultEl) {
-      let msg = `点数合计 ${sum}`;
-      if (bonusFlip) msg += " — 🎉 骰子开光！翻牌时可以多翻一张再选";
-      else msg += " — 翻开一张就是你的";
-      resultEl.textContent = msg;
+      if (bonusFlip) {
+        // BONUS: stays 3s, click to advance early
+        resultEl.innerHTML = `<div class="dice-sum-pop bonus" role="button" tabindex="0" data-action="bonus-proceed">
+          <span class="dice-sum-num">${sum}</span>
+          <span class="dice-sum-label">🎉 开光！多翻一张</span>
+          <span class="dice-sum-tap-hint">点击翻牌 →</span>
+        </div>`;
+        _bonusProceedTimer = setTimeout(() => phaseToPickDirect(), 3000);
+      } else {
+        // Normal: auto-advance after 1.6s
+        resultEl.innerHTML = `<div class="dice-sum-pop">
+          <span class="dice-sum-num">${sum}</span>
+          <span class="dice-sum-label">翻牌时间！</span>
+        </div>`;
+        setTimeout(() => phaseToPickDirect(), 1600);
+      }
     }
-    const drawBtn = document.getElementById("btn-phase-draw");
-    if (drawBtn) drawBtn.disabled = false;
+    // Hide manual button — interaction handled by sum display or auto-advance
+    const drawBtn = document.getElementById("btn-phase-pick-direct");
+    if (drawBtn) drawBtn.hidden = true;
   }
 
   function phaseToDice() {
     showPhase("lp-dice");
   }
 
-  // ── Draw phase: spread + select ────────────────────────────────────
+  function phaseToPickDirect() {
+    if (_bonusProceedTimer) { clearTimeout(_bonusProceedTimer); _bonusProceedTimer = null; }
+    const inner = document.querySelector(".lottery-inner");
+    if (!inner) return;
+    const items = loadLotteryConfig().items;
+    if (!items.length) return;
+    const pityActive = inner.dataset.pityActive === "true";
+    const pickCount = Math.max(1, Number(GAME_CONFIG.lottery?.pickCount || 5));
+    const prizes = Array.from({ length: pickCount }, () => items[selectLotteryItem(items)]);
+    if (pityActive) {
+      prizes[Math.floor(Math.random() * prizes.length)] = items[selectBigRewardItem(items)];
+    }
+    phaseToPick(prizes);
+  }
+
+  // ── Draw phase: spread + select (legacy, kept for backward compat) ──
 
   function phaseToDraw() {
     const inner = document.querySelector(".lottery-inner");
@@ -1319,13 +1323,18 @@
     }
   }
 
-  function phaseToPick() {
+  function phaseToPick(prizesOverride) {
     const inner = document.querySelector(".lottery-inner");
     if (!inner) return;
-    let allPrizes, selectedIndices;
-    try { allPrizes = JSON.parse(inner.dataset.allPrizes || "[]"); } catch { allPrizes = []; }
-    try { selectedIndices = JSON.parse(inner.dataset.selectedIndices || "[]"); } catch { selectedIndices = []; }
-    const prizes = selectedIndices.map((i) => allPrizes[i]).filter(Boolean);
+    let prizes;
+    if (prizesOverride) {
+      prizes = prizesOverride;
+    } else {
+      let allPrizes, selectedIndices;
+      try { allPrizes = JSON.parse(inner.dataset.allPrizes || "[]"); } catch { allPrizes = []; }
+      try { selectedIndices = JSON.parse(inner.dataset.selectedIndices || "[]"); } catch { selectedIndices = []; }
+      prizes = selectedIndices.map((i) => allPrizes[i]).filter(Boolean);
+    }
     const bonusFlip = inner.dataset.bonusFlip === "true";
     _pickState = { prizes, bonusFlip, flipsUsed: 0, flippedIndices: [], deciding: false, choosing: false };
     const labelEl = document.getElementById("pick-phase-label");
@@ -1476,37 +1485,38 @@
     saveAchievementState(state);
     if (chosenPrize) saveLotteryHistory(chosenPrize);
 
-    // Append result panel in-flow inside lp-pick (below the visible cards)
+    // Inline result panel inside lp-pick, below the visible cards
     const pickPhase = document.getElementById("lp-pick");
     if (pickPhase) {
       const prizeColor = escapeHtml(chosenPrize?.color || lotteryColorForType(chosenPrize?.type));
       const panel = document.createElement("div");
       panel.className = "lottery-result-panel";
+      panel.style.setProperty("--item-color", chosenPrize?.color || lotteryColorForType(chosenPrize?.type));
       panel.dataset.chosenPrize = JSON.stringify(chosenPrize || null);
       panel.dataset.chosenIndex = String(chosenIndex ?? -1);
       panel.dataset.allPrizes = JSON.stringify(allPrizes || []);
       panel.innerHTML = `
         ${pityActive ? '<p class="lottery-result-pity-banner">🌟 运气槽满，保底触发！</p>' : ""}
-        <p class="lottery-result-item" style="--item-color:${prizeColor}">
-          <span>${escapeHtml(lotteryTypeLabel(chosenPrize))}</span>${escapeHtml(chosenPrize?.label || "")}
-        </p>
+        <div class="lottery-result-prize-display" style="--item-color:${prizeColor}">
+          <span class="lottery-result-tier-badge">${escapeHtml(lotteryTypeLabel(chosenPrize))}</span>
+          <strong class="lottery-result-prize-name">${escapeHtml(chosenPrize?.label || "")}</strong>
+        </div>
         ${!pityActive && state.pityCurrent > 0
           ? `<p class="lottery-result-pity-hint">运气槽 ${state.pityCurrent} / ${pityThreshold}</p>`
           : ""}
         <div class="lottery-result-actions">
           <button class="btn btn-soft lottery-share-btn" data-action="share-result" type="button">📋 复制分享图</button>
           ${state.lotteryTickets > 0
-            ? `<button class="btn btn-primary lottery-spin-btn" data-action="spin-lottery" type="button">再来一次</button>`
+            ? `<button class="btn btn-primary lottery-spin-btn" data-action="spin-lottery" type="button" style="width:100%">再来一次</button>`
             : `<p class="muted lottery-done-msg">暂时没有机会了，继续学习获得更多！</p>`}
         </div>
       `;
       pickPhase.appendChild(panel);
-      // Scroll the panel into view smoothly
       setTimeout(() => panel.scrollIntoView({ behavior: "smooth", block: "nearest" }), 80);
     }
 
     const hint = document.querySelector(".lottery-tickets-hint");
-    if (hint) hint.textContent = `剩余 ${state.lotteryTickets} 次机会`;
+    if (hint) hint.textContent = `🎟 剩余 ${state.lotteryTickets} 次`;
     if (inner) inner.dataset.phase = "done";
     updateNavBadge();
     if (currentRoute() === "achievements") renderAchievements(document.getElementById("view"));
@@ -1520,115 +1530,136 @@
     try { allPrizes = JSON.parse(panelEl.dataset.allPrizes || "[]"); } catch { allPrizes = []; }
     if (!chosenPrize) return;
 
-    const W = 480, H = 360;
+    // Canvas layout: all 5 cards in a row, chosen highlighted, result below
+    const cardCount = allPrizes.length || 5;
+    const cW = 80, cH = 112, cGap = 10;
+    const totalCardsW = cardCount * cW + (cardCount - 1) * cGap;
+    const W = Math.max(520, totalCardsW + 80), H = 340;
     const canvas = document.createElement("canvas");
     canvas.width = W * 2;
     canvas.height = H * 2;
     const ctx = canvas.getContext("2d");
     ctx.scale(2, 2);
 
-    // Background
+    // ── Background ──────────────────────────────────────────────────
     ctx.fillStyle = "#120c10";
     ctx.fillRect(0, 0, W, H);
-    const grad = ctx.createRadialGradient(W / 2, 130, 0, W / 2, 130, 220);
-    grad.addColorStop(0, (chosenPrize.color || "#864d61") + "44");
+    const chosenColor = chosenPrize.color || "#864d61";
+    const grad = ctx.createRadialGradient(W / 2, H * 0.4, 0, W / 2, H * 0.4, 240);
+    grad.addColorStop(0, chosenColor + "38");
     grad.addColorStop(1, "transparent");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
 
-    // Header
-    ctx.fillStyle = "rgba(255,255,255,0.3)";
-    ctx.font = "bold 13px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("MochiStudy 抽奖结果", W / 2, 30);
+    // ── Header ──────────────────────────────────────────────────────
+    ctx.fillStyle = "rgba(255,255,255,0.32)";
+    ctx.font = "bold 12px sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText("MochiStudy 命运牌局", 20, 20);
+    ctx.fillStyle = "rgba(255,255,255,0.2)";
+    ctx.textAlign = "right";
+    ctx.fillText(new Date().toLocaleDateString("zh-CN"), W - 20, 20);
 
-    // ── Chosen prize card (large) ──────────────────────────────────
-    const itemColor = chosenPrize.color || "#864d61";
-    const cX = 60, cY = 46, cW = W - 120, cH = 138, cR = 16;
-    ctx.beginPath();
-    ctx.roundRect(cX, cY, cW, cH, cR);
-    ctx.fillStyle = itemColor + "28";
+    // Divider
+    ctx.strokeStyle = "rgba(255,255,255,0.07)";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(20, 28); ctx.lineTo(W - 20, 28); ctx.stroke();
+
+    // ── All cards row ────────────────────────────────────────────────
+    const cardsStartX = (W - totalCardsW) / 2;
+    const cardsY = 38;
+
+    function drawRoundRect(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, r);
+    }
+
+    allPrizes.forEach((prize, i) => {
+      if (!prize) return;
+      const isChosen = i === chosenIndex;
+      const x = cardsStartX + i * (cW + cGap);
+      const y = cardsY;
+      const color = prize.color || "#864d61";
+
+      // Card fill
+      drawRoundRect(x, y, cW, cH, 8);
+      ctx.fillStyle = isChosen ? color + "2a" : color + "12";
+      ctx.fill();
+
+      // Border — gold for chosen, colored for others
+      ctx.lineWidth = isChosen ? 2 : 1;
+      ctx.strokeStyle = isChosen ? "#f5c518cc" : color + "66";
+      ctx.stroke();
+
+      // Gold glow on chosen
+      if (isChosen) {
+        ctx.save();
+        ctx.shadowColor = "#f5c51866";
+        ctx.shadowBlur = 14;
+        drawRoundRect(x, y, cW, cH, 8);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Tier badge
+      const tierLabel = lotteryTypeLabel(prize);
+      ctx.font = "bold 9px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillStyle = isChosen ? chosenColor : color + "bb";
+      ctx.fillText(tierLabel, x + cW / 2, y + 15);
+
+      // Prize name (wrap if long)
+      const label = prize.label || "";
+      ctx.fillStyle = isChosen ? "#fffaf4" : "rgba(255,255,255,0.5)";
+      ctx.font = `${isChosen ? "bold " : ""}${isChosen ? "11" : "10"}px sans-serif`;
+      const maxTxtW = cW - 10;
+      if (ctx.measureText(label).width <= maxTxtW) {
+        ctx.fillText(label, x + cW / 2, y + cH / 2 + 6);
+      } else {
+        const half = Math.ceil(label.length / 2);
+        ctx.font = `${isChosen ? "bold " : ""}9px sans-serif`;
+        ctx.fillText(label.slice(0, half), x + cW / 2, y + cH / 2 - 2);
+        ctx.fillText(label.slice(half), x + cW / 2, y + cH / 2 + 11);
+      }
+
+      // "✓ 我的" marker on chosen card
+      if (isChosen) {
+        ctx.fillStyle = "#f5c518";
+        ctx.font = "bold 8px sans-serif";
+        ctx.fillText("✓ 我的", x + cW / 2, y + cH - 9);
+      }
+    });
+
+    // ── Result highlight bar ─────────────────────────────────────────
+    const barY = cardsY + cH + 14;
+    const barH = H - barY - 18;
+
+    drawRoundRect(20, barY, W - 40, barH, 10);
+    ctx.fillStyle = chosenColor + "16";
     ctx.fill();
-    ctx.strokeStyle = itemColor + "aa";
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = chosenColor + "40";
+    ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Badge
-    const typeLabel = lotteryTypeLabel(chosenPrize);
-    ctx.font = "bold 11px sans-serif";
-    const badgeW = ctx.measureText(typeLabel).width + 20;
-    ctx.fillStyle = itemColor + "55";
-    ctx.beginPath();
-    ctx.roundRect(W / 2 - badgeW / 2, cY + 16, badgeW, 20, 10);
-    ctx.fill();
-    ctx.fillStyle = itemColor;
-    ctx.fillText(typeLabel, W / 2, cY + 29);
-
-    // Prize label
-    ctx.fillStyle = "#fffaf4";
-    ctx.font = "bold 22px sans-serif";
-    const pLabel = chosenPrize.label || "";
-    if (ctx.measureText(pLabel).width <= cW - 24) {
-      ctx.fillText(pLabel, W / 2, cY + 90);
-    } else {
-      const half = Math.ceil(pLabel.length / 2);
-      ctx.font = "bold 17px sans-serif";
-      ctx.fillText(pLabel.slice(0, half), W / 2, cY + 82);
-      ctx.fillText(pLabel.slice(half), W / 2, cY + 104);
-    }
-
-    // ── "错过了" missed cards row ──────────────────────────────────
-    const missedPrizes = allPrizes.filter((_, i) => i !== chosenIndex);
-    if (missedPrizes.length > 0) {
-      ctx.fillStyle = "rgba(255,255,255,0.28)";
-      ctx.font = "11px sans-serif";
-      ctx.fillText("这轮错过了：", W / 2, cY + cH + 22);
-
-      const mCount = Math.min(missedPrizes.length, 4);
-      const mCardW = 78, mCardH = 58, mGap = 10;
-      const totalMW = mCount * mCardW + (mCount - 1) * mGap;
-      const mStartX = (W - totalMW) / 2;
-      const mY = cY + cH + 30;
-
-      missedPrizes.slice(0, mCount).forEach((mp, mi) => {
-        if (!mp) return;
-        const mc = mp.color || "#864d61";
-        const mx = mStartX + mi * (mCardW + mGap);
-        ctx.beginPath();
-        ctx.roundRect(mx, mY, mCardW, mCardH, 8);
-        ctx.fillStyle = mc + "18";
-        ctx.fill();
-        ctx.strokeStyle = mc + "55";
-        ctx.lineWidth = 1;
-        ctx.stroke();
-
-        // Type micro badge
-        ctx.font = "bold 8px sans-serif";
-        ctx.fillStyle = mc + "cc";
-        ctx.textAlign = "center";
-        ctx.fillText(lotteryTypeLabel(mp), mx + mCardW / 2, mY + 13);
-
-        // Label (truncate if needed)
-        ctx.fillStyle = "rgba(255,255,255,0.65)";
-        ctx.font = "10px sans-serif";
-        const ml = mp.label || "";
-        const maxMW = mCardW - 8;
-        if (ctx.measureText(ml).width <= maxMW) {
-          ctx.fillText(ml, mx + mCardW / 2, mY + 36);
-        } else {
-          const mhalf = Math.ceil(ml.length / 2);
-          ctx.font = "9px sans-serif";
-          ctx.fillText(ml.slice(0, mhalf), mx + mCardW / 2, mY + 29);
-          ctx.fillText(ml.slice(mhalf), mx + mCardW / 2, mY + 42);
-        }
-      });
-    }
-
-    // Footer
-    ctx.fillStyle = "rgba(255,255,255,0.22)";
-    ctx.font = "11px sans-serif";
+    // Tier label in bar
     ctx.textAlign = "center";
-    ctx.fillText(new Date().toLocaleDateString("zh-CN"), W / 2, H - 14);
+    const barTypeLabel = lotteryTypeLabel(chosenPrize);
+    ctx.font = "bold 10px sans-serif";
+    ctx.fillStyle = chosenColor;
+    ctx.fillText(barTypeLabel, W / 2, barY + 16);
+
+    // Prize name in bar
+    ctx.fillStyle = "#fffaf4";
+    ctx.font = "bold 18px sans-serif";
+    const barLabel = chosenPrize.label || "";
+    if (ctx.measureText(barLabel).width <= W - 80) {
+      ctx.fillText(barLabel, W / 2, barY + 36);
+    } else {
+      const half = Math.ceil(barLabel.length / 2);
+      ctx.font = "bold 15px sans-serif";
+      ctx.fillText(barLabel.slice(0, half), W / 2, barY + 30);
+      ctx.fillText(barLabel.slice(half), W / 2, barY + 48);
+    }
 
     // Copy to clipboard
     const shareBtn = panelEl.querySelector(".lottery-share-btn");
@@ -1729,8 +1760,8 @@
   let learnActiveTab = "today";
 
   function renderLearn(container, tab) {
-    if (!tab) learnActiveTab = "today";
-    else if (tab === "today" || tab === "review" || tab === "map") learnActiveTab = tab;
+    // 不带 tab（后台刷新、点底部「学习」）时保留当前子 tab，避免把正在复习/看档案的用户弹回「今日」。
+    if (tab === "today" || tab === "review" || tab === "map") learnActiveTab = tab;
     container.innerHTML = `
       <div class="learn-tab-bar">
         <button class="learn-tab-btn ${learnActiveTab === "today" ? "active" : ""}" data-action="learn-tab" data-tab="today" type="button">
@@ -2812,10 +2843,42 @@
       ${renderAdminAchievementSection()}
       ${renderAdminTitleSection()}
       ${renderAdminLotterySection()}
+      ${renderAdminGameParamsSection()}
       ${renderAdminCalendarSection()}
       ${renderAdminSampleDataSection()}
       ${renderAdminDataSection()}
       ${renderAdminPasswordSection()}
+    `;
+  }
+
+  function renderAdminGameParamsSection() {
+    const cfg = GAME_CONFIG;
+    return `
+      <section class="admin-section">
+        <h3>游戏参数</h3>
+        <p class="muted admin-help">修改后保存立即生效（农场收获目标需重新加载页面）</p>
+        <div class="admin-row">
+          <label>农场收获目标（条记录）</label>
+          <input type="number" min="1" class="admin-input admin-input-sm" data-game-param="farm.harvestTarget" value="${cfg.farm.harvestTarget}" />
+        </div>
+        <div class="admin-row">
+          <label>番茄钟专注时长（分钟）</label>
+          <input type="number" min="1" max="120" class="admin-input admin-input-sm" data-game-param="timer.defaultFocus" value="${cfg.timer.defaultFocus}" />
+        </div>
+        <div class="admin-row">
+          <label>番茄钟休息时长（分钟）</label>
+          <input type="number" min="1" max="60" class="admin-input admin-input-sm" data-game-param="timer.defaultRest" value="${cfg.timer.defaultRest}" />
+        </div>
+        <div class="admin-row">
+          <label>卡片休眠天数（无记录后休眠）</label>
+          <input type="number" min="1" class="admin-input admin-input-sm" data-game-param="cards.dormantDays" value="${cfg.cards.dormantDays}" />
+        </div>
+        <div class="admin-row">
+          <label>精通最低连续★★★次数</label>
+          <input type="number" min="1" class="admin-input admin-input-sm" data-game-param="cards.masteredMinRecent" value="${cfg.cards.masteredMinRecent}" />
+        </div>
+        <button class="btn btn-primary btn-sm" data-admin-action="save-game-params" type="button">保存游戏参数</button>
+      </section>
     `;
   }
 
@@ -2881,6 +2944,7 @@
       { key: "big.studyDays", label: "大勋章：长期坚持（天）", val: cfg.big.studyDays },
       { key: "lottery.smallPerDraw", label: "抽奖：小勋章兑换比例", val: cfg.lottery.smallPerDraw },
       { key: "lottery.bigPerDraw", label: "抽奖：大勋章兑换比例", val: cfg.lottery.bigPerDraw },
+      { key: "lottery.pityThreshold", label: "抽奖：保底触发次数", val: cfg.lottery.pityThreshold },
     ];
   }
 
@@ -2920,9 +2984,14 @@
 
   function renderAdminLotterySection() {
     const cfg = loadLotteryConfig();
+    const pickCount = Number(GAME_CONFIG.lottery?.pickCount || 5);
     return `
       <section class="admin-section">
         <h3>抽奖转盘内容</h3>
+        <div class="admin-row">
+          <label>每次翻牌张数</label>
+          <input type="number" min="1" max="10" class="admin-input admin-input-sm" id="admin-lottery-pick-count" value="${pickCount}" />
+        </div>
         <div id="admin-lottery-items">
           ${cfg.items.map((item, index) => renderAdminLotteryItem(item, index)).join("")}
         </div>
@@ -3386,6 +3455,8 @@
       return;
     }
     localStorage.setItem("lottery_config", JSON.stringify({ items }));
+    const pickCountInput = overlay.querySelector("#admin-lottery-pick-count");
+    if (pickCountInput) updateGameConfig("lottery.pickCount", Math.max(1, Number(pickCountInput.value || 5)));
     refreshVisibleRoute();
     toast("转盘内容已保存");
   }
@@ -3491,6 +3562,14 @@
         refreshAdminPanel(overlay);
         refreshVisibleRoute();
         toast("测试卡片已清除");
+        return;
+      }
+      if (action === "save-game-params") {
+        overlay.querySelectorAll("[data-game-param]").forEach((input) => {
+          updateGameConfig(input.dataset.gameParam, Math.max(1, Number(input.value || 1)));
+        });
+        refreshAdminPanel(overlay);
+        toast("游戏参数已保存");
         return;
       }
       if (action === "save-password") {
@@ -3892,6 +3971,7 @@
   let _wheelCurrentAngleDeg = 0;
   let _reminderCount = 0;
   let _pickState = null;
+  let _bonusProceedTimer = null;
   const REMINDER_MAX = 10;
   const REMINDER_INTERVAL = 30;
 
@@ -4095,6 +4175,17 @@
     setTimeout(() => el.remove(), 1000);
   }
 
+  function parseAllMochiRecords(text) {
+    const regex = /---MOCHI-RECORD-START---([\s\S]*?)---MOCHI-RECORD-END---/g;
+    const records = [];
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      const parsed = parseMochiRecord(`---MOCHI-RECORD-START---${match[1]}---MOCHI-RECORD-END---`);
+      if (parsed) records.push(parsed);
+    }
+    return records;
+  }
+
   function parseMochiRecord(text) {
     const match = text.match(/---MOCHI-RECORD-START---([\s\S]*?)---MOCHI-RECORD-END---/);
     if (!match) return null;
@@ -4256,13 +4347,46 @@ ${record.originalQuestion || "暂无原题描述。"}
 
   function parsePastedRecordEl(textarea, result) {
     if (!textarea || !result) return;
-    const record = parseMochiRecord(textarea.value);
+    const records = parseAllMochiRecords(textarea.value);
     result.hidden = false;
-    if (!record) {
+    if (!records.length) {
       result.innerHTML = `<strong>没有找到 Mochi 记录块</strong><p class="muted">请把 AI 输出里从 ---MOCHI-RECORD-START--- 到 ---MOCHI-RECORD-END--- 的整段一起粘贴进来；如果少了开头或结尾，MochiStudy 就无法识别。</p>`;
       return;
     }
+    if (records.length >= 2) {
+      const masteredList = [];
+      records.forEach((rec) => {
+        const applied = applyMochiRecord(rec);
+        if (applied.cards.masteredNow) masteredList.push(rec.nodeLabel);
+      });
+      const subjectLine = [...new Set(records.map((r) => window.MochiKnowledge.SUBJECTS[r.subject]?.label || r.subject))].join("、");
+      const starIcons = records.map((r) => `${"★".repeat(r.stars)}${"☆".repeat(3 - r.stars)}`);
+      result.innerHTML = `
+        <div class="checkin-success">
+          <div class="checkin-success-icon">✓</div>
+          <strong class="checkin-title">综合测验导入完成！</strong>
+          <p class="checkin-detail">共 ${records.length} 条记录 · ${subjectLine}</p>
+          <ul class="checkin-batch-list">
+            ${records.map((r, i) => `<li>${window.MochiKnowledge.SUBJECTS[r.subject]?.label || r.subject} · ${escapeHtml(r.nodeLabel)} · ${starIcons[i]}</li>`).join("")}
+          </ul>
+          ${masteredList.length ? `<p class="checkin-saved-msg">新掌握：${masteredList.map(escapeHtml).join("、")}</p>` : ""}
+        </div>
+      `;
+      sparkle(result, "★");
+      textarea.value = "";
+      window.MochiPet.renderMiniState();
+      if (!document.body.classList.contains("focus-mode")) {
+        window.MochiFarm?.refreshFarmSummary?.();
+        refreshVisibleRoute();
+      }
+      window.MochiCards?.refresh?.();
+      toast(`综合测验完成，${records.length} 条记录已导入`);
+      return;
+    }
+    const record = records[0];
+    const stageBefore = window.MochiFarm?.calcPlotStage?.(record.subject) ?? 0;
     const applied = applyMochiRecord(record);
+    const stageAfter = window.MochiFarm?.calcPlotStage?.(record.subject) ?? 0;
     const subject = window.MochiKnowledge.SUBJECTS[record.subject]?.label || "数学";
     const starIcons = "★".repeat(record.stars) + "☆".repeat(3 - record.stars);
     const farmState = readJson("farm_state");
@@ -4272,11 +4396,19 @@ ${record.originalQuestion || "暂无原题描述。"}
     const todayCount = getTodayRecordCount();
     const starMsgMap = ["", "能找到卡点就是进步。", "做到这里就值了。", "完全做对，继续保持。"];
     const starMsg = starMsgMap[record.stars] || "";
+    const STAGE_NAMES = ["荒地", "种子", "发芽", "幼苗", "开花", "成熟"];
+    let growthMsg = "";
+    if (stageAfter > stageBefore) {
+      growthMsg = stageAfter >= 5
+        ? `🌟 ${subject}地块成熟了，可以收获啦！`
+        : `🌱 ${subject}地块长大了：${STAGE_NAMES[stageBefore]} → ${STAGE_NAMES[stageAfter]}`;
+    }
     result.innerHTML = `
       <div class="checkin-success">
         <div class="checkin-success-icon">✓</div>
         <strong class="checkin-title">打卡成功！</strong>
         <p class="checkin-detail">${subject} · ${record.nodeLabel} · 1题 · ${starIcons}</p>
+        ${growthMsg ? `<p class="checkin-growth">${growthMsg}</p>` : ""}
         <p class="checkin-saved-msg">已保存到学习档案，可以继续粘贴下一条。</p>
         ${starMsg ? `<p class="checkin-star-msg">${starMsg}</p>` : ""}
         <div class="checkin-farm-bar">
@@ -4286,6 +4418,7 @@ ${record.originalQuestion || "暂无原题描述。"}
         ${todayCount >= 2 ? `<span class="checkin-today">今天已打卡 ${todayCount} 次</span>` : ""}
       </div>
     `;
+    if (growthMsg) sparkle(result, "🌱");
     sparkle(result, "★");
     textarea.value = "";
     window.MochiPet.renderMiniState();
@@ -4393,8 +4526,8 @@ ${record.originalQuestion || "暂无原题描述。"}
         </div>
         <div class="focus-overlay-actions">
           <button class="btn btn-primary focus-rest-btn" data-action="stop-and-rest" type="button">
-            <span class="material-symbols-outlined">self_improvement</span>
-            我累了，现在休息
+            <span class="material-symbols-outlined">stop_circle</span>
+            结束这一轮
           </button>
           <button class="btn btn-ghost btn-sm" data-action="give-up" type="button" style="color:rgba(255,255,255,0.35);margin-top:4px">
             放弃本轮
@@ -4406,7 +4539,7 @@ ${record.originalQuestion || "暂无原题描述。"}
             做完一题，记录一下
           </button>
           <div class="focus-import-body" hidden>
-            <textarea id="focus-record-paste" rows="2" placeholder="粘贴 MOCHI-RECORD 数据块"></textarea>
+            <textarea id="focus-record-paste" rows="2" placeholder="粘贴 AI 给你的记录，自动导入"></textarea>
             <button class="btn btn-soft btn-sm" data-action="parse-focus-record" style="width:100%;margin-top:6px" type="button">导入</button>
             <div id="focus-upload-result" class="focus-upload-result"></div>
           </div>
@@ -4450,6 +4583,16 @@ ${record.originalQuestion || "暂无原题描述。"}
         );
       }
     };
+    const focusPaste = overlay.querySelector("#focus-record-paste");
+    if (focusPaste) {
+      focusPaste.addEventListener("paste", () => {
+        setTimeout(() => {
+          if (/---MOCHI-RECORD-END---/.test(focusPaste.value)) {
+            parsePastedRecordEl(focusPaste, overlay.querySelector("#focus-upload-result"));
+          }
+        }, 0);
+      });
+    }
   }
 
   function refreshFocusOverlay() {
@@ -5290,6 +5433,84 @@ ${record.originalQuestion || "暂无原题描述。"}
     }
   }
 
+  // 共享数学公式渲染：把行内 $...$ 片段转成 HTML（上下标 / 分式 / 根号 / 常见符号）。
+  // 各模块统一调用 window.MochiApp.formatRichText，不要再各自复制一份。
+  function formatRichText(value) {
+    const escaped = escapeHtml(value).replace(/＄/g, "$");
+    return escaped.replace(/\$([^$\n]+)\$/g, (_, formula) => `<span class="math-inline">${formatInlineMath(formula)}</span>`);
+  }
+
+  function formatInlineMath(value) {
+    let text = String(value || "");
+    text = text
+      .replace(/\\cdot/g, "·")
+      .replace(/\\times/g, "×")
+      .replace(/\\div/g, "÷")
+      .replace(/\\leq/g, "≤")
+      .replace(/\\geq/g, "≥")
+      .replace(/\\neq/g, "≠")
+      .replace(/\\left/g, "")
+      .replace(/\\right/g, "")
+      .replace(/\\,/g, " ");
+    const symbols = {
+      "\\sin": "sin",
+      "\\cos": "cos",
+      "\\tan": "tan",
+      "\\ln": "ln",
+      "\\log": "log",
+      "\\rightleftharpoons": "⇌",
+      "\\alpha": "α",
+      "\\beta": "β",
+      "\\gamma": "γ",
+      "\\Gamma": "Γ",
+      "\\delta": "δ",
+      "\\Delta": "Δ",
+      "\\epsilon": "ε",
+      "\\theta": "θ",
+      "\\lambda": "λ",
+      "\\mu": "μ",
+      "\\pi": "π",
+      "\\rho": "ρ",
+      "\\sigma": "σ",
+      "\\omega": "ω",
+      "\\Omega": "Ω",
+      "\\phi": "φ",
+      "\\Phi": "Φ",
+    };
+    Object.entries(symbols).forEach(([source, target]) => {
+      text = text.replaceAll(source, target);
+    });
+    text = text.replace(/([A-Za-z0-9)]+)\^\{([^{}]+)\}/g, "$1<sup>$2</sup>");
+    text = text.replace(/([A-Za-z0-9)]+)\^([A-Za-z0-9]+)/g, "$1<sup>$2</sup>");
+    text = text.replace(/([A-Za-z0-9)]+)_\{([^{}]+)\}/g, "$1<sub>$2</sub>");
+    text = text.replace(/([A-Za-z0-9)]+)_([A-Za-z0-9]+)/g, "$1<sub>$2</sub>");
+    const fracRender = (top, bottom) => `<span class="math-frac"><span class="math-num">${top}</span><span class="math-den">${bottom}</span></span>`;
+    text = replaceMathCommand(text, "dfrac", 2, fracRender);
+    text = replaceMathCommand(text, "tfrac", 2, fracRender);
+    text = replaceMathCommand(text, "frac", 2, fracRender);
+    text = replaceMathCommand(text, "sqrt", 1, (radicand) => (
+      `<span class="math-sqrt"><span class="math-radicand">${radicand}</span></span>`
+    ));
+    text = text.replace(/\\?sqrt\s*([A-Za-z0-9]+)/g, `<span class="math-sqrt"><span class="math-radicand">$1</span></span>`);
+    return text;
+  }
+
+  function replaceMathCommand(text, command, arity, render) {
+    const slash = "\\\\?";
+    const pattern = arity === 2
+      ? new RegExp(`${slash}${command}\\s*\\{([^{}]+)\\}\\s*\\{([^{}]+)\\}`, "g")
+      : new RegExp(`${slash}${command}\\s*\\{([^{}]+)\\}`, "g");
+    let next = text;
+    for (let i = 0; i < 8; i += 1) {
+      const replaced = arity === 2
+        ? next.replace(pattern, (_, first, second) => render(first, second))
+        : next.replace(pattern, (_, first) => render(first));
+      if (replaced === next) break;
+      next = replaced;
+    }
+    return next;
+  }
+
   window.MochiApp = {
     GAME_CONFIG,
     GAME_CONFIG_DEFAULTS,
@@ -5319,6 +5540,7 @@ ${record.originalQuestion || "暂无原题描述。"}
     writeStudyLogs,
     readFocusLogs,
     parseMochiRecord,
+    parseAllMochiRecords,
     readJson,
     writeJson,
     readStudyCardMeta,
@@ -5345,6 +5567,8 @@ ${record.originalQuestion || "暂无原题描述。"}
     calcStudyStreak,
     getTodayRecordCount,
     escapeHtml,
+    formatRichText,
+    formatInlineMath,
   };
 
   init();

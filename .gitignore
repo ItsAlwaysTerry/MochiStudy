@@ -27,3 +27,7 @@ backup*.json
 *.log
 *.tmp
 *.bak
+
+# Skill tooling artifacts (not part of the website)
+.agents/
+skills-lock.json

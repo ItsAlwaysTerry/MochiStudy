@@ -65,7 +65,7 @@
     return {
       lesson: "新题讲解",
       review: "复习测验",
-      quiz: "小测验",
+      quiz: "综合测验",
       reflection: "阶段复盘",
     }[source || "lesson"] || "新题讲解";
   }
@@ -389,10 +389,99 @@
     return lines.join("\n").trim();
   }
 
+  function generateSessionPack(overrideItems, maxItems = 4) {
+    const reviewState = buildReviewState();
+    const pool = overrideItems || reviewState.items
+      .filter((item) => item.score > 0 || item.due)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, maxItems);
+
+    if (!pool.length) return "暂无足够的复习内容，继续学习后再来。";
+
+    // Put lowest-score item first as warm-up, rest ordered most-urgent first
+    const sorted = [...pool].sort((a, b) => b.score - a.score);
+    const warmup = sorted.length >= 2 ? sorted.pop() : null;
+    const ordered = warmup ? [warmup, ...sorted] : sorted;
+
+    const lines = [
+      `【MochiStudy 综合测验包】${todayKey()}`,
+      `今日测验：${ordered.length} 个知识点`,
+      "",
+      "学生画像：基础薄弱，容易受挫；需要小步提示、具体鼓励；已积累多张学习卡片。",
+      "",
+      "━━ 测验规则 ━━",
+      "1. 从第一个知识点（热身）开始，出一道题，等学生作答",
+      "2. 先让学生尝试，最多两层提示，不直接给完整答案",
+      "3. 每个知识点测完一题后，让学生一句话总结，然后进入下一个",
+      "4. 热身题稍容易；核心题直指卡点",
+      "5. 全部做完后一次性输出所有 MOCHI-RECORD，中途不要提前输出",
+      "",
+    ];
+
+    ordered.forEach((item, index) => {
+      const isWarmup = index === 0;
+      const chronological = [...item.entries].sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
+      const recent = chronological.slice(-3);
+      const recordIds = chronological.map(cardId);
+      const nodeSummary = window.MochiCards?.readNodeSummary?.(item.subject, item.nodeLabel) || {};
+
+      lines.push(`━━ 知识点 ${index + 1}${isWarmup ? "（热身）" : ""}：${item.subjectLabel} · ${item.nodeLabel} ━━`);
+      lines.push(`卡片数：${item.totalCards} 张　低星记录：${item.lowStarCount} 张`);
+      if (item.mainPainPoint) lines.push(`主要卡点：${item.mainPainPoint}`);
+      if (nodeSummary.mainPainPointOverride) lines.push(`精华摘要-卡点：${nodeSummary.mainPainPointOverride}`);
+      if (nodeSummary.keyBreakthroughOverride) lines.push(`精华摘要-突破：${nodeSummary.keyBreakthroughOverride}`);
+      if (item.reasons.length) lines.push(`复习原因：${item.reasons[0]}`);
+      lines.push("");
+
+      if (recent.length) {
+        lines.push("最近记录：");
+        recent.forEach((log) => {
+          const meta = window.MochiApp?.readStudyCardMeta?.()?.[cardId(log)] || {};
+          lines.push(`  ${log.date || "未知"}｜${"★".repeat(log.stars || 1)}${"☆".repeat(3 - (log.stars || 1))}｜${sourceLabel(meta.source)}`);
+          lines.push(`    卡点：${String(log.painPoint || "").trim() || "暂无"}`);
+          if (String(log.originalQuestion || "").trim()) lines.push(`    原题：${String(log.originalQuestion).trim()}`);
+          lines.push(`    套路：${String(log.routine || "").trim() || "暂无"}`);
+          if (meta.reviewResult) lines.push(`    复习结果：${meta.reviewResult}`);
+        });
+      }
+      lines.push("");
+    });
+
+    lines.push("━━ 全部做完后统一输出（按顺序每个知识点一条）━━");
+    lines.push("");
+
+    ordered.forEach((item) => {
+      const chronological = [...item.entries].sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
+      const recordIds = chronological.map(cardId);
+      lines.push("---MOCHI-RECORD-START---");
+      lines.push(`科目：${item.subjectLabel}`);
+      lines.push(`知识点：${item.nodeLabel}`);
+      lines.push("学习来源：综合测验");
+      lines.push("掌握星级：[1-3]");
+      lines.push("卡点记录：[本次仍卡住或已修正的地方，一句话]");
+      lines.push("原题：[本次测验题核心描述]");
+      lines.push("今日套路：[本次带走的3步套路]");
+      lines.push("复习结果：[独立做对/看提示做对/仍需讲解]");
+      lines.push("错误类型：[概念不清/审题漏条件/公式选择/计算错误/步骤混乱/时间不够/其他]");
+      lines.push("卡住步骤：[具体卡在哪一步；没有就写 无]");
+      lines.push("关键突破：[最重要的一次修正]");
+      lines.push("题型标签：[用顿号分隔]");
+      lines.push("信心分：[1-5]");
+      lines.push("耗时分钟：[整数]");
+      lines.push(`关联记录：${recordIds.join("、")}`);
+      lines.push(`学习日期：${todayKey()}`);
+      lines.push("---MOCHI-RECORD-END---");
+      lines.push("");
+    });
+
+    return lines.join("\n").trim();
+  }
+
   window.MochiReviewEngine = {
     DEFAULT_REVIEW_SETTINGS,
     buildReviewState,
     generateNodeReviewPack,
+    generateSessionPack,
     classifyReviewResult,
     statusInfo,
     cardId,

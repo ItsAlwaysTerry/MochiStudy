@@ -148,7 +148,10 @@
   function renderMiniState() {
     const farmState = window.MochiFarm?.readState?.() || {};
     const farmLevel = window.MochiFarm?.getFarmLevel?.(farmState.totalHarvests || 0);
-    const farmResources = `收获${farmState.totalHarvests || 0}次 · XP${farmState.xp || 0}`;
+    const streak = window.MochiApp?.calcStudyStreak?.() || 0;
+    const farmResources = streak >= 2
+      ? `收获${farmState.totalHarvests || 0}次 · 连续${streak}天`
+      : `收获${farmState.totalHarvests || 0}次`;
     const topEl = document.getElementById("sidebar-pet-info");
     const sideResources = document.getElementById("side-resources");
     const topResources = document.getElementById("top-resources");
@@ -259,8 +262,8 @@
             </div>
           </div>
           <button class="btn btn-primary timer-rest-btn" data-action="stop-and-rest">
-            <span class="material-symbols-outlined">self_improvement</span>
-            我累了，现在休息
+            <span class="material-symbols-outlined">stop_circle</span>
+            结束这一轮
           </button>
         </section>
       `;
