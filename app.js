@@ -1806,6 +1806,7 @@
     container.querySelectorAll("[data-action='learn-tab']").forEach((button) => {
       button.addEventListener("click", () => {
         renderLearn(container, button.dataset.tab || "today");
+        window.scrollTo(0, 0);
       });
     });
   }
@@ -1828,6 +1829,8 @@
     else if (routeId === "settings") renderSettings(view);
     else window.MochiFarm?.renderFarm?.(view);
     window.MochiPet.renderMiniState();
+    // 切换页面后回到顶部，避免继承上一个页面的滚动位置（如档案下滑后跳复习页看不到顶部面板）。
+    window.scrollTo(0, 0);
   }
 
   function currentRoute() {
