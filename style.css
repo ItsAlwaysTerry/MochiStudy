@@ -2732,7 +2732,11 @@ button {
   z-index: 9500;
   display: flex;
   overflow: hidden;
-  background: rgba(18, 12, 16, 0.96);
+  background:
+    radial-gradient(125% 80% at 50% -6%, rgba(134, 77, 97, 0.38), transparent 58%),
+    radial-gradient(120% 90% at 50% 116%, rgba(245, 197, 24, 0.1), transparent 56%),
+    linear-gradient(180deg, #1b1017 0%, #130b11 52%, #0b0709 100%);
+  box-shadow: inset 0 0 240px rgba(0, 0, 0, 0.66);
 }
 
 body.lottery-mode .side-nav,
@@ -2855,9 +2859,15 @@ body.lottery-mode .bottom-nav {
 
 .lottery-title {
   margin: 0;
-  color: #fff;
-  font-size: 20px;
+  color: #f7e3b0;
+  font-size: 22px;
   font-weight: 800;
+  letter-spacing: 0.14em;
+  background: linear-gradient(180deg, #fff6e6 0%, #f5c518 70%, #d99a2b 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 2px 22px rgba(245, 197, 24, 0.22);
 }
 
 .lottery-header-meta {
@@ -2973,10 +2983,13 @@ body.lottery-mode .bottom-nav {
 
 .lottery-dice-panel {
   width: 100%;
-  padding: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.06);
+  padding: 22px 14px;
+  border: 1px solid rgba(245, 197, 24, 0.18);
+  border-radius: 20px;
+  background:
+    radial-gradient(80% 70% at 50% 35%, rgba(47, 106, 63, 0.34), transparent 70%),
+    rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.35);
   text-align: center;
 }
 
@@ -3022,21 +3035,21 @@ body.lottery-mode .bottom-nav {
 .lottery-die {
   display: grid;
   place-items: center;
-  width: 76px;
-  height: 76px;
-  border: 2px solid rgba(134, 77, 97, 0.25);
-  border-radius: 18px;
-  background: #fffaf4;
+  width: 88px;
+  height: 88px;
+  border: 2px solid rgba(245, 197, 24, 0.3);
+  border-radius: 20px;
+  background: linear-gradient(160deg, #fffdf8, #f3e7d4);
   color: var(--primary-dark);
   font-family: "Plus Jakarta Sans", sans-serif;
-  font-size: 40px;
+  font-size: 50px;
   font-weight: 800;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.32), inset 0 2px 0 rgba(255, 255, 255, 0.7);
   transition: transform 0.08s ease;
 }
 
 .lottery-die.rolling {
-  transform: rotate(6deg) scale(1.06);
+  transform: rotate(8deg) scale(1.08);
 }
 
 .lottery-die.locked {
@@ -3142,29 +3155,62 @@ body.lottery-mode .bottom-nav {
 /* ── Phase structure ────────────────────────────────────────── */
 
 .lottery-action-btn {
+  position: relative;
   display: block;
   width: 100%;
-  padding: 14px;
+  padding: 15px;
   border: 0;
   border-radius: 16px;
-  background: linear-gradient(135deg, #864d61, #c0425a);
+  background: linear-gradient(135deg, #9a4f64 0%, #c0425a 52%, #e08a4a 128%);
   color: #fff;
   cursor: pointer;
+  overflow: hidden;
   font-family: "Plus Jakarta Sans", sans-serif;
   font-size: 16px;
   font-weight: 800;
-  letter-spacing: 0.01em;
-  transition: opacity 0.15s ease, transform 0.12s ease;
+  letter-spacing: 0.02em;
+  box-shadow: 0 12px 32px rgba(192, 66, 90, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  transition: transform 0.12s ease, box-shadow 0.15s ease;
+  animation: lottery-btn-pulse 2.6s ease-in-out infinite;
+}
+
+.lottery-action-btn::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 38%;
+  height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transform: skewX(-18deg);
+  animation: lottery-btn-sheen 3.4s ease-in-out infinite;
 }
 
 .lottery-action-btn:hover:not(:disabled) {
-  opacity: 0.9;
-  transform: scale(1.01);
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 16px 38px rgba(192, 66, 90, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
-.lottery-action-btn:disabled {
-  opacity: 0.38;
+.lottery-action-btn:disabled,
+.lottery-action-btn.is-rolling {
+  animation: none;
+  opacity: 0.6;
   cursor: default;
+}
+
+.lottery-action-btn:disabled::after,
+.lottery-action-btn.is-rolling::after {
+  display: none;
+}
+
+@keyframes lottery-btn-pulse {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+@keyframes lottery-btn-sheen {
+  0% { left: -60%; }
+  55%, 100% { left: 130%; }
 }
 
 .phase-label {
@@ -3202,15 +3248,35 @@ body.lottery-mode .bottom-nav {
 }
 
 .showcase-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 16px 12px;
-  border: 1px solid color-mix(in srgb, var(--item-color, #864d61) 30%, transparent);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--item-color, #864d61) 10%, rgba(0, 0, 0, 0.2));
+  padding: 20px 12px 15px;
+  border: 1px solid color-mix(in srgb, var(--item-color, #864d61) 48%, transparent);
+  border-radius: 16px;
+  background:
+    linear-gradient(162deg, color-mix(in srgb, var(--item-color, #864d61) 28%, rgba(18, 11, 16, 0.92)), rgba(18, 11, 16, 0.95));
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   text-align: center;
+  overflow: hidden;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.showcase-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: var(--item-color, #864d61);
+  opacity: 0.92;
+}
+
+.showcase-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.46), inset 0 1px 0 rgba(255, 255, 255, 0.13);
 }
 
 .showcase-type {

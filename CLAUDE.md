@@ -370,3 +370,15 @@ v34 之后的改动：
 - **空状态消除死胡同 + 分场景。** `knowledgeMap.js` `renderEmpty()` 加「去导入第一条」按钮（`data-route="home"`）。`reviewPage.js` `renderFlatList()` 空态区分两种：零学习记录 → 「还没有学习记录，先去导入」+ 去导入按钮；已无到期项 → 「目前没有需要复习的薄弱点，先去学新题吧 👍」，新用户不再被「没有薄弱点」误导。
 - **接通悬空的综合测验 prompt。** `skill/gaokao综合测验.md` 一直存在、且复习页「综合测验」流程引用它，但设置页 AI 指南只挂了 2 个 prompt、用户拿不到它。`app.js` `renderSettings()` 新增第三个 `<details>` 条目（高考综合测验 AI 私教，`data-prompt-path="./skill/gaokao综合测验.md"`），并把「两个 AI Prompt」改为「三个」，闭合断掉的引用。
 - **GitHub：** 当前网站作为成品推送到 `github.com/ItsAlwaysTerry/MochiStudy` main 分支；`.gitignore` 新增忽略 `.agents/` 与 `skills-lock.json`（技能工具产物，非网站文件）。
+
+### V3.8 抽奖「命运牌局」质感重做（不改抽奖逻辑，2026-06-14）
+
+抽奖三段式逻辑（showcase 看奖池 → dice 摇双骰子 → pick 翻牌 + near-miss + result）和保底/运气槽机制**保持不变**，只做视觉质感和一处交互打磨。版本号 → `20260614h`。
+
+- **骰子一键同掷（交互）。** 原 dice 阶段有「摇第一颗 / 摇第二颗」两个按钮、要点两次。`app.js`：lp-dice 标记去掉两个 per-die 按钮，改为单个 `data-action="roll-both"` 按钮；`rollSingleDie()` 重构为不碰按钮的 `animateDie(index, extraSteps)`，新增 `rollBothDice()` 用 `Promise.all` 并行滚两颗（第二颗 `extraSteps=2` 稍晚落定更有戏），全停后统一 `updateDiceState()`。handler `roll-die` → `roll-both`。`phase-to-pick-direct`/`btn-phase-pick-direct` 残留引用已无害（守卫存在）。
+- **沉浸式背景。** `style.css` `.lottery-overlay` 从半透明 `rgba(18,12,16,.96)` 改为多层径向+线性渐变的「牌桌」氛围 + `inset` 暗角，不再透出背后页面。
+- **烫金标题。** `.lottery-title` 用 `background-clip:text` 金色渐变 + 字距 + 柔光（带 `#f7e3b0` 回退色）。
+- **奖池卡片质感。** `.showcase-card` 改为带顶部 `--item-color` 色条、深色渐变底、内/外阴影、hover 上浮 4px 的「牌」质感。
+- **主行动按钮。** `.lottery-action-btn` 暖金渐变 + 光泽扫过 `::after` + 轻微呼吸 `lottery-btn-pulse`；`:disabled`/`.is-rolling` 时停动画、隐藏光泽。
+- **骰子区。** `.lottery-dice-panel` 加绿绒径向渐变 + 内阴影；`.lottery-die` 加大到 88px、金边、双高光。
+- 注：CLAUDE.md「勋章系统」里旧描述「转盘用 Canvas 绘制…easeOutCubic」已过时，抽奖实为 DOM 卡牌玩法，非 Canvas 转盘。

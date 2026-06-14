@@ -1042,17 +1042,15 @@
               <div class="lottery-dice">
                 <div class="lottery-die-slot">
                   <span class="lottery-die" data-die="1">?</span>
-                  <button class="btn btn-soft btn-sm" data-action="roll-die" data-die-index="1" type="button">摇第一颗</button>
                 </div>
                 <div class="lottery-die-slot">
                   <span class="lottery-die" data-die="2">?</span>
-                  <button class="btn btn-soft btn-sm" data-action="roll-die" data-die-index="2" type="button">摇第二颗</button>
                 </div>
               </div>
-              <p class="lottery-dice-result" id="lottery-dice-result">两颗都摇完才能翻牌</p>
+              <p class="lottery-dice-result" id="lottery-dice-result">两颗一起摇，看看运气</p>
             </div>
             <p class="dice-bonus-hint">合计 ≤2 或 ≥11 → 🎉 多翻一张再选</p>
-            <button class="lottery-action-btn" data-action="phase-to-pick-direct" id="btn-phase-pick-direct" type="button" disabled>翻牌！🃏</button>
+            <button class="lottery-action-btn" data-action="roll-both" id="btn-roll-both" type="button">🎲 摇骰子</button>
           </div>
 
           <div class="lottery-phase" id="lp-pick" hidden>
@@ -1086,10 +1084,7 @@
       if (action === "close-lottery") { hideLotteryOverlay(); return; }
       if (action === "spin-lottery") { showLotteryOverlay(); return; }
       if (action === "phase-to-dice") { phaseToDice(); return; }
-      if (action === "roll-die") {
-        rollSingleDie(Number(actionEl.dataset.dieIndex || 0));
-        return;
-      }
+      if (action === "roll-both") { rollBothDice(); return; }
       if (action === "phase-to-pick-direct") { phaseToPickDirect(); return; }
       if (action === "bonus-proceed") { phaseToPickDirect(); return; }
       if (action === "phase-to-draw") { phaseToDraw(); return; }
@@ -1163,33 +1158,39 @@
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  async function rollSingleDie(index) {
+  // 单颗骰子的滚动动画（不碰按钮、不结算），供「一起摇」并行调用。
+  async function animateDie(index, extraSteps = 0) {
     if (index !== 1 && index !== 2) return;
     const inner = document.querySelector(".lottery-inner");
     const dieEl = document.querySelector(`[data-die="${index}"]`);
-    const button = document.querySelector(`[data-action="roll-die"][data-die-index="${index}"]`);
-    if (!inner || !dieEl || !button || button.disabled) return;
-    button.disabled = true;
-    button.textContent = "摇动中...";
+    if (!inner || !dieEl) return;
     const FACES = ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
-    // Delays: fast phase (steps 0-9) then deceleration (steps 10-15)
+    // 快滚（0-9）后减速（10-15）；extraSteps 让第二颗多滚几下，错开落定更有戏。
     const DELAYS = [50, 55, 62, 70, 80, 90, 100, 112, 125, 138, 170, 220, 280, 350, 430, 520];
+    for (let i = 0; i < extraSteps; i += 1) DELAYS.splice(10, 0, 200);
     let value = 1;
     for (let step = 0; step < DELAYS.length; step += 1) {
       value = 1 + Math.floor(Math.random() * 6);
       dieEl.textContent = FACES[value - 1];
-      // Rolling tilt only in fast phase
       dieEl.classList.toggle("rolling", step < 10 && step % 2 === 0);
       await sleep(DELAYS[step]);
     }
-    // Hold final face with a brief pause before locking
     dieEl.classList.remove("rolling");
-    await sleep(180);
+    await sleep(160);
     inner.dataset[index === 1 ? "dieOne" : "dieTwo"] = String(value);
-    // Visual: gold glow on locked die + fade out the roll button
     dieEl.classList.add("locked");
     dieEl.closest(".lottery-die-slot")?.classList.add("locked");
-    button.textContent = `已锁定 ${FACES[value - 1]}`;
+  }
+
+  // 一键同掷：两颗并行滚动（第二颗稍晚落定），全部停下再统一结算。
+  async function rollBothDice() {
+    const button = document.getElementById("btn-roll-both");
+    if (!button || button.disabled) return;
+    button.disabled = true;
+    button.classList.add("is-rolling");
+    button.textContent = "🎲 摇动中…";
+    await Promise.all([animateDie(1, 0), animateDie(2, 2)]);
+    button.hidden = true;
     updateDiceState();
   }
 
