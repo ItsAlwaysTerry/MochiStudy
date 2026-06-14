@@ -370,8 +370,11 @@
     return `
       <section class="card archive-empty">
         <span class="material-symbols-outlined">collections_bookmark</span>
-        <h3>${label}还没有学习记录</h3>
+        <h3>${escapeHtml(label)}还没有学习记录</h3>
         <p class="muted">导入第一条记录后，这里会出现你的第一张卡片 🌱</p>
+        <button class="btn btn-soft btn-sm" data-route="home" type="button" style="margin-top:10px">
+          <span class="material-symbols-outlined">upload_file</span>去导入第一条
+        </button>
       </section>
     `;
   }
@@ -1575,7 +1578,7 @@
   }
 
   function escapeHtml(value) {
-    return String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
+    return window.MochiApp?.escapeHtml?.(value) ?? String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
   }
 
   function formatRichText(value) {

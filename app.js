@@ -3705,7 +3705,7 @@
         </section>
         <section class="card" style="grid-column:1 / -1">
           <h3>AI 使用指南</h3>
-          <p class="muted" style="margin-top:4px">两个 AI Prompt，分别用于学新题和复习旧卡点。复制后粘贴到 Claude 的「项目说明」里，即可激活对应的 AI 角色。</p>
+          <p class="muted" style="margin-top:4px">三个 AI Prompt，分别用于学新题、复习旧卡点和综合测验。复制后粘贴到 Claude 的「项目说明」里，即可激活对应的 AI 角色。</p>
           <div class="ai-guide-prompts" style="margin-top:16px;display:flex;flex-direction:column;gap:12px">
             <details class="ai-prompt-entry">
               <summary class="ai-prompt-summary">
@@ -3737,6 +3737,22 @@
               <div class="ai-prompt-steps">
                 <p><strong>使用方法：</strong>在「学习」页找到待复习的知识点，点「复制材料」，把内容粘贴给这个 AI。复习结束后把 AI 输出的记录粘贴回复习页导入。</p>
                 <p class="muted" style="font-size:12px;margin-top:6px">流程：读取历史卡点 → 选1-2个优先复习点 → 出变式题 → 2层提示不给答案 → 复盘套路 → 输出含关键突破的记录</p>
+              </div>
+            </details>
+            <details class="ai-prompt-entry">
+              <summary class="ai-prompt-summary">
+                <span class="ai-prompt-icon material-symbols-outlined">quiz</span>
+                <div class="ai-prompt-meta">
+                  <strong>高考综合测验 AI 私教</strong>
+                  <span class="muted" style="font-size:12px">综合测验时用 · 读取测验包 → 多知识点依次出题 → 一次性输出全部 MOCHI-RECORD</span>
+                </div>
+                <button class="btn btn-soft btn-sm ai-prompt-copy-btn" data-action="copy-ai-prompt" data-prompt-path="./skill/gaokao综合测验.md" type="button">
+                  <span class="material-symbols-outlined">content_copy</span>复制 Prompt
+                </button>
+              </summary>
+              <div class="ai-prompt-steps">
+                <p><strong>使用方法：</strong>在「学习 → 复习队列」点右上角「综合测验」复制测验包，粘给这个 AI。做完后把它输出的全部记录一起粘回复习页的综合测验面板导入。</p>
+                <p class="muted" style="font-size:12px;margin-top:6px">流程：读取测验包 → 按热身→核心弱点顺序出题 → 每个知识点一道 → 全部做完一次性输出所有记录</p>
               </div>
             </details>
           </div>
