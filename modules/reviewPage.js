@@ -122,6 +122,22 @@
     window.MochiApp?.toast?.(copied ? "综合测验包已复制" : "复制失败");
   }
 
+  // 外部（学习档案）主动出测验时调用：复制任意范围的测验包，跳到复习页并打开综合测验粘回面板。
+  async function openSessionForPack(pack, label) {
+    if (!pack || pack.startsWith("暂无") || !pack.startsWith("【")) {
+      window.MochiApp?.toast?.("这个范围还没有足够的记录可以出题");
+      return;
+    }
+    const copied = await copyToClipboard(pack);
+    STATE.sessionActive = true;
+    STATE.message = copied
+      ? `已复制「${label || "测验"}」的测验包，粘给「综合测验 AI 私教」做完，再把全部输出一起粘到下面导入。`
+      : "复制失败，请重试。";
+    window.MochiApp?.navigate?.("review");
+    if (STATE.container) render(STATE.container);
+    window.MochiApp?.toast?.(copied ? "测验包已复制" : "复制失败");
+  }
+
   function importSession(container, button) {
     const panel = button.closest("[data-session-panel]");
     const textarea = panel?.querySelector("[data-session-input]");
@@ -472,5 +488,5 @@
     return window.MochiApp?.formatRichText?.(value) ?? escapeHtml(value);
   }
 
-  window.MochiReviewPage = { render, startItem, copyItemPack, importItemByKey };
+  window.MochiReviewPage = { render, startItem, copyItemPack, importItemByKey, openSessionForPack };
 })();

@@ -346,6 +346,9 @@
           <p>每条学习记录都会变成一张卡片，按知识点收进这里。</p>
         </div>
         <div class="archive-head-actions">
+          <button class="btn btn-soft btn-sm" data-archive-action="quiz-subject" type="button">
+            <span class="material-symbols-outlined">casino</span>随机周测
+          </button>
           <button class="btn btn-outline btn-sm" data-card-export>
             <span class="material-symbols-outlined">ios_share</span>导出档案
           </button>
@@ -454,6 +457,9 @@
             <p>${formatRichText(summary.reviewNote)}</p>
           </div>
         ` : ""}
+        <button class="btn btn-primary btn-sm archive-quiz-node-btn" data-archive-action="quiz-node" data-review-key="${escapeHtml(summary.subject + "::" + summary.node.label)}" type="button">
+          <span class="material-symbols-outlined">quiz</span>测这个知识点
+        </button>
         <details class="archive-history-details"${STATE.historyExpanded ? " open" : ""}>
           <summary>${cardsLabel}</summary>
           <div class="study-card-list" data-card-list data-card-list-subject="${escapeHtml(subjectKey)}" data-card-list-node-label="${escapeHtml(summary.node.label)}">
@@ -490,6 +496,9 @@
             </div>
             <div class="card-head-actions">
               <div class="card-stars-badge ${starClass}">${stars(starCount)}</div>
+              <button class="card-action-btn" data-card-action="quiz-card" type="button" title="测这张" aria-label="测这张卡片">
+                <span class="material-symbols-outlined">quiz</span>
+              </button>
               <button class="card-action-btn card-drag-handle" data-card-action="drag" draggable="true" type="button" title="拖动排序" aria-label="拖动排序">
                 <span class="material-symbols-outlined">drag_indicator</span>
               </button>
@@ -530,6 +539,59 @@
 
   function metaForLog(log) {
     return readAllCardMeta()[cardId(log)] || {};
+  }
+
+  // ── 主动出测验：学习档案里就地选范围（科目随机周测 / 单知识点 / 单卡），统一交给复习页的综合测验面板粘回 ──
+  function reviewItems() {
+    return window.MochiReviewEngine?.buildReviewState?.()?.items || [];
+  }
+
+  function quizNode(key) {
+    const item = reviewItems().find((it) => it.key === key);
+    if (!item) { window.MochiApp?.toast?.("这个知识点还没有可出题的记录"); return; }
+    const pack = window.MochiReviewEngine?.generateNodeReviewPack?.(item);
+    window.MochiReviewPage?.openSessionForPack?.(pack, `${item.subjectLabel} · ${item.nodeLabel}`);
+  }
+
+  function quizCard(nodeKey, cardIdValue) {
+    const item = reviewItems().find((it) => it.key === nodeKey);
+    if (!item) { window.MochiApp?.toast?.("找不到这张卡对应的知识点"); return; }
+    const card = (item.entries || []).find((e) => cardId(e) === cardIdValue);
+    if (!card) { window.MochiApp?.toast?.("找不到这张卡片"); return; }
+    const single = {
+      ...item,
+      entries: [card],
+      reasons: ["只针对这一张卡片做一次小测"],
+      mainPainPoint: String(card.painPoint || "").trim() || item.mainPainPoint,
+    };
+    const pack = window.MochiReviewEngine?.generateNodeReviewPack?.(single);
+    window.MochiReviewPage?.openSessionForPack?.(pack, `${item.subjectLabel} · ${item.nodeLabel}（单张卡）`);
+  }
+
+  function quizSubject() {
+    const subjectKey = STATE.activeSubject;
+    const items = reviewItems().filter((it) => it.subject === subjectKey && (it.entries || []).length);
+    if (!items.length) { window.MochiApp?.toast?.("这一科还没有学习记录，先去学几道题"); return; }
+    const picked = pickWeakFirst(items, 4);
+    const pack = window.MochiReviewEngine?.generateSessionPack?.(picked);
+    window.MochiReviewPage?.openSessionForPack?.(pack, `${SUBJECTS[subjectKey]?.label || ""} 随机周测`);
+  }
+
+  // 偏弱点优先的加权随机抽取（score 越高=越弱越久没碰，权重越大），不放回。
+  function pickWeakFirst(items, n) {
+    const pool = items.map((it) => ({ it, w: Math.max(0.5, Number(it.score || 0) + 1) }));
+    const out = [];
+    const target = Math.min(n, pool.length);
+    while (out.length < target && pool.length) {
+      const total = pool.reduce((sum, p) => sum + p.w, 0);
+      let r = Math.random() * total;
+      let idx = 0;
+      for (; idx < pool.length; idx += 1) { r -= pool[idx].w; if (r <= 0) break; }
+      idx = Math.min(idx, pool.length - 1);
+      out.push(pool[idx].it);
+      pool.splice(idx, 1);
+    }
+    return out;
   }
 
   function summaryKey(subject, nodeLabel) {
@@ -779,10 +841,15 @@
       const archiveActionButton = event.target.closest("[data-archive-action]");
       if (archiveActionButton) {
         event.stopPropagation();
-        if (archiveActionButton.dataset.archiveAction === "go-review") {
+        const act = archiveActionButton.dataset.archiveAction;
+        if (act === "go-review") {
           const key = archiveActionButton.dataset.reviewKey || "";
           if (key) window.MochiReviewPage?.startItem?.(key, "suggestion");
           else window.MochiApp?.navigate?.("review");
+        } else if (act === "quiz-node") {
+          quizNode(archiveActionButton.dataset.reviewKey || "");
+        } else if (act === "quiz-subject") {
+          quizSubject();
         }
         return;
       }
@@ -814,6 +881,13 @@
       if (card) {
         const id = card.dataset.cardId;
         const action = event.target.closest("[data-card-action]")?.dataset.cardAction;
+        if (action === "quiz-card") {
+          event.stopPropagation();
+          const subjectKey = card.dataset.cardSubject || STATE.activeSubject || "math";
+          const nodeLabel = card.dataset.cardNodeLabel || "";
+          quizCard(`${subjectKey}::${nodeLabel}`, id);
+          return;
+        }
         if (action === "delete") {
           event.stopPropagation();
           deleteCard(card);

@@ -387,3 +387,12 @@ v34 之后的改动：
 - **奖池发牌入场。** `.showcase-card` 加 `showcase-deal` 入场关键帧（从下方 + 缩放 + 微旋转淡入），`renderLotteryWheel` 给每张卡 `animation-delay:${i*55}ms` 逐张"发牌"。hover 改为只动阴影/边框（不再 translateY，避开和入场动画 transform 收尾的冲突）。
 - **中大奖/保底金光庆祝。** 新增 `showBigWinCelebration()`：往 body 插 `.lottery-bigwin-burst`（金色径向闪光 `.bigwin-flash` + 16 个随机下落撒花 `.bigwin-sparkles span`），2.4s 后自动移除；在 `showLotteryResult` 里当 `chosenPrize.type==="bigReward" || pityActive` 时触发。
 - **牌背质感。** `.pick-card-front` 加 45° 重复斜纹 + 金边 + 内描边，`.pick-card-mark` 的 `?` 改金色发光，翻牌前的牌堆更像真卡。翻牌本身已是 3D（preserve-3d + backface-hidden），未改。
+
+### V3.9 主动出测验：学习档案就地选范围（build `20260614j`）
+
+需求：原来学生只能等算法判定"该复习"才能测，或一次性导出全部素材；没法主动选范围测。底层出包能力其实都在（`generateNodeReviewPack(单点)`、`generateSessionPack(任意 overrideItems)`），只缺"选范围"的 UI。方案：**学习档案三层就地选 + 偏弱点优先的随机周测**，统一复用复习页的综合测验粘回面板，不改数据结构。
+
+- `reviewPage.js`：新增并导出 `openSessionForPack(pack, label)`——复制任意范围的测验包、置 `STATE.sessionActive`、`navigate("review")` 打开综合测验粘回面板。
+- `knowledgeMap.js` 新增 `reviewItems()`（取 `buildReviewState().items`，含所有有记录的知识点，不止到期项）、`quizNode(key)`（单知识点 → `generateNodeReviewPack`）、`quizCard(nodeKey, cardId)`（克隆 item 把 entries 换成单张卡）、`quizSubject()`（本科目 `pickWeakFirst` 抽最多 4 个 → `generateSessionPack`）、`pickWeakFirst()`（按 `score+1` 加权不放回随机，弱点优先）。
+- UI 入口三层：学习档案顶部「随机周测」（`data-archive-action="quiz-subject"`，按当前科目 `STATE.activeSubject`）；知识点摘要里「测这个知识点」（`quiz-node` + `data-review-key="subject::label"`，不再受到期限制）；每张卡片操作区「测这张」图标（`data-card-action="quiz-card"`，用卡片 `data-card-subject/-node-label/-id` 定位）。`item.key` 格式为 `subject::nodeLabel`。
+- `style.css` 新增 `.archive-quiz-node-btn`（整宽 + 上间距）。
