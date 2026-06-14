@@ -361,3 +361,12 @@ v34 之后的改动：
 - **导航：学习子 tab 不再被弹回。** `app.js` `renderLearn(container, tab)` 删除 `if (!tab) learnActiveTab = "today"`。原逻辑导致任何不带 tab 的刷新（`refreshVisibleRoute()`、点底部「学习」）都把正在「复习/档案」的用户强制弹回「今日」。改为不带 tab 时保留 `learnActiveTab`（模块初值仍是 "today"）。
 - **导入动作：粘贴即导入（省一次点击）。** 核心动作"粘贴→点确认导入"里那次点击多余。多处导入框新增 `paste` 监听：贴进的文本含完整 `---MOCHI-RECORD-END---` 时自动导入，按钮保留为兜底。覆盖：首页主导入框 `#record-paste`（farm.js，调 `parsePastedRecordEl`）、首页复习卡 `#home-review-paste`（farm.js，自动点击 import 按钮）、沉浸模式 `#focus-record-paste`（app.js `bindFocusOverlay`）、复习页逐项 `[data-review-input]` 与综合测验 `[data-session-input]`（reviewPage.js `bindContainer` 委托 paste，自动点击对应导入按钮）。placeholder 文案统一改成「把 AI 给你的记录整段粘进来，会自动导入」一类人话，去掉 “MOCHI-RECORD” 术语。
 - **专注：结束按钮措辞前后一致。** 专注中按钮原为「我累了，现在休息」（已替用户决定休息），但点完进 deciding 又问「开始休息 / 结束今天」，逻辑矛盾。改为中性的「结束这一轮」（图标 `stop_circle`，action 仍是 `stop-and-rest`），真正的休息/结束选择留在 deciding 屏。`app.js` 沉浸 overlay 和 `pet.js` `renderTimer` focusing 卡同步改。
+
+### V3.7 全自动打磨：代码一致性 + 空状态 + 接通悬空 prompt（2026-06-14）
+
+本轮为「成品推送 GitHub 后」的全自动迭代，纯打磨、不加功能。版本号 → `20260614f`，顶部加 `build-X` 可见标记便于确认缓存刷新。
+
+- **escapeHtml/escapeAttr 统一。** 原本 6 个模块各复制一份。`knowledgeMap.js`/`reviewPage.js`/`calendar.js`/`pet.js`（escapeAttr+escapeHtml）改为薄包装 `window.MochiApp?.escapeHtml?.(value) ?? …`（`farm.js`/`todayStudy.js` 此前已是包装）。`app.js` 的规范版 `escapeHtml` 改为 `String(value ?? "")`，避免 `undefined`/`null` 渲染成字面文字，惠及所有委托模块。
+- **空状态消除死胡同 + 分场景。** `knowledgeMap.js` `renderEmpty()` 加「去导入第一条」按钮（`data-route="home"`）。`reviewPage.js` `renderFlatList()` 空态区分两种：零学习记录 → 「还没有学习记录，先去导入」+ 去导入按钮；已无到期项 → 「目前没有需要复习的薄弱点，先去学新题吧 👍」，新用户不再被「没有薄弱点」误导。
+- **接通悬空的综合测验 prompt。** `skill/gaokao综合测验.md` 一直存在、且复习页「综合测验」流程引用它，但设置页 AI 指南只挂了 2 个 prompt、用户拿不到它。`app.js` `renderSettings()` 新增第三个 `<details>` 条目（高考综合测验 AI 私教，`data-prompt-path="./skill/gaokao综合测验.md"`），并把「两个 AI Prompt」改为「三个」，闭合断掉的引用。
+- **GitHub：** 当前网站作为成品推送到 `github.com/ItsAlwaysTerry/MochiStudy` main 分支；`.gitignore` 新增忽略 `.agents/` 与 `skills-lock.json`（技能工具产物，非网站文件）。
