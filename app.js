@@ -2914,7 +2914,6 @@
     const routeId = currentRoute();
     if (routeId === "season") renderSeason(view);
     if (routeId === "achievements") renderAchievements(view);
-    if (routeId === "schedule") window.MochiCalendar?.renderSchedule?.(view);
     if (routeId === "settings") renderSettings(view);
     if (routeId === "home") window.MochiFarm?.renderFarm?.(view);
     if (routeId === "learn") renderLearn(view);
@@ -5170,7 +5169,6 @@ ${record.originalQuestion || "暂无原题描述。"}
     window.MochiPet?.renderMiniState?.();
     const routeId = location.hash.replace("#", "") || "home";
     if (routeId === "home") window.MochiFarm?.renderFarm?.(view);
-    if (routeId === "schedule") window.MochiCalendar?.renderSchedule?.(view);
     if ((routeId === "today" || routeId === "learn") && learnActiveTab === "today") window.MochiTodayStudy?.render?.(document.getElementById("learn-content-pane"));
     if ((routeId === "map" || routeId === "learn") && learnActiveTab === "map") window.MochiCards?.refresh?.();
     if (routeId === "season") renderSeason(view);
@@ -5307,26 +5305,6 @@ ${record.originalQuestion || "暂无原题描述。"}
       if (name === "open-holiday-form") openHolidayForm();
       if (name === "delete-holiday") deleteHoliday(action.dataset.holidayId);
       if (name === "set-holiday-mode") setHolidayMode(action.dataset.mode || "auto");
-      if (name === "day-detail" || name === "day-summary") {
-        const logs = readStudyLogs().filter((log) => log.date.slice(0, 10) === action.dataset.date);
-        window.MochiCalendar.renderDayModal(action.dataset.date, logs, name === "day-detail" ? "detail" : "summary");
-      }
-      return;
-    }
-    const node = event.target.closest("[data-node-id]");
-    if (node) {
-      window.MochiKnowledge.renderDetail(node.dataset.nodeId);
-      return;
-    }
-    const month = event.target.closest("[data-month]");
-    if (month) {
-      window.MochiCalendar.shiftMonth(month.dataset.month);
-      route("schedule");
-      return;
-    }
-    const day = event.target.closest("[data-date]");
-    if (day) {
-      window.MochiCalendar.openDaySummary(day.dataset.date);
       return;
     }
   }

@@ -21,7 +21,6 @@ app.js              — 主逻辑，路由、导入记录、勋章、备份
 modules/
   farm.js           — 农场模块（window.MochiFarm）
   knowledgeMap.js   — 卡片收藏册模块（window.MochiCards）
-  calendar.js       — 日历模块（window.MochiCalendar）
   timer.js          — 番茄钟模块（window.MochiTimer）
   pet.js            — 学习状态模块（window.MochiPet，内部兼容旧命名）
   ai.js             — AI导入解析模块（window.MochiAI）
@@ -405,3 +404,9 @@ v34 之后的改动：
 第三轮增强（build `20260614l`）：
 - **随机周测加"只测哪类"过滤**：`showQuizSheet` 第三个字段 `filters`（全部弱点 / 没复习过 / 有低星）；`quizSubjectScoped(scope, count, filter)` 按 `it.reviewCount` / `it.lowStarCount` 过滤后再 `pickWeakFirst`。
 - **多选改为跨知识点（甚至跨科）**：选择不再在切换节点/科目时清空（删除两处 `STATE.quizSelected.clear()`）。新增 `selectedGroups()` 把选中卡片按所属知识点分组；`quizSelectedCards()`（无参）单组用 `generateNodeReviewPack`、多组用 `generateSessionPack(overrideItems)`。选择条改为**全局浮条** `renderQuizSelectBar()`（在 `render()` 末尾输出，`.quiz-select-bar-global` 固定在视口底部、≤980px 上移到 88px 避开底部导航），显示"已选 N 张 · M 个知识点"。
+
+### V4.0 滚动复位 + 删除孤儿日历 + 复习空状态出口（build `20260614n`）
+
+- **导航回顶**（build m）：文档/窗口是滚动容器，跳转继承旧滚动位置（档案下滑后跳复习页看不到顶部面板）。`route()` 末尾加 `window.scrollTo(0,0)`（只有真实导航走 route，`refreshVisibleRoute`/局部 render 不受影响）；学习子 tab 切换也回顶。
+- **删除孤儿日历模块**：`route()` 把 `#schedule` 重写为 `#season`，`renderSchedule` 永不渲染；`data-month/data-date/data-node-id/day-detail/day-summary` 全是只消费无产出的死处理。删除 `modules/calendar.js`（424 行，加载时无副作用）、index.html 的 calendar script、`refreshVisibleRoute`/handleClick 里的两处 `renderSchedule` 分支和四段死点击处理。`window.MochiCalendar` 已不存在；日历相关数据（`focus_log`/`school_holidays`）本就经 `MochiApp` 读取，不受影响。`.calendar-*`/`.schedule-grid` 死 CSS 暂留。
+- **复习已追平的出口**：`reviewPage.js` `renderFlatList` 已追平空状态（系统无建议项）原本是死胡同，新增「去出随机周测」按钮（`data-route="map"` → 学习档案），把想继续主动测的学生导向随机周测。

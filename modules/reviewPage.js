@@ -391,7 +391,8 @@
       if (!hasAnyLog) {
         return `<div class="review-empty"><span class="material-symbols-outlined">rate_review</span><p>还没有学习记录。先去首页导入一条，复习队列会自动排起来。</p><button class="btn btn-soft btn-sm" data-route="home" type="button" style="margin-top:10px"><span class="material-symbols-outlined">upload_file</span>去导入</button></div>`;
       }
-      return renderEmpty("目前没有需要复习的薄弱点，先去学新题吧 👍");
+      // 已追平：系统没有建议项，但想继续主动测的学生不该卡死，指给学习档案的「随机周测」。
+      return `<div class="review-empty"><span class="material-symbols-outlined">task_alt</span><p>目前没有系统建议的薄弱点 👍 想自己挑范围测，可以去学习档案出一份周测。</p><button class="btn btn-soft btn-sm" data-route="map" type="button" style="margin-top:10px"><span class="material-symbols-outlined">casino</span>去出随机周测</button></div>`;
     }
     const allVisible = [...todaySuggestions, ...activeItems];
     const rows = allVisible.map((item) => renderReviewRow(item, todayKeys.has(item.key))).join("");
