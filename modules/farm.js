@@ -468,6 +468,7 @@
       <div class="home-flow">
         <div class="home-left-stack">
           ${renderStreakBanner()}
+          ${!hasRecords && holiday ? renderAiGuideCard(true) : ""}
           ${holiday
             ? `
               <section class="card import-card home-import-card">
@@ -494,7 +495,7 @@
             `
           }
           ${hasRecords ? renderTodayReviewCard() : ""}
-          ${renderAiGuideCard(!hasRecords)}
+          ${hasRecords ? renderAiGuideCard(false) : ""}
         </div>
         <div class="home-right-stack">
           <section class="card mini-farm-card">
