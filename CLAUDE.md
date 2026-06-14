@@ -382,3 +382,8 @@ v34 之后的改动：
 - **主行动按钮。** `.lottery-action-btn` 暖金渐变 + 光泽扫过 `::after` + 轻微呼吸 `lottery-btn-pulse`；`:disabled`/`.is-rolling` 时停动画、隐藏光泽。
 - **骰子区。** `.lottery-dice-panel` 加绿绒径向渐变 + 内阴影；`.lottery-die` 加大到 88px、金边、双高光。
 - 注：CLAUDE.md「勋章系统」里旧描述「转盘用 Canvas 绘制…easeOutCubic」已过时，抽奖实为 DOM 卡牌玩法，非 Canvas 转盘。
+
+第二轮追加（build `20260614i`）：
+- **奖池发牌入场。** `.showcase-card` 加 `showcase-deal` 入场关键帧（从下方 + 缩放 + 微旋转淡入），`renderLotteryWheel` 给每张卡 `animation-delay:${i*55}ms` 逐张"发牌"。hover 改为只动阴影/边框（不再 translateY，避开和入场动画 transform 收尾的冲突）。
+- **中大奖/保底金光庆祝。** 新增 `showBigWinCelebration()`：往 body 插 `.lottery-bigwin-burst`（金色径向闪光 `.bigwin-flash` + 16 个随机下落撒花 `.bigwin-sparkles span`），2.4s 后自动移除；在 `showLotteryResult` 里当 `chosenPrize.type==="bigReward" || pityActive` 时触发。
+- **牌背质感。** `.pick-card-front` 加 45° 重复斜纹 + 金边 + 内描边，`.pick-card-mark` 的 `?` 改金色发光，翻牌前的牌堆更像真卡。翻牌本身已是 3D（preserve-3d + backface-hidden），未改。

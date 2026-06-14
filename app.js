@@ -1000,10 +1000,10 @@
     const pityFull = pityCurrent >= pityThreshold;
     const items = loadLotteryConfig().items;
 
-    const showcaseCards = items.map((item) => {
+    const showcaseCards = items.map((item, i) => {
       const color = escapeHtml(item.color || lotteryColorForType(item.type));
       return `
-        <div class="showcase-card" style="--item-color:${color}">
+        <div class="showcase-card" style="--item-color:${color};animation-delay:${i * 55}ms">
           <span class="showcase-type">${escapeHtml(lotteryTypeLabel(item))}</span>
           <strong class="showcase-label">${escapeHtml(item.label || "")}</strong>
         </div>`;
@@ -1462,6 +1462,23 @@
     showLotteryResult(chosenPrize, chosenIndex, _pickState?.prizes || []);
   }
 
+  // 中大奖/保底触发时的金光 + 撒花庆祝（纯展示，自动消失）。
+  function showBigWinCelebration() {
+    const el = document.createElement("div");
+    el.className = "lottery-bigwin-burst";
+    const glyphs = ["✨", "🌟", "🎉", "💛", "⭐"];
+    const sparkles = Array.from({ length: 16 }, (_, i) => {
+      const left = 4 + Math.random() * 92;
+      const delay = Math.random() * 0.5;
+      const dur = 1.4 + Math.random() * 0.8;
+      const size = 18 + Math.random() * 18;
+      return `<span style="left:${left}%;animation-delay:${delay}s;animation-duration:${dur}s;font-size:${size}px">${glyphs[i % glyphs.length]}</span>`;
+    }).join("");
+    el.innerHTML = `<div class="bigwin-flash"></div><div class="bigwin-sparkles">${sparkles}</div>`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 2400);
+  }
+
   function showNearMissEffect(text, isWin = false) {
     const splash = document.createElement("div");
     splash.className = `near-miss-splash${isWin ? " is-win" : ""}`;
@@ -1485,6 +1502,7 @@
     state.usedLotteryCount = Number(state.usedLotteryCount || 0) + 1;
     saveAchievementState(state);
     if (chosenPrize) saveLotteryHistory(chosenPrize);
+    if (chosenPrize?.type === "bigReward" || pityActive) showBigWinCelebration();
 
     // Inline result panel inside lp-pick, below the visible cards
     const pickPhase = document.getElementById("lp-pick");
