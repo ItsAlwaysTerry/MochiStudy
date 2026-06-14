@@ -7,6 +7,7 @@
     historyExpanded: false,
     expandedCards: new Map(),
     draggingCardId: "",
+    quizSelected: new Set(),
     container: null,
   };
   const DEFAULT_CARDS_CONFIG = { masteredMinRecent: 2, dormantDays: 30 };
@@ -345,14 +346,6 @@
           <h2>学习档案</h2>
           <p>每条学习记录都会变成一张卡片，按知识点收进这里。</p>
         </div>
-        <div class="archive-head-actions">
-          <button class="btn btn-soft btn-sm" data-archive-action="quiz-subject" type="button">
-            <span class="material-symbols-outlined">casino</span>随机周测
-          </button>
-          <button class="btn btn-outline btn-sm" data-card-export>
-            <span class="material-symbols-outlined">ios_share</span>导出档案
-          </button>
-        </div>
       </div>
       <div class="subject-tabs archive-tabs">
         ${Object.entries(SUBJECTS).map(([key, item]) => {
@@ -360,6 +353,14 @@
           const count = item.nodes.filter((node) => logsForNode(logs, key, node.label).length > 0).length;
           return `<button class="subject-tab ${active}" data-card-subject="${key}" style="--subject-color:${item.color}">${item.label} (${count})</button>`;
         }).join("")}
+      </div>
+      <div class="archive-actions-row">
+        <button class="btn btn-primary btn-sm" data-archive-action="quiz-subject" type="button">
+          <span class="material-symbols-outlined">casino</span>随机周测
+        </button>
+        <button class="btn btn-outline btn-sm" data-card-export>
+          <span class="material-symbols-outlined">ios_share</span>导出档案
+        </button>
       </div>
       ${hasSubjectLogs && hasVisibleLogs ? `
         <section class="archive-list">
@@ -462,10 +463,20 @@
         </button>
         <details class="archive-history-details"${STATE.historyExpanded ? " open" : ""}>
           <summary>${cardsLabel}</summary>
+          <p class="study-card-list-hint">点卡片右上角 <span class="material-symbols-outlined" style="font-size:14px;vertical-align:-2px">add_task</span> 选中一张或多张，一起出测验。</p>
           <div class="study-card-list" data-card-list data-card-list-subject="${escapeHtml(subjectKey)}" data-card-list-node-label="${escapeHtml(summary.node.label)}">
             ${summary.entries.map((log, index) => renderStudyCard(log, subjectKey, index, summary.node.label)).join("")}
           </div>
         </details>
+        ${STATE.quizSelected.size > 0 ? `
+          <div class="quiz-select-bar">
+            <span class="quiz-select-count">已选 ${STATE.quizSelected.size} 张</span>
+            <div class="quiz-select-bar-actions">
+              <button class="btn btn-soft btn-sm" data-archive-action="quiz-clear" type="button">清空</button>
+              <button class="btn btn-primary btn-sm" data-archive-action="quiz-selected" data-review-key="${escapeHtml(summary.subject + "::" + summary.node.label)}" type="button"><span class="material-symbols-outlined">quiz</span>测这 ${STATE.quizSelected.size} 张</button>
+            </div>
+          </div>
+        ` : ""}
       </div>
     `;
   }
@@ -480,8 +491,9 @@
     const starClass = starCount === 3 ? "stars-gold" : starCount === 2 ? "stars-orange" : "stars-gray";
     const hasRoutine = Boolean(String(log.routine || "").trim());
     const hasOriginalQuestion = Boolean(originalQuestionText(log));
+    const quizSelected = STATE.quizSelected.has(id);
     return `
-      <article class="study-card expand-${expandState || "none"}"
+      <article class="study-card expand-${expandState || "none"}${quizSelected ? " card-quiz-selected" : ""}"
         data-card-id="${escapeHtml(id)}"
         data-card-subject="${escapeHtml(subjectKey)}"
         data-card-node-label="${escapeHtml(nodeLabel)}"
@@ -496,8 +508,8 @@
             </div>
             <div class="card-head-actions">
               <div class="card-stars-badge ${starClass}">${stars(starCount)}</div>
-              <button class="card-action-btn" data-card-action="quiz-card" type="button" title="测这张" aria-label="测这张卡片">
-                <span class="material-symbols-outlined">quiz</span>
+              <button class="card-action-btn${quizSelected ? " active" : ""}" data-card-action="quiz-card" type="button" title="选中测验" aria-label="选这张测验">
+                <span class="material-symbols-outlined">${quizSelected ? "check_circle" : "add_task"}</span>
               </button>
               <button class="card-action-btn card-drag-handle" data-card-action="drag" draggable="true" type="button" title="拖动排序" aria-label="拖动排序">
                 <span class="material-symbols-outlined">drag_indicator</span>
@@ -553,28 +565,80 @@
     window.MochiReviewPage?.openSessionForPack?.(pack, `${item.subjectLabel} · ${item.nodeLabel}`);
   }
 
-  function quizCard(nodeKey, cardIdValue) {
-    const item = reviewItems().find((it) => it.key === nodeKey);
-    if (!item) { window.MochiApp?.toast?.("找不到这张卡对应的知识点"); return; }
-    const card = (item.entries || []).find((e) => cardId(e) === cardIdValue);
-    if (!card) { window.MochiApp?.toast?.("找不到这张卡片"); return; }
-    const single = {
-      ...item,
-      entries: [card],
-      reasons: ["只针对这一张卡片做一次小测"],
-      mainPainPoint: String(card.painPoint || "").trim() || item.mainPainPoint,
-    };
-    const pack = window.MochiReviewEngine?.generateNodeReviewPack?.(single);
-    window.MochiReviewPage?.openSessionForPack?.(pack, `${item.subjectLabel} · ${item.nodeLabel}（单张卡）`);
+  function quizSubjectScoped(scope, count) {
+    let items = reviewItems().filter((it) => (it.entries || []).length);
+    if (scope !== "all") items = items.filter((it) => it.subject === scope);
+    if (!items.length) { window.MochiApp?.toast?.("这个范围还没有学习记录，先去学几道题"); return; }
+    const picked = pickWeakFirst(items, Math.max(1, Number(count) || 4));
+    const pack = window.MochiReviewEngine?.generateSessionPack?.(picked);
+    const scopeLabel = scope === "all" ? "全科" : (SUBJECTS[scope]?.label || "");
+    window.MochiReviewPage?.openSessionForPack?.(pack, `${scopeLabel}随机周测（${picked.length}个知识点）`);
   }
 
-  function quizSubject() {
-    const subjectKey = STATE.activeSubject;
-    const items = reviewItems().filter((it) => it.subject === subjectKey && (it.entries || []).length);
-    if (!items.length) { window.MochiApp?.toast?.("这一科还没有学习记录，先去学几道题"); return; }
-    const picked = pickWeakFirst(items, 4);
-    const pack = window.MochiReviewEngine?.generateSessionPack?.(picked);
-    window.MochiReviewPage?.openSessionForPack?.(pack, `${SUBJECTS[subjectKey]?.label || ""} 随机周测`);
+  // 多选卡片一起测：把当前展开知识点里被选中的卡片打成一个单知识点测验包。
+  function quizSelectedCards(nodeKey) {
+    const item = reviewItems().find((it) => it.key === nodeKey);
+    if (!item) { window.MochiApp?.toast?.("找不到对应知识点"); return; }
+    const chosen = (item.entries || []).filter((e) => STATE.quizSelected.has(cardId(e)));
+    if (!chosen.length) { window.MochiApp?.toast?.("还没有选中卡片"); return; }
+    const packed = {
+      ...item,
+      entries: chosen,
+      reasons: [`只针对选中的 ${chosen.length} 张卡片做一次小测`],
+    };
+    const pack = window.MochiReviewEngine?.generateNodeReviewPack?.(packed);
+    window.MochiReviewPage?.openSessionForPack?.(pack, `${item.subjectLabel} · ${item.nodeLabel}（${chosen.length}张卡）`);
+    STATE.quizSelected.clear();
+  }
+
+  // 选科目 + 题量的随机周测弹窗（自包含 overlay，模式同导出面板）。
+  function showQuizSheet() {
+    document.getElementById("archive-quiz-root")?.remove();
+    const scopes = [["all", "全部"], ...Object.entries(SUBJECTS).map(([key, item]) => [key, item.label])];
+    const counts = [2, 3, 4, 5];
+    let pickedScope = STATE.activeSubject || "all";
+    let pickedCount = 4;
+    const root = document.createElement("div");
+    root.id = "archive-quiz-root";
+    root.className = "archive-export-root";
+    const renderSheet = () => `
+      <section class="archive-export-sheet" role="dialog" aria-modal="true">
+        <div class="modal-head">
+          <div><h2>随机周测</h2></div>
+          <button class="icon-btn" data-quiz-close aria-label="关闭"><span class="material-symbols-outlined">close</span></button>
+        </div>
+        <p class="archive-export-hint">偏弱点优先：低星、反复卡住、很久没碰的更容易被抽中。</p>
+        <div class="quiz-sheet-field">
+          <small>测哪一科</small>
+          <div class="quiz-sheet-options">
+            ${scopes.map(([v, l]) => `<button class="${v === pickedScope ? "active" : ""}" data-quiz-scope="${v}" type="button">${l}</button>`).join("")}
+          </div>
+        </div>
+        <div class="quiz-sheet-field">
+          <small>抽几个知识点</small>
+          <div class="quiz-sheet-options">
+            ${counts.map((c) => `<button class="${c === pickedCount ? "active" : ""}" data-quiz-count="${c}" type="button">${c} 个</button>`).join("")}
+          </div>
+        </div>
+        <div class="archive-export-actions">
+          <button class="btn btn-primary" data-quiz-go type="button"><span class="material-symbols-outlined">casino</span>出这份周测</button>
+          <button class="btn btn-outline" data-quiz-close type="button">关闭</button>
+        </div>
+      </section>
+    `;
+    root.innerHTML = renderSheet();
+    root.addEventListener("click", (event) => {
+      if (event.target === root || event.target.closest("[data-quiz-close]")) { root.remove(); return; }
+      const scopeBtn = event.target.closest("[data-quiz-scope]");
+      if (scopeBtn) { pickedScope = scopeBtn.dataset.quizScope; root.innerHTML = renderSheet(); return; }
+      const countBtn = event.target.closest("[data-quiz-count]");
+      if (countBtn) { pickedCount = Number(countBtn.dataset.quizCount); root.innerHTML = renderSheet(); return; }
+      if (event.target.closest("[data-quiz-go]")) {
+        root.remove();
+        quizSubjectScoped(pickedScope, pickedCount);
+      }
+    });
+    document.body.appendChild(root);
   }
 
   // 偏弱点优先的加权随机抽取（score 越高=越弱越久没碰，权重越大），不放回。
@@ -849,7 +913,12 @@
         } else if (act === "quiz-node") {
           quizNode(archiveActionButton.dataset.reviewKey || "");
         } else if (act === "quiz-subject") {
-          quizSubject();
+          showQuizSheet();
+        } else if (act === "quiz-selected") {
+          quizSelectedCards(archiveActionButton.dataset.reviewKey || "");
+        } else if (act === "quiz-clear") {
+          STATE.quizSelected.clear();
+          render(container);
         }
         return;
       }
@@ -864,6 +933,7 @@
         STATE.expandedNode = "";
         STATE.highlightNodeId = "";
         STATE.historyExpanded = false;
+        STATE.quizSelected.clear();
         render(container);
         return;
       }
@@ -871,7 +941,7 @@
       if (nodeButton) {
         const id = nodeButton.dataset.cardNode;
         const nextExpanded = STATE.expandedNode === id ? "" : id;
-        if (nextExpanded !== STATE.expandedNode) STATE.historyExpanded = false;
+        if (nextExpanded !== STATE.expandedNode) { STATE.historyExpanded = false; STATE.quizSelected.clear(); }
         STATE.expandedNode = nextExpanded;
         if (!STATE.expandedNode) STATE.highlightNodeId = "";
         render(container);
@@ -883,9 +953,9 @@
         const action = event.target.closest("[data-card-action]")?.dataset.cardAction;
         if (action === "quiz-card") {
           event.stopPropagation();
-          const subjectKey = card.dataset.cardSubject || STATE.activeSubject || "math";
-          const nodeLabel = card.dataset.cardNodeLabel || "";
-          quizCard(`${subjectKey}::${nodeLabel}`, id);
+          if (STATE.quizSelected.has(id)) STATE.quizSelected.delete(id);
+          else STATE.quizSelected.add(id);
+          render(STATE.container);
           return;
         }
         if (action === "delete") {

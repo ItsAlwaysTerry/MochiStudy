@@ -396,3 +396,8 @@ v34 之后的改动：
 - `knowledgeMap.js` 新增 `reviewItems()`（取 `buildReviewState().items`，含所有有记录的知识点，不止到期项）、`quizNode(key)`（单知识点 → `generateNodeReviewPack`）、`quizCard(nodeKey, cardId)`（克隆 item 把 entries 换成单张卡）、`quizSubject()`（本科目 `pickWeakFirst` 抽最多 4 个 → `generateSessionPack`）、`pickWeakFirst()`（按 `score+1` 加权不放回随机，弱点优先）。
 - UI 入口三层：学习档案顶部「随机周测」（`data-archive-action="quiz-subject"`，按当前科目 `STATE.activeSubject`）；知识点摘要里「测这个知识点」（`quiz-node` + `data-review-key="subject::label"`，不再受到期限制）；每张卡片操作区「测这张」图标（`data-card-action="quiz-card"`，用卡片 `data-card-subject/-node-label/-id` 定位）。`item.key` 格式为 `subject::nodeLabel`。
 - `style.css` 新增 `.archive-quiz-node-btn`（整宽 + 上间距）。
+
+第二轮修正 + 增强（build `20260614k`）：
+- **修可见性 bug**：`#learn-content-pane .page-head { display:none }` 把整个 page-head（含原来放在 `.archive-head-actions` 里的「随机周测/导出档案」）隐藏了，所以学生看不到随机周测。把动作按钮移出 page-head，放到科目 tab 下方的可见行 `.archive-actions-row`。
+- **随机周测加选项**：点「随机周测」改为弹出自包含 overlay `showQuizSheet()`（复用 `.archive-export-root/.archive-export-sheet` 外层），可选**科目**（全部/数学/物理/化学，默认当前科目）和**题量**（2/3/4/5 个知识点），确认后 `quizSubjectScoped(scope, count)` 出包。
+- **「测这张」改为多选**：卡片 quiz 图标（`add_task`/选中 `check_circle`）改为切换 `STATE.quizSelected`(Set of cardId)；知识点摘要里出现 sticky 操作条 `.quiz-select-bar`「已选 N 张 / 清空 / 测这 N 张」；`quizSelectedCards(nodeKey)` 把选中卡片打成单知识点包。切换知识点/科目时清空选择。删除原 `quizCard()` 单卡即时函数。
