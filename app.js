@@ -4585,7 +4585,7 @@ ${record.originalQuestion || "暂无原题描述。"}
     }
     const presets = commitmentPresets();
     const presetHtml = presets.length
-      ? `<div class="commitment-presets">${presets.map((p) => `<button class="commitment-preset-chip" data-preset="${escapeAttr(p)}" type="button">${escapeHtml(p)}</button>`).join("")}</div>`
+      ? `<div class="commitment-presets">${presets.map((p) => `<button class="commitment-preset-chip" data-preset="${escapeHtml(p)}" type="button">${escapeHtml(p)}</button>`).join("")}</div>`
       : "";
     const gate = document.createElement("div");
     gate.id = "commitment-gate";
