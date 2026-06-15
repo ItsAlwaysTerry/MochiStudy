@@ -1776,7 +1776,7 @@
   }
 
 
-  let learnActiveTab = "today";
+  let learnActiveTab = "review";
 
   function renderLearn(container, tab) {
     // 不带 tab（后台刷新、点底部「学习」）时保留当前子 tab，避免把正在复习/看档案的用户弹回「今日」。

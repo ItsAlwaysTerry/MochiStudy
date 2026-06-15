@@ -159,7 +159,7 @@
     if (topEl && farmLevel) {
       topEl.innerHTML = `
         <div>
-          <h1>我的农场</h1>
+          <h1>Mochii</h1>
           <p id="side-level">Lv.${farmLevel.level} ${farmLevel.name}</p>
           <strong id="side-resources">${farmResources}</strong>
         </div>

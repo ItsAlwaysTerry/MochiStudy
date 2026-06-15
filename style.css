@@ -704,6 +704,27 @@ button {
   margin: 0 0 16px;
 }
 
+.review-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0 0 16px;
+}
+
+.review-actions-hint {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.review-actions-row .btn {
+  flex-shrink: 0;
+}
+
 /* 卡片多选测验 */
 .study-card-list-hint {
   margin: 0 0 8px;
@@ -2381,105 +2402,6 @@ button {
   background: var(--subject-color, var(--primary));
   border-color: transparent;
   box-shadow: var(--soft-shadow);
-}
-
-.calendar-card {
-  display: grid;
-  gap: 18px;
-}
-
-.calendar-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 14px;
-}
-
-.month-switch {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.calendar-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
-.calendar-legend .chip i {
-  width: 9px;
-  height: 9px;
-  border-radius: 999px;
-}
-
-.weekday-row,
-.calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(42px, 1fr));
-  gap: 10px;
-}
-
-.weekday-row {
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 800;
-  text-align: center;
-}
-
-.day-cell {
-  aspect-ratio: 1;
-  border: 0;
-  border-radius: 22px;
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-  align-items: center;
-  justify-items: center;
-  gap: 3px;
-  color: var(--muted);
-  background: var(--surface-mid);
-  font-weight: 800;
-  transition: transform 0.16s ease, box-shadow 0.16s ease;
-}
-
-.day-cell.has-data:hover {
-  transform: scale(1.05);
-  box-shadow: var(--soft-shadow);
-}
-
-.day-cell:disabled {
-  cursor: default;
-}
-
-.day-cell.muted-day {
-  opacity: 0.32;
-}
-
-.day-cell.level-1 { background: linear-gradient(135deg, rgba(255, 183, 206, 0.34), rgba(197, 194, 240, 0.2), rgba(155, 218, 165, 0.18)); }
-.day-cell.level-2 { background: linear-gradient(135deg, rgba(255, 183, 206, 0.58), rgba(197, 194, 240, 0.42), rgba(155, 218, 165, 0.32)); }
-.day-cell.level-3 { color: var(--text); background: linear-gradient(135deg, rgba(134, 77, 97, 0.18), rgba(74, 69, 128, 0.18), rgba(47, 106, 63, 0.16)); box-shadow: 0 8px 18px rgba(134, 77, 97, 0.16); }
-
-.day-number {
-  font-size: 13px;
-}
-
-.day-cell strong {
-  font-size: clamp(12px, 1.8vw, 15px);
-  color: var(--text);
-}
-
-.day-subjects {
-  display: flex;
-  gap: 4px;
-  min-height: 8px;
-}
-
-.day-subjects i {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.72);
 }
 
 .stats-stack {
@@ -6757,14 +6679,8 @@ body.focus-mode #view {
   }
 
   .room-head,
-  .calendar-head,
   .log-card header {
     flex-direction: column;
-  }
-
-  .weekday-row,
-  .calendar-grid {
-    gap: 6px;
   }
 
   .study-card-list {
@@ -6812,10 +6728,6 @@ body.focus-mode #view {
   .archive-export-actions {
     display: grid;
     grid-template-columns: 1fr;
-  }
-
-  .day-cell {
-    border-radius: 14px;
   }
 
   .timeline::before {

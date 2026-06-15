@@ -410,3 +410,13 @@ v34 之后的改动：
 - **导航回顶**（build m）：文档/窗口是滚动容器，跳转继承旧滚动位置（档案下滑后跳复习页看不到顶部面板）。`route()` 末尾加 `window.scrollTo(0,0)`（只有真实导航走 route，`refreshVisibleRoute`/局部 render 不受影响）；学习子 tab 切换也回顶。
 - **删除孤儿日历模块**：`route()` 把 `#schedule` 重写为 `#season`，`renderSchedule` 永不渲染；`data-month/data-date/data-node-id/day-detail/day-summary` 全是只消费无产出的死处理。删除 `modules/calendar.js`（424 行，加载时无副作用）、index.html 的 calendar script、`refreshVisibleRoute`/handleClick 里的两处 `renderSchedule` 分支和四段死点击处理。`window.MochiCalendar` 已不存在；日历相关数据（`focus_log`/`school_holidays`）本就经 `MochiApp` 读取，不受影响。`.calendar-*`/`.schedule-grid` 死 CSS 暂留。
 - **复习已追平的出口**：`reviewPage.js` `renderFlatList` 已追平空状态（系统无建议项）原本是死胡同，新增「去出随机周测」按钮（`data-route="map"` → 学习档案），把想继续主动测的学生导向随机周测。
+
+### V4.1 入口归并 + 命名梳理 + 死 CSS 清理 + 身份/默认页（build `20260615a`）
+
+确立测验/复习的二元心智模型：**「复习」= 系统建议（复习队列 tab + 首页今日复习卡，被动）** vs **「测验」= 自己挑范围出题（出测验按钮 + 测这个/测这 N 张，主动）**。
+
+- **入口归并**：`knowledgeMap.js` `showQuizSheet(defaultScope)` 加默认科目参数并经 `window.MochiCards` 导出，复习页与档案共用同一个"出测验"弹窗。`reviewPage.js` 删除藏在隐藏 `.page-head` 里、其实看不见的「综合测验」按钮（`start-session` + `startSessionReview` 一并删除），改为**可见的** `.review-actions-row`「🎲 出测验」按钮（`open-quiz` → `MochiCards.showQuizSheet("all")`）+ 一行说明。已追平空状态的出口也改为就地 `open-quiz`。
+- **命名梳理**：弹窗标题「随机周测」→「出测验」，go 按钮「出这份周测」→「出这份测验」，档案头部按钮「随机周测」→「出测验」，session 面板标题「综合测验进行中」→「测验进行中」，`quizSubjectScoped` 的 label「随机周测」→「测验」。保留指向真实 AI 角色"综合测验 AI 私教"（`skill/gaokao综合测验.md`）的措辞。
+- **死 CSS 清理**：删除已删日历模块遗留的 `.calendar-card/.calendar-head/.month-switch/.calendar-legend/.weekday-row/.calendar-grid/.day-cell（及 .level-1/2/3/.has-data/.muted-day/strong）/.day-number/.day-subjects` 主块（style.css 约 98 行）和移动端媒体查询里的相关规则。`.schedule-grid` 仍被设置页用，保留；season 热力图 `heatmap` 类与 admin 日历类保留。
+- **侧边栏身份**：`index.html` 静态 + `pet.js` `renderMiniState` 的侧边栏头部 `<h1>` 从「我的农场」改为「Mochii」（农场已是配角，一级身份用品牌名）。
+- **默认子 tab**：`app.js` `learnActiveTab` 初值 `"today"` → `"review"`，点底部「学习」首次落在「复习队列」（更可操作）；之后仍记住上次所在子 tab（V3.6 起无参 `renderLearn` 保留 tab）。

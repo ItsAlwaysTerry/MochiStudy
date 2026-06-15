@@ -14,18 +14,19 @@
     const reviewState = window.MochiReviewEngine?.buildReviewState?.() || { items: [], todaySuggestions: [] };
     const filteredItems = filterItems(reviewState.items, reviewState.todaySuggestions);
     const cooldownItems = filterCooldownItems(reviewState.items);
-    const canSession = filteredItems.length >= 2;
     container.innerHTML = `
       <div class="page-head review-head">
         <div>
           <h2>复习</h2>
           <p>从最需要复习的开始，做完一个就算赢。</p>
         </div>
-        ${canSession ? `
-          <button class="btn btn-primary btn-sm review-session-btn" data-review-action="start-session" type="button">
-            <span class="material-symbols-outlined" style="font-size:16px">quiz</span>综合测验
-          </button>
-        ` : ""}
+      </div>
+
+      <div class="review-actions-row">
+        <p class="review-actions-hint">下面是系统建议复习的；想自己挑范围测，点右边 →</p>
+        <button class="btn btn-primary btn-sm" data-review-action="open-quiz" type="button">
+          <span class="material-symbols-outlined">casino</span>出测验
+        </button>
       </div>
 
       ${STATE.message ? `<div class="review-toast-inline">${escapeHtml(STATE.message)}</div>` : ""}
@@ -71,8 +72,8 @@
       if (!button) return;
       const action = button.dataset.reviewAction;
 
-      if (action === "start-session") {
-        await startSessionReview(container);
+      if (action === "open-quiz") {
+        window.MochiCards?.showQuizSheet?.("all");
         return;
       }
       if (action === "session-import") {
@@ -105,21 +106,6 @@
         openRelatedCards(item);
       }
     });
-  }
-
-  async function startSessionReview(container) {
-    const pack = window.MochiReviewEngine?.generateSessionPack?.();
-    if (!pack || pack.startsWith("暂无")) {
-      window.MochiApp?.toast?.("复习队列里还没有足够的知识点");
-      return;
-    }
-    const copied = await copyToClipboard(pack);
-    STATE.sessionActive = true;
-    STATE.message = copied
-      ? "综合测验包已复制！粘给「综合测验 AI 私教」做完，再把全部输出一起粘到下面这个框导入。"
-      : "复制失败，请手动复制测验包内容。";
-    render(container);
-    window.MochiApp?.toast?.(copied ? "综合测验包已复制" : "复制失败");
   }
 
   // 外部（学习档案）主动出测验时调用：复制任意范围的测验包，跳到复习页并打开综合测验粘回面板。
@@ -165,7 +151,7 @@
     return `
       <section class="review-session-panel" data-session-panel>
         <div class="review-session-head">
-          <strong><span class="material-symbols-outlined">quiz</span>综合测验进行中</strong>
+          <strong><span class="material-symbols-outlined">quiz</span>测验进行中</strong>
           <button class="review-session-dismiss" data-review-action="session-dismiss" type="button" aria-label="收起">✕</button>
         </div>
         <ol class="review-stepper">
@@ -391,8 +377,8 @@
       if (!hasAnyLog) {
         return `<div class="review-empty"><span class="material-symbols-outlined">rate_review</span><p>还没有学习记录。先去首页导入一条，复习队列会自动排起来。</p><button class="btn btn-soft btn-sm" data-route="home" type="button" style="margin-top:10px"><span class="material-symbols-outlined">upload_file</span>去导入</button></div>`;
       }
-      // 已追平：系统没有建议项，但想继续主动测的学生不该卡死，指给学习档案的「随机周测」。
-      return `<div class="review-empty"><span class="material-symbols-outlined">task_alt</span><p>目前没有系统建议的薄弱点 👍 想自己挑范围测，可以去学习档案出一份周测。</p><button class="btn btn-soft btn-sm" data-route="map" type="button" style="margin-top:10px"><span class="material-symbols-outlined">casino</span>去出随机周测</button></div>`;
+      // 已追平：系统没有建议项，但想继续主动测的学生不该卡死，就地出测验。
+      return `<div class="review-empty"><span class="material-symbols-outlined">task_alt</span><p>目前没有系统建议的薄弱点 👍 想自己挑范围测，点下面出一份测验。</p><button class="btn btn-soft btn-sm" data-review-action="open-quiz" type="button" style="margin-top:10px"><span class="material-symbols-outlined">casino</span>出测验</button></div>`;
     }
     const allVisible = [...todaySuggestions, ...activeItems];
     const rows = allVisible.map((item) => renderReviewRow(item, todayKeys.has(item.key))).join("");

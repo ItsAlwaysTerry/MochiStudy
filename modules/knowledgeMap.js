@@ -356,7 +356,7 @@
       </div>
       <div class="archive-actions-row">
         <button class="btn btn-primary btn-sm" data-archive-action="quiz-subject" type="button">
-          <span class="material-symbols-outlined">casino</span>随机周测
+          <span class="material-symbols-outlined">casino</span>出测验
         </button>
         <button class="btn btn-outline btn-sm" data-card-export>
           <span class="material-symbols-outlined">ios_share</span>导出档案
@@ -571,7 +571,7 @@
     const pack = window.MochiReviewEngine?.generateSessionPack?.(picked);
     const scopeLabel = scope === "all" ? "全科" : (SUBJECTS[scope]?.label || "");
     const filterLabel = filter === "unreviewed" ? "·没复习过" : filter === "lowstar" ? "·低星" : "";
-    window.MochiReviewPage?.openSessionForPack?.(pack, `${scopeLabel}随机周测${filterLabel}（${picked.length}个知识点）`);
+    window.MochiReviewPage?.openSessionForPack?.(pack, `${scopeLabel}测验${filterLabel}（${picked.length}个知识点）`);
   }
 
   // 把当前选中的卡片按所属知识点分组（支持跨知识点、跨科）。
@@ -619,13 +619,13 @@
     `;
   }
 
-  // 选科目 + 题量的随机周测弹窗（自包含 overlay，模式同导出面板）。
-  function showQuizSheet() {
+  // 出测验弹窗：选科目 + 题量 + 只测哪类（自包含 overlay，模式同导出面板）。复习页和档案共用。
+  function showQuizSheet(defaultScope) {
     document.getElementById("archive-quiz-root")?.remove();
     const scopes = [["all", "全部"], ...Object.entries(SUBJECTS).map(([key, item]) => [key, item.label])];
     const counts = [2, 3, 4, 5];
     const filters = [["all", "全部弱点"], ["unreviewed", "没复习过"], ["lowstar", "有低星"]];
-    let pickedScope = STATE.activeSubject || "all";
+    let pickedScope = defaultScope || STATE.activeSubject || "all";
     let pickedCount = 4;
     let pickedFilter = "all";
     const root = document.createElement("div");
@@ -634,10 +634,10 @@
     const renderSheet = () => `
       <section class="archive-export-sheet" role="dialog" aria-modal="true">
         <div class="modal-head">
-          <div><h2>随机周测</h2></div>
+          <div><h2>出测验</h2></div>
           <button class="icon-btn" data-quiz-close aria-label="关闭"><span class="material-symbols-outlined">close</span></button>
         </div>
-        <p class="archive-export-hint">偏弱点优先：低星、反复卡住、很久没碰的更容易被抽中。</p>
+        <p class="archive-export-hint">自己挑范围，随机抽题做。偏弱点优先：低星、反复卡住、很久没碰的更容易被抽中。</p>
         <div class="quiz-sheet-field">
           <small>测哪一科</small>
           <div class="quiz-sheet-options">
@@ -657,7 +657,7 @@
           </div>
         </div>
         <div class="archive-export-actions">
-          <button class="btn btn-primary" data-quiz-go type="button"><span class="material-symbols-outlined">casino</span>出这份周测</button>
+          <button class="btn btn-primary" data-quiz-go type="button"><span class="material-symbols-outlined">casino</span>出这份测验</button>
           <button class="btn btn-outline" data-quiz-close type="button">关闭</button>
         </div>
       </section>
@@ -1783,6 +1783,7 @@
     render,
     refresh,
     showExportSheet,
+    showQuizSheet,
   };
 
   window.MochiKnowledge = {
