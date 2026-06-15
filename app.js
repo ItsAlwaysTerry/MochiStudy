@@ -3876,6 +3876,42 @@
             </table>
           </div>
         </section>
+        <section class="card" style="grid-column:1 / -1">
+          <h3>更新到最新版本</h3>
+          <p class="muted" style="margin-top:4px">换一台电脑、或想同步我最新改的版本时，在<strong>那台电脑的项目文件夹</strong>里打开终端（Git Bash / 命令行），按下面操作。前提是这个文件夹当初是用 <code>git clone</code> 拉下来的。</p>
+
+          <div class="update-step">
+            <div class="update-step-head">
+              <strong>① 常规更新（多数情况用这个）</strong>
+              <button class="btn btn-soft btn-sm" data-action="copy-cmd" data-copy-text="git checkout main&#10;git pull origin main" type="button"><span class="material-symbols-outlined">content_copy</span>复制命令</button>
+            </div>
+            <pre class="update-cmd">git checkout main
+git pull origin main</pre>
+            <p class="field-hint">把代码切到 main 分支，拉取 GitHub 上的最新版本。拉完浏览器刷新即可。</p>
+          </div>
+
+          <details class="update-step" style="margin-top:14px">
+            <summary class="update-step-summary"><strong>② 拉取报错？强制和 GitHub 保持一致</strong></summary>
+            <div style="margin-top:10px">
+              <button class="btn btn-soft btn-sm" data-action="copy-cmd" data-copy-text="git fetch origin&#10;git checkout main&#10;git reset --hard origin/main" type="button"><span class="material-symbols-outlined">content_copy</span>复制命令</button>
+              <pre class="update-cmd" style="margin-top:10px">git fetch origin
+git checkout main
+git reset --hard origin/main</pre>
+              <p class="field-hint" style="color:#c0392b">⚠️ <code>reset --hard</code> 会丢弃那台电脑上所有未提交的本地改动，只保留 GitHub 上的版本。确认没有要保留的东西再用。</p>
+            </div>
+          </details>
+
+          <details class="update-step" style="margin-top:14px">
+            <summary class="update-step-summary"><strong>③ 那台电脑还没有这个项目（首次）</strong></summary>
+            <div style="margin-top:10px">
+              <button class="btn btn-soft btn-sm" data-action="copy-cmd" data-copy-text="git clone https://github.com/ItsAlwaysTerry/MochiStudy.git" type="button"><span class="material-symbols-outlined">content_copy</span>复制命令</button>
+              <pre class="update-cmd" style="margin-top:10px">git clone https://github.com/ItsAlwaysTerry/MochiStudy.git</pre>
+              <p class="field-hint">把整个项目克隆到本地，进文件夹后用浏览器打开 index.html 即可。</p>
+            </div>
+          </details>
+
+          <p class="field-hint" style="margin-top:14px">确认成功：运行 <code>git log --oneline -3</code>，最上面一条是最新提交即可；网站是纯静态的，拉完直接用浏览器打开 <code>index.html</code>。</p>
+        </section>
         <section class="card">
           <h3>关于</h3>
           <p class="muted">Mochii v3.0 · 原生 HTML/CSS/JavaScript · 粘贴学习记录驱动档案、农场和日历。</p>
@@ -5012,6 +5048,20 @@ ${record.originalQuestion || "暂无原题描述。"}
     }
   }
 
+  async function copyCmd(btn) {
+    const text = btn?.dataset?.copyText;
+    if (!text) return;
+    const originalHtml = btn.innerHTML;
+    try {
+      await navigator.clipboard.writeText(text);
+      btn.innerHTML = `<span class="material-symbols-outlined">check</span>已复制`;
+      setTimeout(() => { btn.innerHTML = originalHtml; }, 2000);
+      toast("命令已复制，到那台电脑的终端里粘贴运行");
+    } catch {
+      toast("复制失败，请手动选中命令复制");
+    }
+  }
+
   function exportData() {
     const payload = createBackupPayload();
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
@@ -5561,6 +5611,7 @@ ${record.originalQuestion || "暂无原题描述。"}
         toast(`打开 AI 家教开始学习：${node.subjectLabel} · ${node.label}`);
       }
       if (name === "copy-ai-prompt") { copyAiPromptFile(action); return; }
+      if (name === "copy-cmd") { copyCmd(action); return; }
       if (name === "export-data") exportData();
       if (name === "clear-progress") clearProgressData();
       if (name === "factory-reset" || name === "clear-data") factoryResetData();

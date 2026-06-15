@@ -487,3 +487,7 @@ v34 之后的改动：
 - 导出长图（canvas）：`drawSession` 在副标题和卡片之间插入学生反思——浅色底框 + 左色条 +「我的记录」标题 + 换行正文；新增 `sessionNoteHeight()` 估算额外高度，`estimateExportHeight` 的 session 循环同步加上，避免裁切（build `20260615n`）。
 - **反思必填（build `20260615o`）**：deciding 有未反思承诺时，反思框写够 2 字前，完成按钮 `disabled`。`bindFocusOverlay` 给 `#commitment-reflect-note` 绑 input 监听 `sync()`，`value.trim().length>=2` 时解锁。`style.css` 加 `.focus-commitment-reflect .btn:disabled`/`.focus-overlay-actions .btn:disabled` 灰显。
 - **修复跳过漏洞（build `20260615p`）**：原来第一屏「开始休息/结束今天」和完成按钮并列，用户填了反思直接点休息就**跳过选结果**、`reflectCommitment` 没被调用、note 和 outcome 全丢。改为：有未反思承诺（`c`）时第一屏 `${!c ? actions : ""}` **不渲染**休息/结束，唯一出口是三个完成按钮（仍受反思必填锁）；点完成 → `reflectCommitment` 记录 → 重渲染 c 变 null → 第二屏才出现休息/结束。强制顺序：填反思 → 选结果 → 休息/结束。提示文案随之改为「先写两句，再选这一轮的结果」/「选一个这一轮的结果，再去休息」。
+
+### V4.9 设置页加「更新到最新版本」git 指南（build `20260615q`）
+
+换电脑/同步最新版本时方便操作，把 git 拉取指南直接放进设置页（「更新到最新版本」section，在「关于」之前）。三步可折叠：① 常规 `git checkout main` + `git pull origin main`；② 报错时强制同步 `git reset --hard origin/main`（带丢改动警告）；③ 首次 `git clone`。每步有「复制命令」按钮——新 action `copy-cmd` + `copyCmd(btn)` 读 `data-copy-text`（多行用 `&#10;` 编码）写剪贴板。`style.css` 新增 `.update-step`/`.update-step-head`/`.update-step-summary`/`.update-cmd`（深色等宽代码块）。

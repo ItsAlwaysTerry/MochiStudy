@@ -1786,6 +1786,38 @@ button {
 }
 .focus-commitment-imported b { color: #fff; }
 
+/* ── Settings 更新指南 ─────────────────────────────────────── */
+
+.update-step { margin-top: 16px; }
+
+.update-step-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.update-step-summary {
+  cursor: pointer;
+  user-select: none;
+  font-size: 14px;
+}
+
+.update-cmd {
+  background: #1e1b22;
+  color: #e8e2ec;
+  font-family: "Cascadia Code", "Consolas", "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  padding: 12px 14px;
+  border-radius: 10px;
+  overflow-x: auto;
+  margin: 0;
+  white-space: pre;
+}
+
 /* ── Settings AI Prompt Section ─────────────────────────────── */
 
 .ai-prompt-entry {
