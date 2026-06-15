@@ -3726,7 +3726,7 @@
         </section>
         <section class="card" style="grid-column:1 / -1">
           <h3>AI 使用指南</h3>
-          <p class="muted" style="margin-top:4px">四个 AI Prompt，分别用于学新题、复习旧卡点、综合测验和从零重学一章。复制后粘贴到 Claude 的「项目说明」里，即可激活对应的 AI 角色。</p>
+          <p class="muted" style="margin-top:4px">五个 AI Prompt，分别用于学新题、复习旧卡点、综合测验、从零重学一章和啃卷子错题。复制后粘贴到 Claude 的「项目说明」里，即可激活对应的 AI 角色。</p>
           <div class="ai-guide-prompts" style="margin-top:16px;display:flex;flex-direction:column;gap:12px">
             <details class="ai-prompt-entry">
               <summary class="ai-prompt-summary">
@@ -3790,6 +3790,21 @@
               <div class="ai-prompt-steps">
                 <p><strong>使用方法：</strong>在「学习 → 学习档案」点「从零重学」，选一个想重学的知识点，会自动复制讲解材料；粘给这个 AI 跟着一步步学，把它输出的记录粘回面板导入。</p>
                 <p class="muted" style="font-size:12px;margin-top:6px">流程：先用大白话讲这章在解决什么 → 拆成最小台阶一步步教 → 每步出超简单题确认 → 学会一步输出一条记录</p>
+              </div>
+            </details>
+            <details class="ai-prompt-entry">
+              <summary class="ai-prompt-summary">
+                <div>
+                  <strong>啃卷子 AI 私教</strong>
+                  <span class="muted" style="font-size:12px">拿到考卷错题时用 · 按高考考频 × 短期提分空间排优先级 → 一道一道带啃 → 输出 MOCHI-RECORD</span>
+                </div>
+                <button class="btn btn-soft btn-sm ai-prompt-copy-btn" data-action="copy-ai-prompt" data-prompt-path="./skill/gaokao啃卷子.md" type="button">
+                  <span class="material-symbols-outlined">content_copy</span>复制 Prompt
+                </button>
+              </summary>
+              <div class="ai-prompt-steps">
+                <p><strong>使用方法：</strong>复制这个 Prompt 粘到 AI 的系统设定里，然后告诉 AI 卷子上哪些题做错了或者不会——AI 会先排优先级（高考考频 × 短期提分空间），再一道一道带你啃，每道搞定后输出一条记录，最后整段粘回 MochiStudy 批量导入。</p>
+                <p class="muted" style="font-size:12px;margin-top:6px">广东省全国卷理科 · 先排序再逐题 · 学会一道输出一条记录</p>
               </div>
             </details>
           </div>
