@@ -407,5 +407,35 @@
     }
   });
 
-  window.MochiTimer = { getState, handleAction, calcStats, startFocus, togglePause, stopAndRest, confirmRest, skipRest, keepFocusing, giveUp, endToday };
+  // 由 commitment gate 直接调用，绕过 DOM 读取
+  function startFocusDirect(goal, durationMins) {
+    window.MochiApp?.stopRestReminder?.();
+    state.microGoal = String(goal || "");
+    if (durationMins && Number(durationMins) > 0) {
+      state.freeMode = false;
+      state.focusMins = Number(durationMins);
+    } else {
+      state.freeMode = true;
+    }
+    state.phase = "focusing";
+    state.remaining = state.freeMode ? 0 : state.focusMins * 60;
+    state.elapsedSecs = 0;
+    state.running = true;
+    state.sessionId = `focus_${Date.now()}`;
+    state.sessionStart = new Date().toTimeString().slice(0, 5);
+    state.focusStartedAtMs = Date.now();
+    state.accumulatedFocusSecs = 0;
+    state.focusTargetNotified = false;
+    state.restStartedAtMs = null;
+    state.restDurationSecs = 0;
+    state.pendingRestMins = null;
+    state.pendingActualMins = null;
+    clearInterval(interval);
+    interval = setInterval(tick, 1000);
+    window.MochiPet?.setFocusing?.(true);
+    window.MochiApp?.enterFocusMode?.();
+    fullRender();
+  }
+
+  window.MochiTimer = { getState, handleAction, calcStats, startFocus, startFocusDirect, togglePause, stopAndRest, confirmRest, skipRest, keepFocusing, giveUp, endToday };
 })();

@@ -4510,6 +4510,100 @@ ${record.originalQuestion || "暂无原题描述。"}
     return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
   }
 
+  // ── 今日承诺门 ─────────────────────────────────────────────────────────────
+  const COMMITMENT_KEY = "daily_commitment";
+
+  function getDailyCommitment() {
+    try { return JSON.parse(localStorage.getItem(COMMITMENT_KEY) || "null"); } catch { return null; }
+  }
+
+  function saveDailyCommitment(goal, durationMins) {
+    const today = new Date().toISOString().slice(0, 10);
+    localStorage.setItem(COMMITMENT_KEY, JSON.stringify({ date: today, goal, duration: durationMins, reflected: false, outcome: null }));
+  }
+
+  function reflectCommitment(outcome) {
+    const c = getDailyCommitment();
+    if (!c) return;
+    c.reflected = true;
+    c.outcome = outcome;
+    localStorage.setItem(COMMITMENT_KEY, JSON.stringify(c));
+  }
+
+  function shouldShowCommitmentGate() {
+    const params = new URLSearchParams(location.search);
+    if (params.get("admin") === "1" || params.get("debug") === "1") return false;
+    if (!isHolidayToday()) return false;
+    const c = getDailyCommitment();
+    const today = new Date().toISOString().slice(0, 10);
+    return !c || c.date !== today;
+  }
+
+  function showCommitmentGate() {
+    document.getElementById("commitment-gate")?.remove();
+    const gate = document.createElement("div");
+    gate.id = "commitment-gate";
+    gate.innerHTML = `
+      <div class="commitment-card">
+        <h2 class="commitment-title">今天学什么？</h2>
+        <p class="commitment-subtitle">填完才能开始，不然时间会溜走</p>
+        <div class="commitment-field">
+          <label class="commitment-label">目标</label>
+          <input id="commitment-goal" class="commitment-goal-input" type="text"
+            placeholder="比如：三角函数 2 道题 / 搞懂电磁感应" maxlength="40" autocomplete="off" />
+        </div>
+        <div class="commitment-field">
+          <label class="commitment-label">学多久</label>
+          <div class="commitment-dur-row">
+            <button class="commitment-dur-btn" data-mins="25" type="button">25 分</button>
+            <button class="commitment-dur-btn" data-mins="45" type="button">45 分</button>
+            <button class="commitment-dur-btn" data-mins="60" type="button">1 小时</button>
+            <button class="commitment-dur-btn" data-mins="0" type="button">自由</button>
+          </div>
+        </div>
+        <button id="commitment-start" class="btn commitment-start-btn" type="button" disabled>
+          <span class="material-symbols-outlined">play_arrow</span>开始专注
+        </button>
+      </div>
+    `;
+    document.body.appendChild(gate);
+
+    let selectedMins = null;
+    const goalInput = gate.querySelector("#commitment-goal");
+    const startBtn = gate.querySelector("#commitment-start");
+
+    function checkReady() {
+      const ready = goalInput.value.trim().length > 0 && selectedMins !== null;
+      startBtn.disabled = !ready;
+      startBtn.classList.toggle("commitment-start-ready", ready);
+    }
+
+    goalInput.addEventListener("input", checkReady);
+    goalInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !startBtn.disabled) startBtn.click();
+    });
+
+    gate.querySelectorAll(".commitment-dur-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        gate.querySelectorAll(".commitment-dur-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        selectedMins = parseInt(btn.dataset.mins, 10);
+        checkReady();
+      });
+    });
+
+    startBtn.addEventListener("click", () => {
+      const goal = goalInput.value.trim();
+      if (!goal || selectedMins === null) return;
+      saveDailyCommitment(goal, selectedMins);
+      gate.remove();
+      window.MochiTimer?.startFocusDirect?.(goal, selectedMins || 0);
+    });
+
+    setTimeout(() => goalInput.focus(), 80);
+  }
+  // ── end 今日承诺门 ────────────────────────────────────────────────────────
+
   function enterFocusMode() {
     document.body.classList.add("focus-mode");
     const overlay = document.getElementById("focus-overlay");
@@ -4540,13 +4634,25 @@ ${record.originalQuestion || "暂无原题描述。"}
     if (timer.phase === "deciding") {
       const actualMins = timer.pendingActualMins || 0;
       const restMins = timer.pendingRestMins || 5;
+      const c = getDailyCommitment();
+      const today = new Date().toISOString().slice(0, 10);
+      const showReflect = c && c.date === today && !c.reflected;
       return `
         <div class="focus-overlay-inner">
           <p class="focus-overlay-goal">🎉 你专注了 ${actualMins} 分钟</p>
           <p class="focus-overlay-encouragement">${getFocusEncouragement(actualMins)}</p>
           <div class="focus-deciding-card">
-            <p class="focus-deciding-rest">建议休息 ${restMins} 分钟</p>
-            <p class="focus-deciding-hint">让大脑充个电，效率会更高</p>
+            ${showReflect ? `
+              <p class="focus-commitment-goal-label">目标：${escapeHtml(c.goal)}</p>
+              <p class="focus-deciding-hint">这一轮，搞定了吗？</p>
+              <div class="focus-commitment-reflect">
+                <button class="btn btn-soft btn-sm" data-action="commitment-done" type="button">✓ 搞定了</button>
+                <button class="btn btn-ghost btn-sm" data-action="commitment-partial" type="button">还没完成</button>
+              </div>
+            ` : `
+              <p class="focus-deciding-rest">建议休息 ${restMins} 分钟</p>
+              <p class="focus-deciding-hint">让大脑充个电，效率会更高</p>
+            `}
           </div>
           <div class="focus-overlay-actions">
             <button class="btn btn-primary focus-rest-btn" data-action="confirm-rest" type="button">
@@ -4637,6 +4743,11 @@ ${record.originalQuestion || "暂无原题描述。"}
       }
       if (action === "give-up") {
         window.MochiTimer?.giveUp?.();
+        return;
+      }
+      if (action === "commitment-done" || action === "commitment-partial") {
+        reflectCommitment(action === "commitment-done" ? "done" : "partial");
+        refreshFocusOverlay();
         return;
       }
       if (action === "toggle-focus-import") {
@@ -5470,6 +5581,7 @@ ${record.originalQuestion || "暂无原题描述。"}
     document.getElementById("mobile-menu")?.addEventListener("click", () => document.querySelector(".side-nav")?.classList.toggle("open"));
     checkSeasonAutoRenew();
     route();
+    if (shouldShowCommitmentGate()) showCommitmentGate();
     if (location.search.includes("debug=1")) {
       const debugPanel = document.getElementById("debug-panel");
       if (debugPanel) debugPanel.style.display = "block";

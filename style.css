@@ -1397,6 +1397,149 @@ button {
   margin: 0;
 }
 
+/* ── Commitment Gate ─────────────────────────────────────────── */
+
+#commitment-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 950;
+  background: rgba(18, 12, 22, 0.97);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.commitment-card {
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 32px 28px 28px;
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+}
+
+.commitment-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--text);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.commitment-subtitle {
+  font-size: 13px;
+  color: var(--muted);
+  margin: -14px 0 0;
+}
+
+.commitment-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.commitment-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.commitment-goal-input {
+  width: 100%;
+  font-size: 17px;
+  padding: 12px 14px;
+  border: 2px solid var(--outline);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  transition: border-color .15s;
+  box-sizing: border-box;
+}
+
+.commitment-goal-input:focus {
+  border-color: var(--primary);
+}
+
+.commitment-dur-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.commitment-dur-btn {
+  padding: 12px 4px;
+  border: 2px solid var(--outline);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color .15s, background .15s, color .15s;
+  text-align: center;
+}
+
+.commitment-dur-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.commitment-dur-btn.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+}
+
+.commitment-start-btn {
+  width: 100%;
+  padding: 16px;
+  font-size: 17px;
+  font-weight: 700;
+  border-radius: 14px;
+  background: var(--outline);
+  color: var(--muted);
+  border: none;
+  cursor: not-allowed;
+  transition: background .2s, color .2s, transform .1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.commitment-start-btn.commitment-start-ready {
+  background: var(--primary);
+  color: #fff;
+  cursor: pointer;
+}
+
+.commitment-start-btn.commitment-start-ready:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+/* deciding 阶段反馈 */
+.focus-commitment-goal-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.9);
+  margin: 0 0 4px;
+}
+
+.focus-commitment-reflect {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  justify-content: center;
+}
+
 /* ── Settings AI Prompt Section ─────────────────────────────── */
 
 .ai-prompt-entry {
