@@ -27,9 +27,14 @@
 
       <div class="review-actions-row">
         <p class="review-actions-hint">下面是系统建议复习的；想自己挑范围测，点右边 →</p>
-        <button class="btn btn-primary btn-sm" data-review-action="open-quiz" type="button">
-          <span class="material-symbols-outlined">casino</span>出测验
-        </button>
+        <div style="display:flex;gap:8px;flex-shrink:0">
+          <button class="btn btn-soft btn-sm" data-action="copy-ai-prompt" data-prompt-path="./skill/gaokao啃卷子.md" type="button">
+            <span class="material-symbols-outlined">description</span>啃卷子
+          </button>
+          <button class="btn btn-primary btn-sm" data-review-action="open-quiz" type="button">
+            <span class="material-symbols-outlined">casino</span>出测验
+          </button>
+        </div>
       </div>
 
       ${STATE.message ? `<div class="review-toast-inline">${escapeHtml(STATE.message)}</div>` : ""}
