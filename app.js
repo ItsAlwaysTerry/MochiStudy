@@ -4530,7 +4530,7 @@ ${record.originalQuestion || "暂无原题描述。"}
     return _activeCommitment && !_activeCommitment.reflected ? _activeCommitment : null;
   }
 
-  function reflectCommitment(outcome) {
+  function reflectCommitment(outcome, note = "") {
     if (!_activeCommitment || _activeCommitment.reflected) return;
     const timer = window.MochiTimer?.getState?.() || {};
     const actualMins = Number(timer.pendingActualMins || 0);
@@ -4542,6 +4542,7 @@ ${record.originalQuestion || "暂无原题描述。"}
       plannedMins: _activeCommitment.plannedMins,
       actualMins,
       outcome, // "done" | "partial" | "none"
+      note: String(note || ""), // 学生自己写的这一轮反思
       ts: Date.now(),
     });
     writeCommitmentHistory(history);
@@ -4733,13 +4734,15 @@ ${record.originalQuestion || "暂无原题描述。"}
           <p class="focus-overlay-encouragement">${getFocusEncouragement(actualMins)}</p>
           <div class="focus-deciding-card">
             ${c ? `
-              <p class="focus-commitment-goal-label">你说要：${escapeHtml(c.goal)}</p>
+              <p class="focus-commitment-goal-label">你这一轮的目标：<b>${escapeHtml(c.goal)}</b></p>
               ${importedLine}
-              <p class="focus-deciding-hint">对照你的目标，搞定了吗？</p>
+              <label class="focus-reflect-label" for="commitment-reflect-note">写两句这一轮的真实情况（你和家长都看得到）</label>
+              <textarea id="commitment-reflect-note" class="focus-reflect-input" rows="3" placeholder="搞懂了什么？卡在哪、为什么没完成、哪里花了太多时间……写下来，下次才知道怎么调整"></textarea>
+              <p class="focus-deciding-hint">写完后，这一轮算搞定了吗？</p>
               <div class="focus-commitment-reflect">
-                <button class="btn btn-soft btn-sm" data-action="commitment-done" type="button">✓ 搞定了</button>
-                <button class="btn btn-ghost btn-sm" data-action="commitment-partial" type="button">部分</button>
-                <button class="btn btn-ghost btn-sm" data-action="commitment-none" type="button">没完成</button>
+                <button class="btn btn-soft" data-action="commitment-done" type="button">✓ 搞定了</button>
+                <button class="btn btn-soft" data-action="commitment-partial" type="button">◐ 部分完成</button>
+                <button class="btn btn-soft" data-action="commitment-none" type="button">✕ 没完成</button>
               </div>
             ` : `
               <p class="focus-deciding-rest">建议休息 ${restMins} 分钟</p>
@@ -4839,7 +4842,8 @@ ${record.originalQuestion || "暂无原题描述。"}
       }
       if (action === "commitment-done" || action === "commitment-partial" || action === "commitment-none") {
         const outcome = action === "commitment-done" ? "done" : action === "commitment-partial" ? "partial" : "none";
-        reflectCommitment(outcome);
+        const note = overlay.querySelector("#commitment-reflect-note")?.value?.trim() || "";
+        reflectCommitment(outcome, note);
         refreshFocusOverlay();
         return;
       }

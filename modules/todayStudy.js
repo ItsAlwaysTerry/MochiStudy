@@ -649,6 +649,7 @@
             </div>
             ${goalText}
             ${session.commitment ? `<div class="today-commit-row">${commitmentBadge(session.commitment)}</div>` : ""}
+            ${session.commitment?.note ? `<p class="today-commit-note">“${escapeHtml(session.commitment.note)}”</p>` : ""}
           </div>
         </div>
         ${session.cards.length ? `<div class="today-session-cards">${session.cards.map(renderMiniCard).join("")}</div>` : `<p class="today-session-empty">这段时间还没有匹配到导入卡片。</p>`}

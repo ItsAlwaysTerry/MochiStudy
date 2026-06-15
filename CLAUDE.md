@@ -476,3 +476,12 @@ v34 之后的改动：
 - **P2 自评有据**：`app.js` `roundImportSummary(sessionId)` 按 study_log 的 `sessionId` 统计本轮导入卡片数 + 科目；deciding 反馈前显示「这一轮你导入了 N 张卡片（科目）」，问法改「对照你的目标，搞定了吗？」。让自评锚定客观痕迹、顺带逼一次回顾。无导入时提示"光想没动笔也算没搞定"。
 - **P3 去冗余**：P0 后首页卡只剩成长摘要 + 跳转链接，逐轮明细归今日报告独有，两处不再重叠。`commitmentKeptRate` 仍导出但 farm 已不用（留存无害）。
 - `style.css`：重写 `.commit-recap-*`（headline/shrink/detail），新增 `.commitment-presets`/`.commitment-preset-chip`/`.commitment-presets-label`、`.focus-commitment-imported`。
+
+### V4.8 deciding 反思从"点按钮"升级为"显眼输入框"（build `20260615m`）
+
+用户反馈：deciding 的"搞定/部分/没完成"字小、点一下就消失，触发不了主动回想。改为让学生**自己写下这一轮真实情况**，并进今日学习记录给家长看。
+
+- `app.js` renderFocusOverlay deciding 分支：目标文字放大加粗；新增显眼 `<textarea id="commitment-reflect-note" class="focus-reflect-input">`（placeholder 引导"搞懂了什么/卡在哪/为什么没完成/哪里花太多时间"）；三个 outcome 按钮放大为 `btn-soft`。`bindFocusOverlay` 的 commitment-* 分支读取 textarea 值，传给 `reflectCommitment(outcome, note)`。`reflectCommitment` 新增 `note` 参数，存进 `commitment_history` 条目的 `note` 字段。
+- `todayStudy.js` `renderSession`：`session.commitment.note` 存在时显示 `.today-commit-note`（带左边框引用样式），让家长在「今日」页看到学生原话，不止"部分完成"。
+- `style.css`：`.focus-commitment-goal-label` 18px 加粗；新增 `.focus-reflect-label`/`.focus-reflect-input`（深色遮罩上的白字输入框）；`.focus-deciding-hint` 14→16px；新增 `.today-commit-note`。
+- 注：导出长图（canvas）暂未加 note（避免高度估算 bug），屏幕版今日报告已完整显示。
