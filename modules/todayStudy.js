@@ -279,6 +279,15 @@
     return Math.max(156, height);
   }
 
+  // 学生这一轮反思在长图里占的额外高度（含标题行 + 换行正文）
+  function sessionNoteHeight(ctx, session, inner) {
+    const note = session?.commitment?.note;
+    if (!note) return 0;
+    setFont(ctx, 23, 500);
+    const lines = wrapCanvasText(ctx, note, inner - 152, 5);
+    return 36 + lines.length * 32 + 16; // 「我的记录」标题 + 正文行 + 间距
+  }
+
   function estimateExportHeight(ctx, data, stats) {
     const inner = EXPORT_IMAGE_WIDTH - EXPORT_PADDING * 2;
     let height = EXPORT_PADDING + 152 + 126 + 34;
@@ -287,7 +296,7 @@
     if (data.sessions.length || data.unmatchedCards.length) {
       height += 90;
       data.sessions.forEach((session) => {
-        height += 108 + session.cards.length * 38 + 18;
+        height += 108 + sessionNoteHeight(ctx, session, inner) + session.cards.length * 38 + 18;
       });
       if (data.unmatchedCards.length) height += 110 + data.unmatchedCards.length * 38 + 18;
     } else {
@@ -397,7 +406,8 @@
       return y + 162;
     }
     const drawSession = (session, cards, title, subtitle, tone = "#864d61") => {
-      const h = 102 + cards.length * 38;
+      const noteH = sessionNoteHeight(ctx, session, inner);
+      const h = 102 + noteH + cards.length * 38;
       fillRoundRect(ctx, EXPORT_PADDING, y, inner, h, 24, "#ffffff");
       strokeRoundRect(ctx, EXPORT_PADDING, y, inner, h, 24, "rgba(134,77,97,0.12)");
       fillRoundRect(ctx, EXPORT_PADDING + 24, y + 26, 14, 54, 7, tone);
@@ -407,10 +417,26 @@
       setFont(ctx, 23, 700);
       ctx.fillStyle = "#75666c";
       ctx.fillText(subtitle, EXPORT_PADDING + 56, y + 62);
-      let cardY = y + 92;
+      let cursorY = y + 92;
+      // 学生这一轮的反思原话（带浅色底框，区别于系统文字）
+      const note = session?.commitment?.note;
+      if (note && noteH) {
+        const noteX = EXPORT_PADDING + 56;
+        const noteW = inner - 112;
+        const lines = (setFont(ctx, 23, 500), wrapCanvasText(ctx, note, noteW - 40, 5));
+        fillRoundRect(ctx, noteX, cursorY - 6, noteW, noteH - 6, 14, "#f6f1f4");
+        fillRoundRect(ctx, noteX, cursorY - 6, 6, noteH - 6, 3, "#864d61");
+        setFont(ctx, 19, 800);
+        ctx.fillStyle = "#864d61";
+        ctx.fillText("我的记录", noteX + 20, cursorY + 4);
+        setFont(ctx, 23, 500);
+        ctx.fillStyle = "#3f3438";
+        lines.forEach((line, i) => ctx.fillText(line, noteX + 20, cursorY + 36 + i * 32));
+        cursorY += noteH;
+      }
       cards.forEach((card) => {
-        drawExportCardLine(ctx, card, EXPORT_PADDING + 56, cardY, inner - 86);
-        cardY += 38;
+        drawExportCardLine(ctx, card, EXPORT_PADDING + 56, cursorY, inner - 86);
+        cursorY += 38;
       });
       y += h + 18;
     };

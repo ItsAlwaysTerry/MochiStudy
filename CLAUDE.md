@@ -484,4 +484,4 @@ v34 之后的改动：
 - `app.js` renderFocusOverlay deciding 分支：目标文字放大加粗；新增显眼 `<textarea id="commitment-reflect-note" class="focus-reflect-input">`（placeholder 引导"搞懂了什么/卡在哪/为什么没完成/哪里花太多时间"）；三个 outcome 按钮放大为 `btn-soft`。`bindFocusOverlay` 的 commitment-* 分支读取 textarea 值，传给 `reflectCommitment(outcome, note)`。`reflectCommitment` 新增 `note` 参数，存进 `commitment_history` 条目的 `note` 字段。
 - `todayStudy.js` `renderSession`：`session.commitment.note` 存在时显示 `.today-commit-note`（带左边框引用样式），让家长在「今日」页看到学生原话，不止"部分完成"。
 - `style.css`：`.focus-commitment-goal-label` 18px 加粗；新增 `.focus-reflect-label`/`.focus-reflect-input`（深色遮罩上的白字输入框）；`.focus-deciding-hint` 14→16px；新增 `.today-commit-note`。
-- 注：导出长图（canvas）暂未加 note（避免高度估算 bug），屏幕版今日报告已完整显示。
+- 导出长图（canvas）：`drawSession` 在副标题和卡片之间插入学生反思——浅色底框 + 左色条 +「我的记录」标题 + 换行正文；新增 `sessionNoteHeight()` 估算额外高度，`estimateExportHeight` 的 session 循环同步加上，避免裁切（build `20260615n`）。
