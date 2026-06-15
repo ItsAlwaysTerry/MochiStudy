@@ -358,6 +358,9 @@
         <button class="btn btn-soft btn-sm" data-archive-action="relearn" type="button">
           <span class="material-symbols-outlined">school</span>从零重学
         </button>
+        <button class="btn btn-soft btn-sm" data-action="copy-ai-prompt" data-prompt-path="./skill/gaokao啃卷子.md" type="button">
+          <span class="material-symbols-outlined">description</span>啃卷子
+        </button>
         <button class="btn btn-primary btn-sm" data-archive-action="quiz-subject" type="button">
           <span class="material-symbols-outlined">casino</span>出测验
         </button>
