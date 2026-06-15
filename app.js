@@ -4510,59 +4510,84 @@ ${record.originalQuestion || "暂无原题描述。"}
     return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
   }
 
-  // ── 今日承诺门 ─────────────────────────────────────────────────────────────
-  const COMMITMENT_KEY = "daily_commitment";
+  // ── 专注承诺门：每一轮专注前强制设目标 + 时长，结束对照留痕 ─────────────────
+  const COMMITMENT_HISTORY_KEY = "commitment_history";
+  // 当前这一轮的承诺（仅内存，跨刷新不保留——没反馈就丢，正常）
+  let _activeCommitment = null; // { goal, plannedMins, startTs, reflected }
 
-  function getDailyCommitment() {
-    try { return JSON.parse(localStorage.getItem(COMMITMENT_KEY) || "null"); } catch { return null; }
+  function readCommitmentHistory() {
+    try {
+      const arr = JSON.parse(localStorage.getItem(COMMITMENT_HISTORY_KEY) || "[]");
+      return Array.isArray(arr) ? arr : [];
+    } catch { return []; }
   }
 
-  function saveDailyCommitment(goal, durationMins) {
-    const today = new Date().toISOString().slice(0, 10);
-    localStorage.setItem(COMMITMENT_KEY, JSON.stringify({ date: today, goal, duration: durationMins, reflected: false, outcome: null }));
+  function writeCommitmentHistory(arr) {
+    localStorage.setItem(COMMITMENT_HISTORY_KEY, JSON.stringify(arr.slice(-50)));
+  }
+
+  function activeCommitment() {
+    return _activeCommitment && !_activeCommitment.reflected ? _activeCommitment : null;
   }
 
   function reflectCommitment(outcome) {
-    const c = getDailyCommitment();
-    if (!c) return;
-    c.reflected = true;
-    c.outcome = outcome;
-    localStorage.setItem(COMMITMENT_KEY, JSON.stringify(c));
+    if (!_activeCommitment || _activeCommitment.reflected) return;
+    const timer = window.MochiTimer?.getState?.() || {};
+    const actualMins = Number(timer.pendingActualMins || 0);
+    const history = readCommitmentHistory();
+    history.push({
+      id: `c_${Date.now()}`,
+      date: new Date().toISOString().slice(0, 10),
+      goal: _activeCommitment.goal,
+      plannedMins: _activeCommitment.plannedMins,
+      actualMins,
+      outcome, // "done" | "partial" | "none"
+      ts: Date.now(),
+    });
+    writeCommitmentHistory(history);
+    _activeCommitment.reflected = true;
   }
 
-  function shouldShowCommitmentGate() {
-    const params = new URLSearchParams(location.search);
-    if (params.get("admin") === "1" || params.get("debug") === "1") return false;
-    if (!isHolidayToday()) return false;
-    const c = getDailyCommitment();
-    const today = new Date().toISOString().slice(0, 10);
-    return !c || c.date !== today;
+  // 最近 N 轮里"说到做到"（done）的比例，用于首页回看
+  function commitmentKeptRate(n = 7) {
+    const recent = readCommitmentHistory().slice(-n);
+    if (!recent.length) return null;
+    const done = recent.filter((c) => c.outcome === "done").length;
+    return { done, total: recent.length, recent };
   }
 
-  function showCommitmentGate() {
-    document.getElementById("commitment-gate")?.remove();
+  function showCommitmentModal() {
+    if (document.getElementById("commitment-gate")) return;
+    if (!isHolidayToday()) {
+      toast("今天不是学习日，想专注的话可以直接用番茄钟");
+      // 仍允许开始，但不强制——上学日不该被门拦
+      return startFocusFreeFallback();
+    }
     const gate = document.createElement("div");
     gate.id = "commitment-gate";
     gate.innerHTML = `
       <div class="commitment-card">
-        <h2 class="commitment-title">今天学什么？</h2>
-        <p class="commitment-subtitle">填完才能开始，不然时间会溜走</p>
+        <button class="commitment-close" data-commitment-close type="button" aria-label="关闭"><span class="material-symbols-outlined">close</span></button>
+        <h2 class="commitment-title">这一轮，要搞定什么？</h2>
+        <p class="commitment-subtitle">先定个具体目标和时间，像考试一样给自己一个 deadline</p>
         <div class="commitment-field">
-          <label class="commitment-label">目标</label>
+          <label class="commitment-label">这一轮目标</label>
           <input id="commitment-goal" class="commitment-goal-input" type="text"
-            placeholder="比如：三角函数 2 道题 / 搞懂电磁感应" maxlength="40" autocomplete="off" />
+            placeholder="比如：三角函数大题 2 道 / 搞懂电磁感应这个概念" maxlength="40" autocomplete="off" />
+          <p class="commitment-tip">越具体越好——写"做几道""搞懂哪个"，别写"学习"</p>
         </div>
         <div class="commitment-field">
-          <label class="commitment-label">学多久</label>
+          <label class="commitment-label">给自己多少时间</label>
           <div class="commitment-dur-row">
             <button class="commitment-dur-btn" data-mins="25" type="button">25 分</button>
             <button class="commitment-dur-btn" data-mins="45" type="button">45 分</button>
             <button class="commitment-dur-btn" data-mins="60" type="button">1 小时</button>
-            <button class="commitment-dur-btn" data-mins="0" type="button">自由</button>
+            <button class="commitment-dur-btn commitment-dur-custom" data-mins="custom" type="button">自定义</button>
           </div>
+          <input id="commitment-custom-mins" class="commitment-custom-input" type="number" min="5" max="180" placeholder="输入分钟数（5-180）" style="display:none" />
         </div>
         <button id="commitment-start" class="btn commitment-start-btn" type="button" disabled>
-          <span class="material-symbols-outlined">play_arrow</span>开始专注
+          <span class="material-symbols-outlined">timer</span>开始这一轮
         </button>
       </div>
     `;
@@ -4571,14 +4596,24 @@ ${record.originalQuestion || "暂无原题描述。"}
     let selectedMins = null;
     const goalInput = gate.querySelector("#commitment-goal");
     const startBtn = gate.querySelector("#commitment-start");
+    const customInput = gate.querySelector("#commitment-custom-mins");
+
+    function resolvedMins() {
+      if (selectedMins === "custom") {
+        const v = parseInt(customInput.value, 10);
+        return v >= 5 && v <= 180 ? v : null;
+      }
+      return selectedMins;
+    }
 
     function checkReady() {
-      const ready = goalInput.value.trim().length > 0 && selectedMins !== null;
+      const ready = goalInput.value.trim().length >= 2 && resolvedMins() !== null;
       startBtn.disabled = !ready;
       startBtn.classList.toggle("commitment-start-ready", ready);
     }
 
     goalInput.addEventListener("input", checkReady);
+    customInput.addEventListener("input", checkReady);
     goalInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !startBtn.disabled) startBtn.click();
     });
@@ -4587,22 +4622,33 @@ ${record.originalQuestion || "暂无原题描述。"}
       btn.addEventListener("click", () => {
         gate.querySelectorAll(".commitment-dur-btn").forEach((b) => b.classList.remove("active"));
         btn.classList.add("active");
-        selectedMins = parseInt(btn.dataset.mins, 10);
+        selectedMins = btn.dataset.mins === "custom" ? "custom" : parseInt(btn.dataset.mins, 10);
+        customInput.style.display = selectedMins === "custom" ? "block" : "none";
+        if (selectedMins === "custom") setTimeout(() => customInput.focus(), 30);
         checkReady();
       });
     });
 
+    gate.querySelector("[data-commitment-close]").addEventListener("click", () => gate.remove());
+
     startBtn.addEventListener("click", () => {
       const goal = goalInput.value.trim();
-      if (!goal || selectedMins === null) return;
-      saveDailyCommitment(goal, selectedMins);
+      const mins = resolvedMins();
+      if (goal.length < 2 || mins === null) return;
+      _activeCommitment = { goal, plannedMins: mins, startTs: Date.now(), reflected: false };
       gate.remove();
-      window.MochiTimer?.startFocusDirect?.(goal, selectedMins || 0);
+      window.MochiTimer?.startFocusDirect?.(goal, mins);
     });
 
     setTimeout(() => goalInput.focus(), 80);
   }
-  // ── end 今日承诺门 ────────────────────────────────────────────────────────
+
+  // 上学日没有承诺门时的兜底：自由专注启动
+  function startFocusFreeFallback() {
+    _activeCommitment = null;
+    window.MochiTimer?.startFocusDirect?.("", 0);
+  }
+  // ── end 专注承诺门 ────────────────────────────────────────────────────────
 
   function enterFocusMode() {
     document.body.classList.add("focus-mode");
@@ -4634,20 +4680,19 @@ ${record.originalQuestion || "暂无原题描述。"}
     if (timer.phase === "deciding") {
       const actualMins = timer.pendingActualMins || 0;
       const restMins = timer.pendingRestMins || 5;
-      const c = getDailyCommitment();
-      const today = new Date().toISOString().slice(0, 10);
-      const showReflect = c && c.date === today && !c.reflected;
+      const c = activeCommitment();
       return `
         <div class="focus-overlay-inner">
           <p class="focus-overlay-goal">🎉 你专注了 ${actualMins} 分钟</p>
           <p class="focus-overlay-encouragement">${getFocusEncouragement(actualMins)}</p>
           <div class="focus-deciding-card">
-            ${showReflect ? `
-              <p class="focus-commitment-goal-label">目标：${escapeHtml(c.goal)}</p>
+            ${c ? `
+              <p class="focus-commitment-goal-label">你说要：${escapeHtml(c.goal)}</p>
               <p class="focus-deciding-hint">这一轮，搞定了吗？</p>
               <div class="focus-commitment-reflect">
                 <button class="btn btn-soft btn-sm" data-action="commitment-done" type="button">✓ 搞定了</button>
-                <button class="btn btn-ghost btn-sm" data-action="commitment-partial" type="button">还没完成</button>
+                <button class="btn btn-ghost btn-sm" data-action="commitment-partial" type="button">部分</button>
+                <button class="btn btn-ghost btn-sm" data-action="commitment-none" type="button">没完成</button>
               </div>
             ` : `
               <p class="focus-deciding-rest">建议休息 ${restMins} 分钟</p>
@@ -4745,8 +4790,9 @@ ${record.originalQuestion || "暂无原题描述。"}
         window.MochiTimer?.giveUp?.();
         return;
       }
-      if (action === "commitment-done" || action === "commitment-partial") {
-        reflectCommitment(action === "commitment-done" ? "done" : "partial");
+      if (action === "commitment-done" || action === "commitment-partial" || action === "commitment-none") {
+        const outcome = action === "commitment-done" ? "done" : action === "commitment-partial" ? "partial" : "none";
+        reflectCommitment(outcome);
         refreshFocusOverlay();
         return;
       }
@@ -5416,6 +5462,10 @@ ${record.originalQuestion || "暂无原题描述。"}
       }
       if (name === "copy-note" || name === "copy-upload-note") copyNote();
       if (name === "close-modal") closeModal();
+      if (name === "open-commitment") {
+        showCommitmentModal();
+        return;
+      }
       if (name === "start-focus") {
         window.MochiTimer?.handleAction?.("start-focus");
         return;
@@ -5581,7 +5631,6 @@ ${record.originalQuestion || "暂无原题描述。"}
     document.getElementById("mobile-menu")?.addEventListener("click", () => document.querySelector(".side-nav")?.classList.toggle("open"));
     checkSeasonAutoRenew();
     route();
-    if (shouldShowCommitmentGate()) showCommitmentGate();
     if (location.search.includes("debug=1")) {
       const debugPanel = document.getElementById("debug-panel");
       if (debugPanel) debugPanel.style.display = "block";
@@ -5725,6 +5774,9 @@ ${record.originalQuestion || "暂无原题描述。"}
     calcSeasonTitle,
     calcStudyStreak,
     getTodayRecordCount,
+    showCommitmentModal,
+    commitmentKeptRate,
+    readCommitmentHistory,
     escapeHtml,
     formatRichText,
     formatInlineMath,

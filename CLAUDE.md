@@ -60,6 +60,7 @@ rest_reminder_sound           — 休息结束铃声选择：melody / bell / sof
 mochi_debug_panel_open        — 调试面板展开状态
 mochi_debug_float_collapsed   — 右下角调试浮窗收起状态
 mochi_debug_tab               — 调试浮窗当前 Tab
+commitment_history            — 专注承诺历史，每轮一条 {id,date,goal,plannedMins,actualMins,outcome,ts}；最多 50 条；用于首页"说到做到"回看
 ```
 
 注意：当前代码没有单独的 `pet_state`、`achievements`、`calendar_state` 这三个 localStorage key。
@@ -438,3 +439,22 @@ v34 之后的改动：
 - **卡片一次展开看全**：`renderStudyCard` 把原来互斥的"今日套路 toggle"和"看原题 toggle"合并为单一展开——点卡片展开 `.card-detail`（套路 + 原题一起显示，原题加「原题：」标签）；删除独立的「看原题」按钮和 `.card-question-area/.card-question-toggle`。`STATE.expandedCards` 值由 `"routine"|"question"` 改为布尔 `true`；点击处理 `toggle-routine`/`toggle-question` 合并为 `toggle-card`。卡片底部加 `.card-expand-hint`（▾/▴）提示可展开；无套路无原题的卡不可展开。
 - **顺带**：删除每张卡的拖动手柄 `data-card-action="drag"`（多余；拖拽监听变空操作，暂留）。`source` 标签已有「新学/复习」区分（`sourceDisplayInfo`），新学卡片在档案里天然带「新学」标签，不与错题混淆。
 - `style.css`：新增 `.card-detail`/`.card-expand-hint`/`.archive-cards-head`；删除死的 `.archive-history-details`/`.card-question-area`/`.card-question-toggle` 及 `#learn-content-pane .card-question-toggle` 引用。
+
+### V4.4 啃卷子 AI 私教 + 入口三处（build `20260615g`）
+
+背景：学生拿老师的考卷，80-90% 不会。新增**做题型**啃卷子私教，先排优先级再逐题带。
+
+- `skill/gaokao啃卷子.md`：自包含 prompt。两维度评分排序——**高考考频 × 短期提分空间**（各 1-5，综合 = 考频×0.5 + 提分×0.5）。学生信息写死广东省全国卷理科。先让学生报错题 → AI 排序表 → 确认后逐题带 → 每题输出一条 MOCHI-RECORD（`学习来源：错题`）→ 整段粘回批量导入。
+- 入口三处：设置页 AI 指南第 5 条（`data-prompt-path="./skill/gaokao啃卷子.md"`，文案「四个」→「五个」）；复习页 `.review-actions-row`「啃卷子」按钮；学习档案 `.archive-actions-row`「啃卷子」按钮。三处都走全局 `copy-ai-prompt` handler。
+- `style.css`：`.ai-prompt-summary` 加 `justify-content:space-between`，修复 5 个 prompt 复制按钮右对齐不一致。
+
+### V4.5 专注承诺门：每轮强制设目标 + DDL + 说到做到留痕（build `20260615i`）
+
+针对真实痛点：学生用"埋头盲做"逃避"思考规划"，没 DDL 时间就蔓延填满（帕金森定律）。让每轮专注前强制设目标和时限。**第一版做歪了**（进网站全屏锁所有功能、且今天填过就不再弹），本版重做：
+
+- **门绑定到"开始专注"动作，不锁其他功能。** 番茄钟 setup 卡（`pet.js` `renderTimer` setup 分支）简化为一个大「开始专注」按钮（`data-action="open-commitment"`）+ 今日统计，删掉原目标输入/模式切换/时长输入。看卡片、复习、成果都不被拦。
+- **每一轮都弹，不是每天一次。** `app.js` `showCommitmentModal()`：居中 modal（`#commitment-gate` z-index 950，半透明 backdrop），填「这一轮目标」（≥2 字）+ 选时长（25/45/60/自定义，**去掉"自由"——选时长才有 DDL**），两者齐全才能点「开始这一轮」→ `MochiTimer.startFocusDirect(goal, mins)`。可点 ✕ 关闭。上学日（非有效学习日）不拦，走 `startFocusFreeFallback()` 自由专注。
+- **`timer.js` 新增 `startFocusDirect(goal, durationMins)`**：绕过 DOM 读取，由门直接传参启动；选了时长 `freeMode=false`，否则自由。
+- **结束对照 + 留痕。** deciding 阶段显示「你说要：<目标>」+ 三档反馈（搞定/部分/没完成 → `data-action="commitment-done/partial/none"`）。`reflectCommitment(outcome)` 把 `{goal,plannedMins,actualMins,outcome,date,ts}` 追加到 `commitment_history`（新 localStorage key，最多 50 条）。当前轮承诺存内存 `_activeCommitment`（跨刷新不留，没反馈就丢）。
+- **首页"说到做到"回看卡。** `farm.js` `renderCommitmentRecap()`：有历史时在右栏渲染近 4 轮目标 + 完成标记（✓绿/◐黄/✕红）+「近 N 轮做到 M 轮」+ 按做到率给一句话（≥70%/≥40%/更低）。这是长期反馈——让学生看见自己规划准不准，是软件唯一能施加的"真实压力"（软件无法物理阻止绕过）。导出 `showCommitmentModal`/`commitmentKeptRate`/`readCommitmentHistory` 给 farm 用。
+- `style.css`：`#commitment-gate` 加 backdrop-blur + pop/fade 动画 + `.commitment-close`/`.commitment-tip`/`.commitment-custom-input`；新增 `.commit-recap-*` 系列。

@@ -189,43 +189,20 @@
     }
 
     if (timer.phase === "setup") {
-      const freeActive = Boolean(timer.freeMode);
       return `
         <section class="card timer-setup-card">
           <div class="timer-setup-header">
             <span class="material-symbols-outlined">psychology</span>
             <h3>动态专注</h3>
           </div>
-          <div class="timer-goal-wrap">
-            <label>目标</label>
-            <input id="timer-micro-goal" type="text" placeholder="今天突破哪道题？" value="${escapeAttr(timer.microGoal || "")}" ${enabled ? "" : "disabled"} />
-          </div>
-          <div class="timer-mode-switch">
-            <button id="timer-free-mode-btn" class="timer-mode-btn ${freeActive ? "active" : ""}" type="button" ${enabled ? "" : "disabled"}
-              onclick="this.classList.add('active');document.getElementById('timer-timed-mode-btn').classList.remove('active');document.getElementById('timer-time-row').style.display='none'">
-              自由专注
-            </button>
-            <button id="timer-timed-mode-btn" class="timer-mode-btn ${freeActive ? "" : "active"}" type="button" ${enabled ? "" : "disabled"}
-              onclick="this.classList.add('active');document.getElementById('timer-free-mode-btn').classList.remove('active');document.getElementById('timer-time-row').style.display=''">
-              设定时间
-            </button>
-          </div>
-          <div id="timer-time-row" class="timer-setup-row" style="${freeActive ? "display:none" : ""}">
-            <div class="timer-setup-field">
-              <label>时长</label>
-              <div class="timer-input-wrap">
-                <input id="timer-focus-mins" type="number" value="${timer.focusMins}" min="1" max="180" ${enabled ? "" : "disabled"} />
-                <span>分钟</span>
-              </div>
-            </div>
-          </div>
-          <button class="btn btn-primary" data-action="start-focus" style="width:100%;margin-top:14px" ${enabled ? "" : "disabled"}>
+          <p class="muted" style="text-align:center;font-size:13px;margin:2px 0 14px">每一轮开始前，先定个小目标和时间</p>
+          <button class="btn btn-primary" data-action="open-commitment" style="width:100%" ${enabled ? "" : "disabled"}>
             <span class="material-symbols-outlined">play_arrow</span>
             开始专注
           </button>
           ${!enabled
             ? `<p class="muted" style="text-align:center;font-size:12px;margin-top:8px">放假回来再开始专注吧</p>`
-            : `<p class="muted timer-hint">累了就停</p>`
+            : ""
           }
           <div class="timer-today-stats">
             <span>🍅 今日 ${timer.todayPomodoros} 轮</span>

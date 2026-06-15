@@ -1403,14 +1403,22 @@ button {
   position: fixed;
   inset: 0;
   z-index: 950;
-  background: rgba(18, 12, 22, 0.97);
+  background: rgba(18, 12, 22, 0.82);
+  backdrop-filter: blur(3px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
+  animation: commitment-fade .18s ease;
+}
+
+@keyframes commitment-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .commitment-card {
+  position: relative;
   background: var(--surface);
   border-radius: 20px;
   padding: 32px 28px 28px;
@@ -1420,7 +1428,49 @@ button {
   flex-direction: column;
   gap: 20px;
   box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  animation: commitment-pop .22s cubic-bezier(.2,.8,.3,1.1);
 }
+
+@keyframes commitment-pop {
+  from { transform: translateY(12px) scale(.97); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.commitment-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px;
+  line-height: 0;
+  border-radius: 8px;
+}
+
+.commitment-close:hover { background: var(--bg); color: var(--text); }
+
+.commitment-tip {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 6px 0 0;
+}
+
+.commitment-custom-input {
+  width: 100%;
+  margin-top: 8px;
+  font-size: 15px;
+  padding: 10px 14px;
+  border: 2px solid var(--outline);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.commitment-custom-input:focus { border-color: var(--primary); }
 
 .commitment-title {
   font-size: 26px;
@@ -1538,6 +1588,70 @@ button {
   gap: 10px;
   margin-top: 10px;
   justify-content: center;
+}
+
+/* 首页"说到做到"回看卡 */
+.commit-recap-card { display: flex; flex-direction: column; gap: 10px; }
+
+.commit-recap-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.commit-recap-head h3 { font-size: 15px; margin: 0; flex: 1; }
+.commit-recap-head .material-symbols-outlined { font-size: 20px; color: var(--primary); }
+
+.commit-recap-rate {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.commit-recap-list { display: flex; flex-direction: column; gap: 6px; }
+
+.commit-recap-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.commit-recap-mark {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.commit-recap-mark.kept { background: #4caf7d; }
+.commit-recap-mark.partial { background: #e0a93a; }
+.commit-recap-mark.missed { background: #c96b6b; }
+
+.commit-recap-goal {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.commit-recap-mins {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.commit-recap-summary {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 2px 0 0;
 }
 
 /* ── Settings AI Prompt Section ─────────────────────────────── */

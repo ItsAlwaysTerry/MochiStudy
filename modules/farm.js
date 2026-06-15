@@ -401,6 +401,41 @@
     `;
   }
 
+  // 说到做到：回看最近几轮"目标 vs 完成"，让规划准确度可见，形成长期反馈
+  function renderCommitmentRecap() {
+    const stat = window.MochiApp?.commitmentKeptRate?.(7);
+    if (!stat || !stat.total) return "";
+    const recent = stat.recent.slice(-4).reverse();
+    const outcomeInfo = {
+      done: { icon: "✓", cls: "kept", text: "搞定" },
+      partial: { icon: "◐", cls: "partial", text: "部分" },
+      none: { icon: "✕", cls: "missed", text: "没完成" },
+    };
+    const rows = recent.map((c) => {
+      const info = outcomeInfo[c.outcome] || outcomeInfo.none;
+      return `
+        <div class="commit-recap-row">
+          <span class="commit-recap-mark ${info.cls}">${info.icon}</span>
+          <span class="commit-recap-goal">${escapeAttr(c.goal)}</span>
+          <span class="commit-recap-mins">${c.plannedMins ? `${c.plannedMins}分` : "自由"}</span>
+        </div>
+      `;
+    }).join("");
+    const rate = Math.round((stat.done / stat.total) * 100);
+    const summaryTone = rate >= 70 ? "说到做到，保持！" : rate >= 40 ? "目标可以再定准一点。" : "目标定得偏大，下轮试试更小的。";
+    return `
+      <section class="card commit-recap-card">
+        <div class="commit-recap-head">
+          <span class="material-symbols-outlined">task_alt</span>
+          <h3>说到做到</h3>
+          <span class="commit-recap-rate">近 ${stat.total} 轮做到 ${stat.done} 轮</span>
+        </div>
+        <div class="commit-recap-list">${rows}</div>
+        <p class="commit-recap-summary">${summaryTone}</p>
+      </section>
+    `;
+  }
+
   function renderAiGuideCard(open = false) {
     return `
       <details class="card home-ai-guide"${open ? " open" : ""}>
@@ -514,6 +549,7 @@
           <div class="home-focus-panel">
             ${window.MochiPet?.renderTimer?.(true) || ""}
           </div>
+          ${renderCommitmentRecap()}
         </div>
       </div>
     `;
