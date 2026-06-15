@@ -1697,6 +1697,16 @@ button {
   flex-wrap: wrap;
 }
 
+/* 反思必填——锁住的下一步按钮 */
+.focus-commitment-reflect .btn:disabled,
+.focus-overlay-actions .btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  filter: grayscale(0.4);
+}
+
+#reflect-lock-hint { transition: color .15s; }
+
 /* 首页"你的节奏"成长卡（成长导向，不暴露失败次数） */
 .commit-recap-card { display: flex; flex-direction: column; gap: 8px; }
 

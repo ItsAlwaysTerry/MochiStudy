@@ -485,3 +485,4 @@ v34 之后的改动：
 - `todayStudy.js` `renderSession`：`session.commitment.note` 存在时显示 `.today-commit-note`（带左边框引用样式），让家长在「今日」页看到学生原话，不止"部分完成"。
 - `style.css`：`.focus-commitment-goal-label` 18px 加粗；新增 `.focus-reflect-label`/`.focus-reflect-input`（深色遮罩上的白字输入框）；`.focus-deciding-hint` 14→16px；新增 `.today-commit-note`。
 - 导出长图（canvas）：`drawSession` 在副标题和卡片之间插入学生反思——浅色底框 + 左色条 +「我的记录」标题 + 换行正文；新增 `sessionNoteHeight()` 估算额外高度，`estimateExportHeight` 的 session 循环同步加上，避免裁切（build `20260615n`）。
+- **反思必填（build `20260615o`）**：deciding 有未反思承诺时，反思框写够 2 字前，三个完成按钮 + 「开始休息」+「结束今天的学习」全部 `disabled`，无法跳过。渲染按 `lock=Boolean(c)` 给这 5 个按钮加 `lockAttr`；`bindFocusOverlay` 给 `#commitment-reflect-note` 绑 input 监听 `sync()`，`value.trim().length>=2` 时解锁并把提示从「先写两句…」切到「写完后，这一轮算搞定了吗？」。`style.css` 加 `.focus-commitment-reflect .btn:disabled`/`.focus-overlay-actions .btn:disabled` 灰显。
