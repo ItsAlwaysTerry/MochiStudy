@@ -727,8 +727,9 @@ button {
 
 /* 卡片多选测验 */
 .study-card-list-hint {
-  margin: 0 0 8px;
+  margin: 0;
   font-size: 12px;
+  font-weight: 600;
   color: var(--text-tertiary);
 }
 
@@ -4396,16 +4397,6 @@ body.lottery-mode .bottom-nav {
   font-weight: 800;
 }
 
-.archive-history-details {
-  margin-top: 10px;
-}
-
-.archive-history-details summary {
-  cursor: pointer;
-  color: var(--primary);
-  font-size: 14px;
-  font-weight: 900;
-}
 
 .study-card {
   background: var(--surface-low);
@@ -4600,30 +4591,41 @@ body.lottery-mode .bottom-nav {
   display: block;
 }
 
-.card-question-area {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(81, 67, 71, 0.12);
+.card-detail {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(81, 67, 71, 0.14);
 }
 
-.card-question-toggle {
+.card-detail .card-routine {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.card-detail .card-question {
+  margin-top: 10px;
+}
+
+.card-expand-hint {
+  display: block;
+  margin-top: 6px;
+  text-align: center;
+  color: rgba(81, 67, 71, 0.4);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.archive-cards-head {
   display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 0;
-  border: 0;
-  background: none;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 14px 0 8px;
+  font-size: 13px;
+  font-weight: 800;
   color: var(--muted);
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.card-question-toggle:hover {
-  color: var(--on-surface);
-}
-
-.card-question-toggle .material-symbols-outlined {
-  font-size: 14px;
 }
 
 .card-question {
@@ -6536,7 +6538,6 @@ body.focus-mode #view {
 #learn-content-pane .digest-note small,
 #learn-content-pane .card-meta,
 #learn-content-pane .card-meta-summary span,
-#learn-content-pane .card-question-toggle,
 #learn-content-pane .review-step-text,
 #learn-content-pane .review-help,
 #learn-content-pane .review-import-inline textarea,

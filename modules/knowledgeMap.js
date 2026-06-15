@@ -465,13 +465,13 @@
         <button class="btn btn-primary btn-sm archive-quiz-node-btn" data-archive-action="quiz-node" data-review-key="${escapeHtml(summary.subject + "::" + summary.node.label)}" type="button">
           <span class="material-symbols-outlined">quiz</span>测这个知识点
         </button>
-        <details class="archive-history-details"${STATE.historyExpanded ? " open" : ""}>
-          <summary>${cardsLabel}</summary>
-          <p class="study-card-list-hint">点卡片右上角 <span class="material-symbols-outlined" style="font-size:14px;vertical-align:-2px">add_task</span> 选中一张或多张，一起出测验。</p>
-          <div class="study-card-list" data-card-list data-card-list-subject="${escapeHtml(subjectKey)}" data-card-list-node-label="${escapeHtml(summary.node.label)}">
-            ${summary.entries.map((log, index) => renderStudyCard(log, subjectKey, index, summary.node.label)).join("")}
-          </div>
-        </details>
+        <div class="archive-cards-head">
+          <span>${cardsLabel}</span>
+          <span class="study-card-list-hint">点右上角 <span class="material-symbols-outlined" style="font-size:14px;vertical-align:-2px">add_task</span> 可多选一起测</span>
+        </div>
+        <div class="study-card-list" data-card-list data-card-list-subject="${escapeHtml(subjectKey)}" data-card-list-node-label="${escapeHtml(summary.node.label)}">
+          ${summary.entries.map((log, index) => renderStudyCard(log, subjectKey, index, summary.node.label)).join("")}
+        </div>
       </div>
     `;
   }
@@ -480,21 +480,22 @@
     const id = cardId(log);
     const meta = metaForLog(log);
     const source = sourceDisplayInfo(meta.source);
-    const expandState = STATE.expandedCards.get(id) || null;
+    const expanded = Boolean(STATE.expandedCards.get(id));
     const subject = SUBJECTS[subjectKey];
     const starCount = Math.max(1, Math.min(3, Number(log.stars || 1)));
     const starClass = starCount === 3 ? "stars-gold" : starCount === 2 ? "stars-orange" : "stars-gray";
     const hasRoutine = Boolean(String(log.routine || "").trim());
     const hasOriginalQuestion = Boolean(originalQuestionText(log));
+    const hasDetail = hasRoutine || hasOriginalQuestion;
     const quizSelected = STATE.quizSelected.has(id);
     return `
-      <article class="study-card expand-${expandState || "none"}${quizSelected ? " card-quiz-selected" : ""}"
+      <article class="study-card${expanded ? " expand-open" : ""}${quizSelected ? " card-quiz-selected" : ""}"
         data-card-id="${escapeHtml(id)}"
         data-card-subject="${escapeHtml(subjectKey)}"
         data-card-node-label="${escapeHtml(nodeLabel)}"
         data-log-index="${index}"
         style="--subject-color:${subject.color}">
-        <div class="card-front" data-card-action="toggle-routine">
+        <div class="card-front" data-card-action="${hasDetail ? "toggle-card" : ""}">
           <div class="card-header">
             <div class="card-meta">
               <span>${escapeHtml(String(log.date || ""))}</span>
@@ -506,9 +507,6 @@
               <button class="card-action-btn${quizSelected ? " active" : ""}" data-card-action="quiz-card" type="button" title="选中测验" aria-label="选这张测验">
                 <span class="material-symbols-outlined">${quizSelected ? "check_circle" : "add_task"}</span>
               </button>
-              <button class="card-action-btn card-drag-handle" data-card-action="drag" draggable="true" type="button" title="拖动排序" aria-label="拖动排序">
-                <span class="material-symbols-outlined">drag_indicator</span>
-              </button>
               <button class="card-action-btn danger" data-card-action="delete" type="button" title="删除卡片" aria-label="删除卡片">
                 <span class="material-symbols-outlined">delete</span>
               </button>
@@ -516,24 +514,13 @@
           </div>
           ${painPointHtml(log)}
           ${metaSummaryHtml(meta)}
+          ${hasDetail ? `<span class="card-expand-hint material-symbols-outlined">${expanded ? "expand_less" : "expand_more"}</span>` : ""}
         </div>
 
-        ${hasRoutine ? `
-        <div class="card-routine ${expandState === "routine" ? "visible" : ""}">
-          <strong>今日套路：</strong>
-          <div>${formatRoutine(log.routine)}</div>
-        </div>
-        ` : ""}
-
-        ${hasOriginalQuestion ? `
-        <div class="card-question-area">
-          <button class="card-question-toggle" data-card-action="toggle-question" type="button">
-            <span class="material-symbols-outlined">quiz</span>
-            ${expandState === "question" ? "收起原题" : "看原题"}
-          </button>
-          <div class="card-question ${expandState === "question" ? "visible" : ""}">
-            <p>${formatRichText(originalQuestionText(log))}</p>
-          </div>
+        ${expanded && hasDetail ? `
+        <div class="card-detail">
+          ${hasRoutine ? `<div class="card-routine visible"><strong>今日套路：</strong><div>${formatRoutine(log.routine)}</div></div>` : ""}
+          ${hasOriginalQuestion ? `<div class="card-question visible"><strong>原题：</strong><p>${formatRichText(originalQuestionText(log))}</p></div>` : ""}
         </div>
         ` : ""}
       </article>
@@ -985,11 +972,6 @@
   function bindContainer(container) {
     if (!container || container.__mochiCardsBound) return;
     container.__mochiCardsBound = true;
-    container.addEventListener("toggle", (event) => {
-      if (event.target.classList.contains("archive-history-details")) {
-        STATE.historyExpanded = event.target.open;
-      }
-    }, true);
     container.addEventListener("dragstart", (event) => {
       const handle = event.target.closest("[data-card-action='drag']");
       if (!handle) return;
@@ -1095,19 +1077,10 @@
           event.stopPropagation();
           return;
         }
-        if (action === "toggle-routine" || (!action && event.target.closest(".card-front"))) {
-          if (event.target.closest(".card-question-area") || event.target.closest(".card-head-actions")) return;
-          const current = STATE.expandedCards.get(id);
-          if (current === "routine") STATE.expandedCards.delete(id);
-          else STATE.expandedCards.set(id, "routine");
-          rerenderCard(card);
-          return;
-        }
-        if (action === "toggle-question") {
-          event.stopPropagation();
-          const current = STATE.expandedCards.get(id);
-          if (current === "question") STATE.expandedCards.delete(id);
-          else STATE.expandedCards.set(id, "question");
+        if (action === "toggle-card" || (!action && event.target.closest(".card-front"))) {
+          if (event.target.closest(".card-head-actions")) return;
+          if (STATE.expandedCards.get(id)) STATE.expandedCards.delete(id);
+          else STATE.expandedCards.set(id, true);
           rerenderCard(card);
           return;
         }

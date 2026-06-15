@@ -429,3 +429,12 @@ v34 之后的改动：
 - `knowledgeMap.js`：新增 `buildRelearnPack(subjectLabel, nodeLabel)`（自包含讲解型 prompt，章节预填，以「【MochiStudy 从零重学】」开头过 `openSessionForPack` 守卫，记录段 `学习来源：新学`）；`showRelearnSheet()`（自包含 overlay：选科目 → 点一个知识点立刻生成并 `openSessionForPack(..., { ai:"从零重学 AI 私教", verb:"重学" })`）。学习档案动作行新增「从零重学」按钮（`data-archive-action="relearn"`）。
 - `skill/gaokao重学.md`：从零重学私教 persona（建直觉 → 拆最小台阶 → 每步出超简单题确认 → 学会一步输出一条记录）。`app.js` 设置页 AI 指南补为**第 4 个** prompt 条目（`./skill/gaokao重学.md`），说明从「三个」改「四个」。
 - `style.css`：`.relearn-node-options` 知识点列表超高时可滚动。
+
+### V4.3 学习档案陈列精简（中度去下钻，build `20260615d`）
+
+用户反馈档案下钻太深（知识点行 → 摘要 → 历史卡片折叠 → 卡片 → 套路 → 看原题，4 层）。中度精简到 2 层：
+
+- **去掉中间"历史卡片"折叠层**：`renderNodeDigest` 删除 `<details class="archive-history-details">`，展开知识点直接显示卡片列表；新增 `.archive-cards-head`（卡片数 + 多选提示一行）。`STATE.historyExpanded` 与 toggle 监听不再使用（监听已删，STATE 字段留存无害）。
+- **卡片一次展开看全**：`renderStudyCard` 把原来互斥的"今日套路 toggle"和"看原题 toggle"合并为单一展开——点卡片展开 `.card-detail`（套路 + 原题一起显示，原题加「原题：」标签）；删除独立的「看原题」按钮和 `.card-question-area/.card-question-toggle`。`STATE.expandedCards` 值由 `"routine"|"question"` 改为布尔 `true`；点击处理 `toggle-routine`/`toggle-question` 合并为 `toggle-card`。卡片底部加 `.card-expand-hint`（▾/▴）提示可展开；无套路无原题的卡不可展开。
+- **顺带**：删除每张卡的拖动手柄 `data-card-action="drag"`（多余；拖拽监听变空操作，暂留）。`source` 标签已有「新学/复习」区分（`sourceDisplayInfo`），新学卡片在档案里天然带「新学」标签，不与错题混淆。
+- `style.css`：新增 `.card-detail`/`.card-expand-hint`/`.archive-cards-head`；删除死的 `.archive-history-details`/`.card-question-area`/`.card-question-toggle` 及 `#learn-content-pane .card-question-toggle` 引用。
