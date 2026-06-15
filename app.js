@@ -3726,7 +3726,7 @@
         </section>
         <section class="card" style="grid-column:1 / -1">
           <h3>AI 使用指南</h3>
-          <p class="muted" style="margin-top:4px">三个 AI Prompt，分别用于学新题、复习旧卡点和综合测验。复制后粘贴到 Claude 的「项目说明」里，即可激活对应的 AI 角色。</p>
+          <p class="muted" style="margin-top:4px">四个 AI Prompt，分别用于学新题、复习旧卡点、综合测验和从零重学一章。复制后粘贴到 Claude 的「项目说明」里，即可激活对应的 AI 角色。</p>
           <div class="ai-guide-prompts" style="margin-top:16px;display:flex;flex-direction:column;gap:12px">
             <details class="ai-prompt-entry">
               <summary class="ai-prompt-summary">
@@ -3774,6 +3774,22 @@
               <div class="ai-prompt-steps">
                 <p><strong>使用方法：</strong>在「学习 → 复习队列」点右上角「综合测验」复制测验包，粘给这个 AI。做完后把它输出的全部记录一起粘回复习页的综合测验面板导入。</p>
                 <p class="muted" style="font-size:12px;margin-top:6px">流程：读取测验包 → 按热身→核心弱点顺序出题 → 每个知识点一道 → 全部做完一次性输出所有记录</p>
+              </div>
+            </details>
+            <details class="ai-prompt-entry">
+              <summary class="ai-prompt-summary">
+                <span class="ai-prompt-icon material-symbols-outlined">school</span>
+                <div class="ai-prompt-meta">
+                  <strong>从零重学 AI 私教</strong>
+                  <span class="muted" style="font-size:12px">某章太烂、想从头学时用 · 从最基础一小步一小步带学会 → 学会一步就输出记录</span>
+                </div>
+                <button class="btn btn-soft btn-sm ai-prompt-copy-btn" data-action="copy-ai-prompt" data-prompt-path="./skill/gaokao重学.md" type="button">
+                  <span class="material-symbols-outlined">content_copy</span>复制 Prompt
+                </button>
+              </summary>
+              <div class="ai-prompt-steps">
+                <p><strong>使用方法：</strong>在「学习 → 学习档案」点「从零重学」，选一个想重学的知识点，会自动复制讲解材料；粘给这个 AI 跟着一步步学，把它输出的记录粘回面板导入。</p>
+                <p class="muted" style="font-size:12px;margin-top:6px">流程：先用大白话讲这章在解决什么 → 拆成最小台阶一步步教 → 每步出超简单题确认 → 学会一步输出一条记录</p>
               </div>
             </details>
           </div>

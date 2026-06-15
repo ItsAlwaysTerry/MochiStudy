@@ -819,6 +819,11 @@ button {
   color: #fff;
 }
 
+.relearn-node-options {
+  max-height: 230px;
+  overflow-y: auto;
+}
+
 .grid {
   display: grid;
   gap: 20px;

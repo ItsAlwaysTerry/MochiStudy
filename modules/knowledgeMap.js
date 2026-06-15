@@ -355,6 +355,9 @@
         }).join("")}
       </div>
       <div class="archive-actions-row">
+        <button class="btn btn-soft btn-sm" data-archive-action="relearn" type="button">
+          <span class="material-symbols-outlined">school</span>从零重学
+        </button>
         <button class="btn btn-primary btn-sm" data-archive-action="quiz-subject" type="button">
           <span class="material-symbols-outlined">casino</span>出测验
         </button>
@@ -679,6 +682,92 @@
     document.body.appendChild(root);
   }
 
+  // ── 从零重学一章：生成讲解型 prompt（章节名预填），交给「从零重学 AI 私教」 ──
+  function buildRelearnPack(subjectLabel, nodeLabel) {
+    const today = new Date().toISOString().slice(0, 10);
+    return [
+      `【MochiStudy 从零重学】${today}`,
+      `重学知识点：${subjectLabel} · ${nodeLabel}`,
+      "",
+      "用途：复制给「从零重学 AI 私教」。这一章学生基础几乎为零、感觉从没学过，请你从最基础开始、一小步一小步地带他重新学会，不要直接讲难题。",
+      "",
+      "学生画像：高中生，基础极差，这一章几乎空白，非常容易受挫和放弃。需要大白话、生活化例子、一次只学一个小点、每步都有具体鼓励，绝不一次性灌一堆公式。",
+      "",
+      "从零重学规则：",
+      "1. 先用一段大白话讲清楚『这一章到底在解决什么问题、学了有什么用』，建立直觉，别上来就甩定义和公式。",
+      "2. 把这一章拆成几个最小的台阶，从第一个最基础的台阶开始，一次只讲一个小点。",
+      "3. 每讲完一个小点，出一道『几乎一定能做对』的超简单题让他试；做对了立刻具体表扬，再上下一个台阶。",
+      "4. 他卡住时，把台阶拆得更小、一层层给提示，绝不直接报答案，也绝不显得不耐烦。",
+      "5. 少用术语；必须用时先用大白话解释一遍。",
+      "6. 每带他真正学会一个小台阶，就输出一条下面格式的 MOCHI-RECORD（学习来源填『新学』）。一节课可以输出多条。",
+      "",
+      "━━ 学会一个小台阶就输出（格式）━━",
+      "---MOCHI-RECORD-START---",
+      `科目：${subjectLabel}`,
+      `知识点：${nodeLabel}`,
+      "学习来源：新学",
+      "掌握星级：[1-3，刚学会从 1-2 星起]",
+      "卡点记录：[他刚才最容易卡的地方，一句话]",
+      "原题：[这个小台阶用来确认的那道简单题]",
+      "今日套路：[这个小台阶的 3 步做法，用大白话]",
+      "错误类型：[概念不清/审题/计算/其他]",
+      "关键突破：[他这次真正搞懂的那个点]",
+      "信心分：[1-5]",
+      "耗时分钟：[整数]",
+      `学习日期：${today}`,
+      "---MOCHI-RECORD-END---",
+    ].join("\n");
+  }
+
+  // 从零重学弹窗：先选科目，再点一个知识点，立刻生成讲解 prompt 并打开粘回面板。
+  function showRelearnSheet() {
+    document.getElementById("archive-quiz-root")?.remove();
+    const subjects = Object.entries(SUBJECTS);
+    let pickedSubject = SUBJECTS[STATE.activeSubject] ? STATE.activeSubject : subjects[0][0];
+    const root = document.createElement("div");
+    root.id = "archive-quiz-root";
+    root.className = "archive-export-root";
+    const renderSheet = () => {
+      const nodes = SUBJECTS[pickedSubject]?.nodes || [];
+      return `
+        <section class="archive-export-sheet" role="dialog" aria-modal="true">
+          <div class="modal-head">
+            <div><h2>从零重学一章</h2></div>
+            <button class="icon-btn" data-relearn-close aria-label="关闭"><span class="material-symbols-outlined">close</span></button>
+          </div>
+          <p class="archive-export-hint">选一个你觉得"太烂了、想从头学"的知识点，AI 会从最基础一小步一小步带你重学。</p>
+          <div class="quiz-sheet-field">
+            <small>哪一科</small>
+            <div class="quiz-sheet-options">
+              ${subjects.map(([key, item]) => `<button class="${key === pickedSubject ? "active" : ""}" data-relearn-subject="${key}" type="button">${item.label}</button>`).join("")}
+            </div>
+          </div>
+          <div class="quiz-sheet-field">
+            <small>点一个知识点，直接开始</small>
+            <div class="quiz-sheet-options relearn-node-options">
+              ${nodes.map((node) => `<button data-relearn-node="${escapeHtml(node.label)}" type="button">${escapeHtml(node.label)}</button>`).join("")}
+            </div>
+          </div>
+        </section>
+      `;
+    };
+    root.innerHTML = renderSheet();
+    root.addEventListener("click", (event) => {
+      if (event.target === root || event.target.closest("[data-relearn-close]")) { root.remove(); return; }
+      const subjBtn = event.target.closest("[data-relearn-subject]");
+      if (subjBtn) { pickedSubject = subjBtn.dataset.relearnSubject; root.innerHTML = renderSheet(); return; }
+      const nodeBtn = event.target.closest("[data-relearn-node]");
+      if (nodeBtn) {
+        const nodeLabel = nodeBtn.dataset.relearnNode;
+        const subjectLabel = SUBJECTS[pickedSubject]?.label || "";
+        root.remove();
+        const pack = buildRelearnPack(subjectLabel, nodeLabel);
+        window.MochiReviewPage?.openSessionForPack?.(pack, `从零重学：${subjectLabel} · ${nodeLabel}`, { ai: "从零重学 AI 私教", verb: "重学" });
+      }
+    });
+    document.body.appendChild(root);
+  }
+
   // 偏弱点优先的加权随机抽取（score 越高=越弱越久没碰，权重越大），不放回。
   function pickWeakFirst(items, n) {
     const pool = items.map((it) => ({ it, w: Math.max(0.5, Number(it.score || 0) + 1) }));
@@ -952,6 +1041,8 @@
           quizNode(archiveActionButton.dataset.reviewKey || "");
         } else if (act === "quiz-subject") {
           showQuizSheet();
+        } else if (act === "relearn") {
+          showRelearnSheet();
         } else if (act === "quiz-selected") {
           quizSelectedCards();
         } else if (act === "quiz-clear") {

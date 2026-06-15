@@ -420,3 +420,12 @@ v34 之后的改动：
 - **死 CSS 清理**：删除已删日历模块遗留的 `.calendar-card/.calendar-head/.month-switch/.calendar-legend/.weekday-row/.calendar-grid/.day-cell（及 .level-1/2/3/.has-data/.muted-day/strong）/.day-number/.day-subjects` 主块（style.css 约 98 行）和移动端媒体查询里的相关规则。`.schedule-grid` 仍被设置页用，保留；season 热力图 `heatmap` 类与 admin 日历类保留。
 - **侧边栏身份**：`index.html` 静态 + `pet.js` `renderMiniState` 的侧边栏头部 `<h1>` 从「我的农场」改为「Mochii」（农场已是配角，一级身份用品牌名）。
 - **默认子 tab**：`app.js` `learnActiveTab` 初值 `"today"` → `"review"`，点底部「学习」首次落在「复习队列」（更可操作）；之后仍记住上次所在子 tab（V3.6 起无参 `renderLearn` 保留 tab）。
+
+### V4.2 从零重学一章（针对基础极差、想从头学的学生，build `20260615b`）
+
+背景：真实用户基础极差（一张卷子 80-90% 不会），不会主动复习旧错题；但他有"某章太烂、想从零重学"的意愿，而这块此前完全空白。方案：新增**讲解型**（区别于做题型）AI 私教，由 app 把章节名预填，走和测验一样的"复制 → 粘给 AI → 粘回导入"闭环。不动数据结构。
+
+- `reviewPage.js`：把粘回面板从写死"测验"**泛化**。`openSessionForPack(pack, label, opts)` 新增 `opts.ai`（AI 角色名）/`opts.verb`（动作词）；`STATE` 加 `sessionLabel/sessionAi/sessionVerb`；`renderSessionPanel` 标题/步骤文案、`importSession` 完成提示都按 STATE 取词。测验路径用默认值（综合测验 AI 私教 / 测验）不变。
+- `knowledgeMap.js`：新增 `buildRelearnPack(subjectLabel, nodeLabel)`（自包含讲解型 prompt，章节预填，以「【MochiStudy 从零重学】」开头过 `openSessionForPack` 守卫，记录段 `学习来源：新学`）；`showRelearnSheet()`（自包含 overlay：选科目 → 点一个知识点立刻生成并 `openSessionForPack(..., { ai:"从零重学 AI 私教", verb:"重学" })`）。学习档案动作行新增「从零重学」按钮（`data-archive-action="relearn"`）。
+- `skill/gaokao重学.md`：从零重学私教 persona（建直觉 → 拆最小台阶 → 每步出超简单题确认 → 学会一步输出一条记录）。`app.js` 设置页 AI 指南补为**第 4 个** prompt 条目（`./skill/gaokao重学.md`），说明从「三个」改「四个」。
+- `style.css`：`.relearn-node-options` 知识点列表超高时可滚动。

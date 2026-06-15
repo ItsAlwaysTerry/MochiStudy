@@ -5,6 +5,9 @@
     message: "",
     container: null,
     sessionActive: false,
+    sessionLabel: "测验",
+    sessionAi: "综合测验 AI 私教",
+    sessionVerb: "测验",
   };
 
   function render(container) {
@@ -108,20 +111,26 @@
     });
   }
 
-  // 外部（学习档案）主动出测验时调用：复制任意范围的测验包，跳到复习页并打开综合测验粘回面板。
-  async function openSessionForPack(pack, label) {
+  // 外部（学习档案）调用：复制任意 pack（测验/从零重学），跳到复习页并打开粘回面板。
+  // opts: { ai: AI 角色名, verb: 动作词（测验/重学） }
+  async function openSessionForPack(pack, label, opts = {}) {
     if (!pack || pack.startsWith("暂无") || !pack.startsWith("【")) {
-      window.MochiApp?.toast?.("这个范围还没有足够的记录可以出题");
+      window.MochiApp?.toast?.("这个范围还没有足够的内容可以开始");
       return;
     }
+    const ai = opts.ai || "综合测验 AI 私教";
+    const verb = opts.verb || "测验";
     const copied = await copyToClipboard(pack);
     STATE.sessionActive = true;
+    STATE.sessionLabel = label || verb;
+    STATE.sessionAi = ai;
+    STATE.sessionVerb = verb;
     STATE.message = copied
-      ? `已复制「${label || "测验"}」的测验包，粘给「综合测验 AI 私教」做完，再把全部输出一起粘到下面导入。`
+      ? `已复制「${label || verb}」，粘给「${ai}」，跟着做完再把全部输出粘回下面导入。`
       : "复制失败，请重试。";
     window.MochiApp?.navigate?.("review");
     if (STATE.container) render(STATE.container);
-    window.MochiApp?.toast?.(copied ? "测验包已复制" : "复制失败");
+    window.MochiApp?.toast?.(copied ? "已复制，去 AI 那里粘贴" : "复制失败");
   }
 
   function importSession(container, button) {
@@ -138,7 +147,7 @@
     }
     records.forEach((rec) => window.MochiApp?.applyMochiRecord?.(rec));
     STATE.sessionActive = false;
-    STATE.message = `综合测验完成，已导入 ${records.length} 条记录，继续保持！`;
+    STATE.message = `${STATE.sessionVerb || "测验"}完成，已导入 ${records.length} 条记录，继续保持！`;
     window.MochiApp?.toast?.(`已导入 ${records.length} 条记录`);
     window.MochiPet?.renderMiniState?.();
     window.MochiFarm?.refreshFarmSummary?.();
@@ -148,20 +157,22 @@
   }
 
   function renderSessionPanel() {
+    const ai = STATE.sessionAi || "综合测验 AI 私教";
+    const verb = STATE.sessionVerb || "测验";
     return `
       <section class="review-session-panel" data-session-panel>
         <div class="review-session-head">
-          <strong><span class="material-symbols-outlined">quiz</span>测验进行中</strong>
+          <strong><span class="material-symbols-outlined">quiz</span>${escapeHtml(verb)}进行中</strong>
           <button class="review-session-dismiss" data-review-action="session-dismiss" type="button" aria-label="收起">✕</button>
         </div>
         <ol class="review-stepper">
-          <li class="review-step done"><span class="review-step-num"><span class="material-symbols-outlined">check</span></span><span class="review-step-text">测验包已复制</span></li>
-          <li class="review-step"><span class="review-step-num">2</span><span class="review-step-text">粘给「综合测验 AI 私教」，一题一题做完</span></li>
+          <li class="review-step done"><span class="review-step-num"><span class="material-symbols-outlined">check</span></span><span class="review-step-text">材料已复制</span></li>
+          <li class="review-step"><span class="review-step-num">2</span><span class="review-step-text">粘给「${escapeHtml(ai)}」，跟着一步步做</span></li>
           <li class="review-step"><span class="review-step-num">3</span><span class="review-step-text">把 AI 输出的<b>全部记录</b>一起粘到下面，一次导入</span></li>
         </ol>
-        <textarea id="session-input" data-session-input rows="4" placeholder="粘贴综合测验 AI 的全部输出（多段 MOCHI-RECORD）"></textarea>
+        <textarea id="session-input" data-session-input rows="4" placeholder="粘贴 AI 的全部输出（多段 MOCHI-RECORD）"></textarea>
         <button class="btn btn-primary" data-review-action="session-import" type="button" style="width:100%;margin-top:8px">
-          <span class="material-symbols-outlined">download_done</span>导入全部测验结果
+          <span class="material-symbols-outlined">download_done</span>导入全部记录
         </button>
         <div class="review-import-result" data-session-result hidden></div>
       </section>
