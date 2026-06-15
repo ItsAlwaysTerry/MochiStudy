@@ -401,37 +401,66 @@
     `;
   }
 
-  // 说到做到：回看最近几轮"目标 vs 完成"，让规划准确度可见，形成长期反馈
+  // 周一日期（offset=0 本周，1 上周）
+  function weekStartKey(offset = 0) {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7) - offset * 7);
+    return d.toISOString().slice(0, 10);
+  }
+
+  // 成长导向：只讲"做了什么 + 进步"，不暴露失败次数（保护缺乏自信的孩子）；
+  // 连续未达成时把它重构成"目标定大了"，引导拆小，而不是记账式羞辱。
   function renderCommitmentRecap() {
-    const stat = window.MochiApp?.commitmentKeptRate?.(7);
-    if (!stat || !stat.total) return "";
-    const recent = stat.recent.slice(-4).reverse();
-    const outcomeInfo = {
-      done: { icon: "✓", cls: "kept", text: "搞定" },
-      partial: { icon: "◐", cls: "partial", text: "部分" },
-      none: { icon: "✕", cls: "missed", text: "没完成" },
-    };
-    const rows = recent.map((c) => {
-      const info = outcomeInfo[c.outcome] || outcomeInfo.none;
-      return `
-        <div class="commit-recap-row">
-          <span class="commit-recap-mark ${info.cls}">${info.icon}</span>
-          <span class="commit-recap-goal">${escapeAttr(c.goal)}</span>
-          <span class="commit-recap-mins">${c.plannedMins ? `${c.plannedMins}分` : "自由"}</span>
-        </div>
-      `;
-    }).join("");
-    const rate = Math.round((stat.done / stat.total) * 100);
-    const summaryTone = rate >= 70 ? "说到做到，保持！" : rate >= 40 ? "目标可以再定准一点。" : "目标定得偏大，下轮试试更小的。";
+    const history = window.MochiApp?.readCommitmentHistory?.() || [];
+    const focusLogs = (window.MochiApp?.readFocusLogs?.() || []).filter((l) => l.type === "focus" && l.completed);
+    // 没有任何承诺轮也没有专注，就不显示（新用户不该看到空卡）
+    if (!history.length && !focusLogs.length) return "";
+
+    const thisMon = weekStartKey(0);
+    const lastMon = weekStartKey(1);
+    const thisWeekCount = focusLogs.filter((l) => String(l.date) >= thisMon).length;
+    const lastWeekCount = focusLogs.filter((l) => String(l.date) >= lastMon && String(l.date) < thisMon).length;
+
+    // 末尾连续达成 / 连续未达成（按 ts 升序看尾部）
+    const ordered = [...history].sort((a, b) => (a.ts || 0) - (b.ts || 0));
+    let keptStreak = 0;
+    let missStreak = 0;
+    for (let i = ordered.length - 1; i >= 0; i -= 1) {
+      if (ordered[i].outcome === "none") break;
+      keptStreak += 1;
+    }
+    for (let i = ordered.length - 1; i >= 0; i -= 1) {
+      if (ordered[i].outcome !== "none") break;
+      missStreak += 1;
+    }
+
+    // 主文案：优先讲进步，再讲连续按时收尾，最后兜底鼓励
+    let headline;
+    if (lastWeekCount > 0 && thisWeekCount > lastWeekCount) {
+      headline = `本周专注 ${thisWeekCount} 次 · 比上周多 ${thisWeekCount - lastWeekCount} 次 🔥`;
+    } else if (keptStreak >= 2) {
+      headline = `最近 ${keptStreak} 轮都按时收尾了 👍`;
+    } else if (thisWeekCount > 0) {
+      headline = `本周已专注 ${thisWeekCount} 次，每一次都算数`;
+    } else {
+      headline = "今天开一轮，专注就从这里开始";
+    }
+
+    // 连续 2 轮没完成 → 把失败重构成"目标该拆小"，不羞辱
+    const hint = missStreak >= 2
+      ? `<p class="commit-recap-shrink">目标是不是定大了？下一轮只挑 1 道题试试，先把"做到"找回来。</p>`
+      : "";
+
     return `
       <section class="card commit-recap-card">
         <div class="commit-recap-head">
-          <span class="material-symbols-outlined">task_alt</span>
-          <h3>说到做到</h3>
-          <span class="commit-recap-rate">近 ${stat.total} 轮做到 ${stat.done} 轮</span>
+          <span class="material-symbols-outlined">trending_up</span>
+          <h3>你的节奏</h3>
         </div>
-        <div class="commit-recap-list">${rows}</div>
-        <p class="commit-recap-summary">${summaryTone}</p>
+        <p class="commit-recap-headline">${headline}</p>
+        ${hint}
+        <button class="commit-recap-detail" data-route="today" type="button">看每一轮的目标和完成 →</button>
       </section>
     `;
   }

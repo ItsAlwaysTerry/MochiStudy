@@ -1656,8 +1656,8 @@ button {
   justify-content: center;
 }
 
-/* 首页"说到做到"回看卡 */
-.commit-recap-card { display: flex; flex-direction: column; gap: 10px; }
+/* 首页"你的节奏"成长卡（成长导向，不暴露失败次数） */
+.commit-recap-card { display: flex; flex-direction: column; gap: 8px; }
 
 .commit-recap-head {
   display: flex;
@@ -1668,57 +1668,72 @@ button {
 .commit-recap-head h3 { font-size: 15px; margin: 0; flex: 1; }
 .commit-recap-head .material-symbols-outlined { font-size: 20px; color: var(--primary); }
 
-.commit-recap-rate {
-  font-size: 12px;
-  color: var(--muted);
-  font-weight: 600;
-}
-
-.commit-recap-list { display: flex; flex-direction: column; gap: 6px; }
-
-.commit-recap-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-}
-
-.commit-recap-mark {
-  flex-shrink: 0;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
+.commit-recap-headline {
+  font-size: 15px;
   font-weight: 700;
-  color: #fff;
-}
-
-.commit-recap-mark.kept { background: #4caf7d; }
-.commit-recap-mark.partial { background: #e0a93a; }
-.commit-recap-mark.missed { background: #c96b6b; }
-
-.commit-recap-goal {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   color: var(--text);
+  margin: 0;
+  line-height: 1.4;
 }
 
-.commit-recap-mins {
-  flex-shrink: 0;
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.commit-recap-summary {
-  font-size: 12px;
-  color: var(--muted);
+.commit-recap-shrink {
+  font-size: 13px;
+  color: #b5743a;
+  background: rgba(224, 169, 58, 0.12);
+  border-radius: 10px;
+  padding: 8px 12px;
   margin: 2px 0 0;
+  line-height: 1.5;
 }
+
+.commit-recap-detail {
+  align-self: flex-start;
+  border: none;
+  background: transparent;
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.commit-recap-detail:hover { text-decoration: underline; }
+
+/* 承诺门一键预设目标 */
+.commitment-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.commitment-preset-chip {
+  border: 1px solid var(--primary);
+  background: var(--primary-soft, rgba(124,111,205,0.12));
+  color: var(--primary);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+
+.commitment-preset-chip:hover { background: var(--primary); color: #fff; }
+
+.commitment-presets-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 10px 0 0;
+}
+
+/* deciding 阶段本轮导入对照 */
+.focus-commitment-imported {
+  font-size: 14px;
+  color: rgba(255,255,255,0.85);
+  margin: 0 0 4px;
+}
+.focus-commitment-imported b { color: #fff; }
 
 /* ── Settings AI Prompt Section ─────────────────────────────── */
 

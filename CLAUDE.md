@@ -466,3 +466,13 @@ v34 之后的改动：
 - **承诺接入今日报告（`todayStudy.js`）**：`focus_log` 完成时已存 `microGoal`（专注目标），完成情况（done/partial/none）在 `commitment_history`。新增 `attachCommitments(sessions, date)` 按 **日期+目标文本** 把承诺 join 到对应专注轮（不改 `focus_log` 结构）。`renderSession` 把目标从一句话灰字升级为 `<b>这一轮目标：</b>` + 完成标记徽章（✓达成绿/◐部分黄/✕没完成红）+「计划N分·实际M分」。导出长图 `drawExportTimeline` 副标题同步加「目标：… · 目标达成✓」。
 - **历史多日翻阅（`todayStudy.js`）**：`readTodayData()` 泛化为 `readDayData(date)`（`currentFocusSession()` 仅当 date 是今天才并入）；模块状态 `viewDate` 默认今天。新增 `allStudyDates()`（study_log/focus_log/commitment_history 日期并集，降序）。`render(container, dateOverride)` 顶部加 `renderDateSwitcher()`：◀更早 / 日期下拉（含周几、今天标注）/ 更近▶ / 「回到今天」。非今天时标题显示「学习记录」。`window.MochiTodayStudy.render` 签名兼容旧调用（无 dateOverride 保留 viewDate）。
 - `style.css`：新增 `.today-date-switcher`/`.today-date-nav`/`.today-date-select`、`.today-session-goal`/`.today-session-nogoal`、`.today-commit-row`/`.today-commit-badge`(kept/partial/missed)/`.today-commit-plan`。
+
+### V4.7 三人格审视后打磨目标功能：保护自信 + 零摩擦 + 自评有据（build `20260615k`）
+
+经"学习专家 / 乔布斯 / 芒格"三人格 5 轮讨论 + 投票，对目标功能做 4 项改动，核心矛盾：当前版本对"缺乏自信"的用户画像是净伤害（天天暴露失败次数 → 习得性无助）。
+
+- **P0 保护自信（红线）**：`farm.js` `renderCommitmentRecap()` 从"近 N 轮做到 M 轮"（暴露失败）重写为成长导向「你的节奏」——只讲做了什么：本周专注次数 vs 上周（`weekStartKey` 算周一）、连续按时收尾轮数、兜底鼓励，**不显示失败计数**。连续 2 轮 `outcome==="none"` 时显示拆小引导 `.commit-recap-shrink`「目标是不是定大了？下轮只挑 1 道」，把失败重构成"目标该拆小"而非羞辱。卡片不再逐条列 outcome（移交今日报告），底部「看每一轮的目标和完成 →」跳 `data-route="today"`。
+- **P1 承诺门零摩擦**：`app.js` `commitmentPresets()` 拉 `buildReviewState().todaySuggestions`/`items` 生成「复习X」预设 chip（≤3 个），`showCommitmentModal` 目标输入框上方一键填入、保留手写；时长默认高亮 25 分（`selectedMins=25`，25 按钮带 `active`）——差基础专注力弱，1 小时反人性。
+- **P2 自评有据**：`app.js` `roundImportSummary(sessionId)` 按 study_log 的 `sessionId` 统计本轮导入卡片数 + 科目；deciding 反馈前显示「这一轮你导入了 N 张卡片（科目）」，问法改「对照你的目标，搞定了吗？」。让自评锚定客观痕迹、顺带逼一次回顾。无导入时提示"光想没动笔也算没搞定"。
+- **P3 去冗余**：P0 后首页卡只剩成长摘要 + 跳转链接，逐轮明细归今日报告独有，两处不再重叠。`commitmentKeptRate` 仍导出但 farm 已不用（留存无害）。
+- `style.css`：重写 `.commit-recap-*`（headline/shrink/detail），新增 `.commitment-presets`/`.commitment-preset-chip`/`.commitment-presets-label`、`.focus-commitment-imported`。

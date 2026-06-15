@@ -4556,6 +4556,26 @@ ${record.originalQuestion || "暂无原题描述。"}
     return { done, total: recent.length, recent };
   }
 
+  // 一键预设目标：拉今日复习/测验建议，降低"想目标"的认知摩擦
+  function commitmentPresets() {
+    const presets = [];
+    try {
+      const reviewState = window.MochiReviewEngine?.buildReviewState?.();
+      const suggestions = reviewState?.todaySuggestions || [];
+      suggestions.slice(0, 3).forEach((item) => {
+        if (item?.nodeLabel) presets.push(`复习${item.nodeLabel}`);
+      });
+      if (presets.length < 3) {
+        (reviewState?.items || []).forEach((item) => {
+          if (presets.length >= 3) return;
+          const text = `复习${item.nodeLabel}`;
+          if (item?.nodeLabel && !presets.includes(text)) presets.push(text);
+        });
+      }
+    } catch { /* 没有引擎或数据就只给手写 */ }
+    return presets.slice(0, 3);
+  }
+
   function showCommitmentModal() {
     if (document.getElementById("commitment-gate")) return;
     if (!isHolidayToday()) {
@@ -4563,6 +4583,10 @@ ${record.originalQuestion || "暂无原题描述。"}
       // 仍允许开始，但不强制——上学日不该被门拦
       return startFocusFreeFallback();
     }
+    const presets = commitmentPresets();
+    const presetHtml = presets.length
+      ? `<div class="commitment-presets">${presets.map((p) => `<button class="commitment-preset-chip" data-preset="${escapeAttr(p)}" type="button">${escapeHtml(p)}</button>`).join("")}</div>`
+      : "";
     const gate = document.createElement("div");
     gate.id = "commitment-gate";
     gate.innerHTML = `
@@ -4572,14 +4596,15 @@ ${record.originalQuestion || "暂无原题描述。"}
         <p class="commitment-subtitle">先定个具体目标和时间，像考试一样给自己一个 deadline</p>
         <div class="commitment-field">
           <label class="commitment-label">这一轮目标</label>
+          ${presets.length ? `<p class="commitment-presets-label">点一个快速填入，或自己写：</p>${presetHtml}` : ""}
           <input id="commitment-goal" class="commitment-goal-input" type="text"
-            placeholder="比如：三角函数大题 2 道 / 搞懂电磁感应这个概念" maxlength="40" autocomplete="off" />
+            placeholder="比如：三角函数大题 2 道 / 搞懂电磁感应这个概念" maxlength="40" autocomplete="off" style="margin-top:8px" />
           <p class="commitment-tip">越具体越好——写"做几道""搞懂哪个"，别写"学习"</p>
         </div>
         <div class="commitment-field">
           <label class="commitment-label">给自己多少时间</label>
           <div class="commitment-dur-row">
-            <button class="commitment-dur-btn" data-mins="25" type="button">25 分</button>
+            <button class="commitment-dur-btn active" data-mins="25" type="button">25 分</button>
             <button class="commitment-dur-btn" data-mins="45" type="button">45 分</button>
             <button class="commitment-dur-btn" data-mins="60" type="button">1 小时</button>
             <button class="commitment-dur-btn commitment-dur-custom" data-mins="custom" type="button">自定义</button>
@@ -4593,7 +4618,7 @@ ${record.originalQuestion || "暂无原题描述。"}
     `;
     document.body.appendChild(gate);
 
-    let selectedMins = null;
+    let selectedMins = 25; // 默认 25 分（差基础、专注力弱，1 小时反人性）
     const goalInput = gate.querySelector("#commitment-goal");
     const startBtn = gate.querySelector("#commitment-start");
     const customInput = gate.querySelector("#commitment-custom-mins");
@@ -4616,6 +4641,14 @@ ${record.originalQuestion || "暂无原题描述。"}
     customInput.addEventListener("input", checkReady);
     goalInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !startBtn.disabled) startBtn.click();
+    });
+
+    gate.querySelectorAll(".commitment-preset-chip").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        goalInput.value = chip.dataset.preset || "";
+        checkReady();
+        goalInput.focus();
+      });
     });
 
     gate.querySelectorAll(".commitment-dur-btn").forEach((btn) => {
@@ -4647,6 +4680,15 @@ ${record.originalQuestion || "暂无原题描述。"}
   function startFocusFreeFallback() {
     _activeCommitment = null;
     window.MochiTimer?.startFocusDirect?.("", 0);
+  }
+
+  // 本轮（按 sessionId）导入了几张卡、涉及哪些科目——给 deciding 自评提供客观锚点
+  function roundImportSummary(sessionId) {
+    if (!sessionId) return { count: 0, subjectText: "" };
+    const logs = (readStudyLogs() || []).filter((log) => log.sessionId === sessionId);
+    const subjectLabels = { math: "数学", physics: "物理", chemistry: "化学" };
+    const subjects = [...new Set(logs.map((log) => subjectLabels[log.subject] || log.subject).filter(Boolean))];
+    return { count: logs.length, subjectText: subjects.join("、") };
   }
   // ── end 专注承诺门 ────────────────────────────────────────────────────────
 
@@ -4681,6 +4723,10 @@ ${record.originalQuestion || "暂无原题描述。"}
       const actualMins = timer.pendingActualMins || 0;
       const restMins = timer.pendingRestMins || 5;
       const c = activeCommitment();
+      const round = roundImportSummary(timer.sessionId);
+      const importedLine = round.count
+        ? `<p class="focus-commitment-imported">这一轮你导入了 <b>${round.count}</b> 张卡片${round.subjectText ? `（${round.subjectText}）` : ""}</p>`
+        : `<p class="focus-commitment-imported">这一轮还没导入卡片——光想没动笔也算没搞定哦</p>`;
       return `
         <div class="focus-overlay-inner">
           <p class="focus-overlay-goal">🎉 你专注了 ${actualMins} 分钟</p>
@@ -4688,7 +4734,8 @@ ${record.originalQuestion || "暂无原题描述。"}
           <div class="focus-deciding-card">
             ${c ? `
               <p class="focus-commitment-goal-label">你说要：${escapeHtml(c.goal)}</p>
-              <p class="focus-deciding-hint">这一轮，搞定了吗？</p>
+              ${importedLine}
+              <p class="focus-deciding-hint">对照你的目标，搞定了吗？</p>
               <div class="focus-commitment-reflect">
                 <button class="btn btn-soft btn-sm" data-action="commitment-done" type="button">✓ 搞定了</button>
                 <button class="btn btn-ghost btn-sm" data-action="commitment-partial" type="button">部分</button>
