@@ -126,7 +126,7 @@
     STATE.sessionAi = ai;
     STATE.sessionVerb = verb;
     STATE.message = copied
-      ? `已复制「${label || verb}」，粘给「${ai}」，跟着做完再把全部输出粘回下面导入。`
+      ? `已复制「${label || verb}」。把它整段粘给你的 AI 就能开始（材料里已带好设定，不用去设置里找），做完把全部输出粘回下面导入。`
       : "复制失败，请重试。";
     window.MochiApp?.navigate?.("review");
     if (STATE.container) render(STATE.container);
@@ -157,7 +157,6 @@
   }
 
   function renderSessionPanel() {
-    const ai = STATE.sessionAi || "综合测验 AI 私教";
     const verb = STATE.sessionVerb || "测验";
     return `
       <section class="review-session-panel" data-session-panel>
@@ -167,7 +166,7 @@
         </div>
         <ol class="review-stepper">
           <li class="review-step done"><span class="review-step-num"><span class="material-symbols-outlined">check</span></span><span class="review-step-text">材料已复制</span></li>
-          <li class="review-step"><span class="review-step-num">2</span><span class="review-step-text">粘给「${escapeHtml(ai)}」，跟着一步步做</span></li>
+          <li class="review-step"><span class="review-step-num">2</span><span class="review-step-text">把刚复制的材料整段粘给任意 AI（材料里已带好规则），跟着一步步做</span></li>
           <li class="review-step"><span class="review-step-num">3</span><span class="review-step-text">把 AI 输出的<b>全部记录</b>一起粘到下面，一次导入</span></li>
         </ol>
         <textarea id="session-input" data-session-input rows="4" placeholder="粘贴 AI 的全部输出（多段 MOCHI-RECORD）"></textarea>
