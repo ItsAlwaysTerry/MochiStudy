@@ -4728,7 +4728,8 @@ ${record.originalQuestion || "暂无原题描述。"}
       const importedLine = round.count
         ? `<p class="focus-commitment-imported">这一轮你导入了 <b>${round.count}</b> 张卡片${round.subjectText ? `（${round.subjectText}）` : ""}</p>`
         : `<p class="focus-commitment-imported">这一轮还没导入卡片——光想没动笔也算没搞定哦</p>`;
-      // 有未反思的承诺 → 必须先写反思才能进行任何下一步（完成分类 / 休息 / 结束）
+      // 有未反思的承诺 → 第一屏只有"填反思 + 选结果"，不给休息/结束的出口；
+      // 选了结果（reflectCommitment）后重渲染，c 变 null，才进入第二屏的休息/结束。
       const lock = Boolean(c);
       const lockAttr = lock ? "disabled" : "";
       return `
@@ -4741,7 +4742,7 @@ ${record.originalQuestion || "暂无原题描述。"}
               ${importedLine}
               <label class="focus-reflect-label" for="commitment-reflect-note">写两句这一轮的真实情况（你和家长都看得到）</label>
               <textarea id="commitment-reflect-note" class="focus-reflect-input" rows="3" placeholder="搞懂了什么？卡在哪、为什么没完成、哪里花了太多时间……写下来，下次才知道怎么调整"></textarea>
-              <p class="focus-deciding-hint" id="reflect-lock-hint">先写两句，才能选下面的结果或休息</p>
+              <p class="focus-deciding-hint" id="reflect-lock-hint">先写两句，再选这一轮的结果</p>
               <div class="focus-commitment-reflect">
                 <button class="btn btn-soft" data-action="commitment-done" type="button" ${lockAttr}>✓ 搞定了</button>
                 <button class="btn btn-soft" data-action="commitment-partial" type="button" ${lockAttr}>◐ 部分完成</button>
@@ -4752,15 +4753,17 @@ ${record.originalQuestion || "暂无原题描述。"}
               <p class="focus-deciding-hint">让大脑充个电，效率会更高</p>
             `}
           </div>
+          ${!c ? `
           <div class="focus-overlay-actions">
-            <button class="btn btn-primary focus-rest-btn" data-action="confirm-rest" type="button" ${lockAttr}>
+            <button class="btn btn-primary focus-rest-btn" data-action="confirm-rest" type="button">
               <span class="material-symbols-outlined">self_improvement</span>
               开始休息 ${restMins} 分钟
             </button>
-            <button class="btn btn-ghost btn-sm" data-action="end-today" type="button" style="color:rgba(255,255,255,0.35);margin-top:4px" ${lockAttr}>
+            <button class="btn btn-ghost btn-sm" data-action="end-today" type="button" style="color:rgba(255,255,255,0.35);margin-top:4px">
               结束今天的学习
             </button>
           </div>
+          ` : ""}
         </div>
       `;
     }
@@ -4880,7 +4883,7 @@ ${record.originalQuestion || "暂无原题描述。"}
       const sync = () => {
         const ok = reflectInput.value.trim().length >= 2;
         lockBtns.forEach((b) => { b.disabled = !ok; });
-        if (hint) hint.textContent = ok ? "写完后，这一轮算搞定了吗？" : "先写两句，才能选下面的结果或休息";
+        if (hint) hint.textContent = ok ? "选一个这一轮的结果，再去休息" : "先写两句，再选这一轮的结果";
       };
       reflectInput.addEventListener("input", sync);
       sync();
