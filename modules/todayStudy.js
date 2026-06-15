@@ -9,6 +9,9 @@
     return new Date().toISOString().slice(0, 10);
   }
 
+  // 当前正在查看的日期（默认今天，可切换到历史某天）
+  let viewDate = todayKey();
+
   function escapeHtml(value) {
     return window.MochiApp?.escapeHtml?.(value) ?? String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
   }
@@ -115,21 +118,37 @@
     };
   }
 
-  function readTodayData() {
-    const today = todayKey();
+  // 把"说到做到"的完成情况按 日期+目标 接到对应专注轮上（不改 focus_log 结构）
+  function attachCommitments(sessions, date) {
+    const history = (window.MochiApp?.readCommitmentHistory?.() || []).filter((c) => c.date === date);
+    if (!history.length) return;
+    const used = new Set();
+    sessions.forEach((session) => {
+      const goal = String(session.microGoal || "").trim();
+      if (!goal) return;
+      const idx = history.findIndex((c, i) => !used.has(i) && String(c.goal || "").trim() === goal);
+      if (idx === -1) return;
+      used.add(idx);
+      session.commitment = history[idx];
+    });
+  }
+
+  function readDayData(date) {
     const meta = window.MochiApp?.readStudyCardMeta?.() || {};
     const cards = (window.MochiApp?.readStudyLogs?.() || [])
-      .filter((log) => datePart(log.importedAt || log.date) === today || datePart(log.date) === today)
+      .filter((log) => datePart(log.importedAt || log.date) === date || datePart(log.date) === date)
       .map((log) => normalizeCard(log, meta))
       .sort((a, b) => (a.importMinute ?? 9999) - (b.importMinute ?? 9999) || String(a.importedAt || a.date).localeCompare(String(b.importedAt || b.date)));
 
     const sessions = (window.MochiApp?.readFocusLogs?.() || [])
-      .filter((log) => log.type === "focus" && log.date === today)
+      .filter((log) => log.type === "focus" && log.date === date)
       .map(normalizeFocusLog)
       .sort((a, b) => sortTimeValue(a) - sortTimeValue(b));
 
-    const active = currentFocusSession();
-    if (active && !sessions.some((session) => session.id === active.id)) sessions.push(active);
+    if (date === todayKey()) {
+      const active = currentFocusSession();
+      if (active && !sessions.some((session) => session.id === active.id)) sessions.push(active);
+    }
 
     const sessionById = new Map(sessions.map((session) => [session.id, session]));
     const unmatchedCards = [];
@@ -144,7 +163,29 @@
     });
 
     sessions.sort((a, b) => sortTimeValue(a) - sortTimeValue(b));
-    return { today, cards, sessions, unmatchedCards };
+    attachCommitments(sessions, date);
+    return { today: date, cards, sessions, unmatchedCards };
+  }
+
+  function readTodayData() {
+    return readDayData(viewDate);
+  }
+
+  // 所有有过学习痕迹的日期（学习卡片 / 专注 / 承诺），降序，供家长翻阅
+  function allStudyDates() {
+    const dates = new Set();
+    (window.MochiApp?.readStudyLogs?.() || []).forEach((log) => {
+      const d = datePart(log.date || log.importedAt);
+      if (d) dates.add(d);
+    });
+    (window.MochiApp?.readFocusLogs?.() || []).forEach((log) => {
+      if (log.type === "focus" && log.date) dates.add(datePart(log.date));
+    });
+    (window.MochiApp?.readCommitmentHistory?.() || []).forEach((c) => {
+      if (c.date) dates.add(datePart(c.date));
+    });
+    dates.add(todayKey());
+    return [...dates].filter(Boolean).sort((a, b) => b.localeCompare(a));
   }
 
   function buildStats(data) {
@@ -377,7 +418,11 @@
       const start = session.startMinute === null ? "未知" : timeFromMinutes(session.startMinute);
       const end = session.active ? "进行中" : (session.endMinute === null ? "未知" : timeFromMinutes(session.endMinute));
       const status = session.active ? "正在学" : session.completed === false ? "未完成" : "已完成";
-      const subtitle = `${formatMinutes(session.duration)} · ${status}${session.microGoal ? ` · ${session.microGoal}` : ""}`;
+      const outcomeText = session.commitment
+        ? { done: " · 目标达成✓", partial: " · 部分完成◐", none: " · 没完成✕" }[session.commitment.outcome] || ""
+        : "";
+      const goalText = session.microGoal ? ` · 目标：${session.microGoal}` : "";
+      const subtitle = `${formatMinutes(session.duration)} · ${status}${goalText}${outcomeText}`;
       drawSession(session, session.cards, `${start}-${end}`, subtitle, session.completed === false ? "#e07020" : "#4caf50");
     });
     if (data.unmatchedCards.length) {
@@ -573,10 +618,25 @@
     `;
   }
 
+  function commitmentBadge(commitment) {
+    if (!commitment) return "";
+    const info = {
+      done: { cls: "kept", text: "✓ 目标达成" },
+      partial: { cls: "partial", text: "◐ 部分完成" },
+      none: { cls: "missed", text: "✕ 没完成" },
+    }[commitment.outcome] || { cls: "missed", text: "✕ 没完成" };
+    const planned = commitment.plannedMins ? `计划${commitment.plannedMins}分` : "自由";
+    const actual = commitment.actualMins ? `实际${commitment.actualMins}分` : "";
+    return `<span class="today-commit-badge ${info.cls}">${info.text}</span><span class="today-commit-plan">${planned}${actual ? ` · ${actual}` : ""}</span>`;
+  }
+
   function renderSession(session) {
     const start = session.startMinute === null ? "未知" : timeFromMinutes(session.startMinute);
     const end = session.active ? "进行中" : (session.endMinute === null ? "未知" : timeFromMinutes(session.endMinute));
     const status = session.active ? "正在学" : session.completed === false ? "未完成" : "已完成";
+    const goalText = session.microGoal
+      ? `<p class="today-session-goal"><b>这一轮目标：</b>${escapeHtml(session.microGoal)}</p>`
+      : `<p class="today-session-nogoal">这段专注没有先定目标。</p>`;
     return `
       <article class="today-session ${session.active ? "active" : ""} ${session.completed === false ? "unfinished" : ""}">
         <div class="today-session-line">
@@ -587,7 +647,8 @@
               <span>${formatMinutes(session.duration)}</span>
               <em>${status}</em>
             </div>
-            ${session.microGoal ? `<p>${escapeHtml(session.microGoal)}</p>` : `<p>这段专注没有填写目标。</p>`}
+            ${goalText}
+            ${session.commitment ? `<div class="today-commit-row">${commitmentBadge(session.commitment)}</div>` : ""}
           </div>
         </div>
         ${session.cards.length ? `<div class="today-session-cards">${session.cards.map(renderMiniCard).join("")}</div>` : `<p class="today-session-empty">这段时间还没有匹配到导入卡片。</p>`}
@@ -683,16 +744,42 @@
     `;
   }
 
-  function render(container) {
+  function weekdayLabel(dateStr) {
+    const names = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+    const d = new Date(`${dateStr}T12:00:00`);
+    return Number.isNaN(d.getTime()) ? "" : names[d.getDay()];
+  }
+
+  function renderDateSwitcher() {
+    const dates = allStudyDates();
+    const isToday = viewDate === todayKey();
+    const idx = dates.indexOf(viewDate);
+    // 列表降序：上一天（更早）= idx+1，下一天（更近）= idx-1
+    const olderDate = idx >= 0 && idx < dates.length - 1 ? dates[idx + 1] : "";
+    const newerDate = idx > 0 ? dates[idx - 1] : "";
+    const options = dates.map((d) => `<option value="${d}"${d === viewDate ? " selected" : ""}>${d} ${weekdayLabel(d)}${d === todayKey() ? "（今天）" : ""}</option>`).join("");
+    return `
+      <div class="today-date-switcher">
+        <button class="today-date-nav" data-day-prev ${olderDate ? "" : "disabled"} type="button" aria-label="更早一天"><span class="material-symbols-outlined">chevron_left</span></button>
+        <select class="today-date-select" data-day-select>${options}</select>
+        <button class="today-date-nav" data-day-next ${newerDate ? "" : "disabled"} type="button" aria-label="更近一天"><span class="material-symbols-outlined">chevron_right</span></button>
+        ${isToday ? "" : `<button class="btn btn-soft btn-sm" data-day-today type="button">回到今天</button>`}
+      </div>
+    `;
+  }
+
+  function render(container, dateOverride) {
     if (!container) return;
-    const data = readTodayData();
+    if (dateOverride) viewDate = dateOverride;
+    const data = readDayData(viewDate);
     const stats = buildStats(data);
+    const isToday = viewDate === todayKey();
     container.innerHTML = `
       <div class="today-study-view">
         <div class="today-title-row">
           <div>
-            <h2>今日学习</h2>
-            <p>${data.today} · 给家长和学生看的当日学习报告</p>
+            <h2>${isToday ? "今日学习" : "学习记录"}</h2>
+            <p>${data.today} ${weekdayLabel(data.today)} · 给家长和学生翻阅的学习报告</p>
           </div>
           <div class="today-title-actions">
             <button class="btn btn-primary btn-sm" data-today-export-image type="button">
@@ -703,6 +790,7 @@
             </button>
           </div>
         </div>
+        ${renderDateSwitcher()}
         ${renderStats(stats)}
         ${renderSubjectBars(data.cards)}
         ${renderTimeline(data)}
@@ -711,6 +799,25 @@
     `;
     container.querySelector("[data-today-export-image]")?.addEventListener("click", (event) => {
       exportTodayImage(event.currentTarget);
+    });
+    const rerender = () => render(container);
+    container.querySelector("[data-day-select]")?.addEventListener("change", (e) => {
+      viewDate = e.target.value;
+      rerender();
+    });
+    container.querySelector("[data-day-prev]")?.addEventListener("click", () => {
+      const dates = allStudyDates();
+      const idx = dates.indexOf(viewDate);
+      if (idx >= 0 && idx < dates.length - 1) { viewDate = dates[idx + 1]; rerender(); }
+    });
+    container.querySelector("[data-day-next]")?.addEventListener("click", () => {
+      const dates = allStudyDates();
+      const idx = dates.indexOf(viewDate);
+      if (idx > 0) { viewDate = dates[idx - 1]; rerender(); }
+    });
+    container.querySelector("[data-day-today]")?.addEventListener("click", () => {
+      viewDate = todayKey();
+      rerender();
     });
   }
 

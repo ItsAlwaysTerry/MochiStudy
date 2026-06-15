@@ -458,3 +458,11 @@ v34 之后的改动：
 - **结束对照 + 留痕。** deciding 阶段显示「你说要：<目标>」+ 三档反馈（搞定/部分/没完成 → `data-action="commitment-done/partial/none"`）。`reflectCommitment(outcome)` 把 `{goal,plannedMins,actualMins,outcome,date,ts}` 追加到 `commitment_history`（新 localStorage key，最多 50 条）。当前轮承诺存内存 `_activeCommitment`（跨刷新不留，没反馈就丢）。
 - **首页"说到做到"回看卡。** `farm.js` `renderCommitmentRecap()`：有历史时在右栏渲染近 4 轮目标 + 完成标记（✓绿/◐黄/✕红）+「近 N 轮做到 M 轮」+ 按做到率给一句话（≥70%/≥40%/更低）。这是长期反馈——让学生看见自己规划准不准，是软件唯一能施加的"真实压力"（软件无法物理阻止绕过）。导出 `showCommitmentModal`/`commitmentKeptRate`/`readCommitmentHistory` 给 farm 用。
 - `style.css`：`#commitment-gate` 加 backdrop-blur + pop/fade 动画 + `.commitment-close`/`.commitment-tip`/`.commitment-custom-input`；新增 `.commit-recap-*` 系列。
+
+### V4.6 学习记录接入承诺 + 历史多日翻阅（给家长监督，build `20260615j`）
+
+需求：① 把每轮专注的"目标 + 完成情况"显示在今日学习报告里，方便家长翻阅评估孩子学习前有没有认真定目标；② 今日学习页原本只能看今天，加历史回看，能翻所有学过的日子。
+
+- **承诺接入今日报告（`todayStudy.js`）**：`focus_log` 完成时已存 `microGoal`（专注目标），完成情况（done/partial/none）在 `commitment_history`。新增 `attachCommitments(sessions, date)` 按 **日期+目标文本** 把承诺 join 到对应专注轮（不改 `focus_log` 结构）。`renderSession` 把目标从一句话灰字升级为 `<b>这一轮目标：</b>` + 完成标记徽章（✓达成绿/◐部分黄/✕没完成红）+「计划N分·实际M分」。导出长图 `drawExportTimeline` 副标题同步加「目标：… · 目标达成✓」。
+- **历史多日翻阅（`todayStudy.js`）**：`readTodayData()` 泛化为 `readDayData(date)`（`currentFocusSession()` 仅当 date 是今天才并入）；模块状态 `viewDate` 默认今天。新增 `allStudyDates()`（study_log/focus_log/commitment_history 日期并集，降序）。`render(container, dateOverride)` 顶部加 `renderDateSwitcher()`：◀更早 / 日期下拉（含周几、今天标注）/ 更近▶ / 「回到今天」。非今天时标题显示「学习记录」。`window.MochiTodayStudy.render` 签名兼容旧调用（无 dateOverride 保留 viewDate）。
+- `style.css`：新增 `.today-date-switcher`/`.today-date-nav`/`.today-date-select`、`.today-session-goal`/`.today-session-nogoal`、`.today-commit-row`/`.today-commit-badge`(kept/partial/missed)/`.today-commit-plan`。

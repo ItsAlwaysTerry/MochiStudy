@@ -153,6 +153,72 @@ button {
   justify-content: flex-end;
 }
 
+/* 日期切换（家长翻阅历史） */
+.today-date-switcher {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 16px;
+  flex-wrap: wrap;
+}
+
+.today-date-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--outline);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.today-date-nav:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+.today-date-nav:disabled { opacity: .35; cursor: not-allowed; }
+
+.today-date-select {
+  flex: 1;
+  min-width: 160px;
+  max-width: 280px;
+  padding: 9px 12px;
+  border: 1px solid var(--outline);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* 专注轮里的"说到做到"完成标记 */
+.today-session-goal { margin: 4px 0 0; font-size: 14px; color: var(--text); }
+.today-session-goal b { color: var(--muted); font-weight: 600; }
+.today-session-nogoal { margin: 4px 0 0; font-size: 13px; color: var(--muted); font-style: italic; }
+
+.today-commit-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.today-commit-badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  color: #fff;
+}
+
+.today-commit-badge.kept { background: #4caf7d; }
+.today-commit-badge.partial { background: #e0a93a; }
+.today-commit-badge.missed { background: #c96b6b; }
+
+.today-commit-plan { font-size: 12px; color: var(--muted); }
+
 .today-title-actions .btn.loading {
   opacity: 0.72;
   cursor: wait;
