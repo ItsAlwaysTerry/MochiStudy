@@ -509,3 +509,9 @@ v34 之后的改动：
 按 `docs/prd/question-desk-prd.md` 的 2026-06-18 方向修订，题桌从「学习页子 tab」升级为应用默认主外壳。空 hash 默认渲染 `#desk`，`#desk` 不再经过 `renderLearn()`，而是直接调用 `MochiQuestionDesk.render(view)`；`body.desk-mode` 隐藏旧 MochiStudy 的侧边栏、顶栏和移动端底部导航，并让题桌三栏占满视口。旧 MochiStudy 仍保留原有首页/学习/勋章/赛季/设置结构，作为次级“成长世界”通过题桌左上角「我的成长」进入；旧站侧边栏和顶栏新增「返回题桌」入口。
 
 「学习」页子 tab 恢复为 今日学习 / 复习队列 / 学习档案，默认回到复习队列；题桌不再出现在学习 tab 内。V5.1 中“题桌是学习页默认子 tab”的表述仅作为历史记录，不代表当前架构。`body` 默认预置 `desk-mode`，避免首屏闪现旧外壳；侧边栏「返回题桌」使用独立样式区分于普通导航。`index.html` 静态资源版本号更新到 `20260618d`。
+
+### V5.3 题桌 Phase 1.5 清爽化（build `20260618e`）
+
+按 `docs/prd/question-desk-prd.md` Phase 1.5 打磨题桌内部体验，不做框选、小标、浮窗，不改 `study_log` / `study_card_meta` / 备份结构和保存闭环。`modules/questionDesk.js` 的 AI 面板新增三态 UI 偏好：常规 `open`、收起 `collapsed`、全屏 `expanded`，状态写入既有 `question_desk_ui_state.panelMode`；切换前会先把当前草稿表单内容回写到题桌 item，避免开合时丢未保存编辑。收起后题图区铺满、右侧只留 AI 小入口；全屏时隐藏题图和文件栏，专注读对话和草稿。
+
+学习记录草稿从密集表单改为清新卡片：科目用 chip，星级用星星选择，关键字段（卡点记录、原题、今日套路）放在主体卡片，错误类型/卡住步骤/关键突破/标签/信心分/耗时等 meta 字段默认折叠到「更多归档细节」。`style.css` 统一题桌卡片、按钮、空状态、面板和移动端收起态的浅灰/白纸/蓝色强调风格。`index.html` 静态资源版本号更新到 `20260618e`。

@@ -47,6 +47,10 @@
     imageUrls: new Map(),
   };
 
+  function normalizePanelMode(value) {
+    return ["open", "collapsed", "expanded"].includes(value) ? value : "open";
+  }
+
   function todayKey() {
     return new Date().toISOString().slice(0, 10);
   }
@@ -90,6 +94,14 @@
 
   function saveUi(patch) {
     writeJson(UI_KEY, { ...readUi(), ...(patch || {}) });
+  }
+
+  function panelMode() {
+    return normalizePanelMode(readUi().panelMode);
+  }
+
+  function setPanelMode(mode) {
+    saveUi({ panelMode: normalizePanelMode(mode) });
   }
 
   function uid(prefix) {
@@ -372,12 +384,13 @@
     STATE.container = container;
     bind(container);
     const activeImage = findActiveImage();
+    const mode = panelMode();
     if (activeImage) {
       STATE.activeImageId = activeImage.id;
       saveUi({ activeImageId: activeImage.id });
     }
     container.innerHTML = `
-      <div class="question-desk">
+      <div class="question-desk qd-panel-${mode}">
         <aside class="qd-sidebar">
           ${renderSidebar(activeImage)}
         </aside>
@@ -385,7 +398,7 @@
           ${renderViewer(activeImage)}
         </main>
         <aside class="qd-panel">
-          ${renderPanel(activeImage)}
+          ${renderPanel(activeImage, mode)}
         </aside>
       </div>
     `;
@@ -478,9 +491,50 @@
     `;
   }
 
-  function renderPanel(activeImage) {
+  function renderPanelControls(mode) {
+    if (mode === "expanded") {
+      return `
+        <div class="qd-panel-controls">
+          <button class="qd-icon-btn" data-qd-action="panel-mode" data-panel-mode="open" type="button" title="回到题图">
+            <span class="material-symbols-outlined">close_fullscreen</span>
+          </button>
+          <button class="qd-icon-btn" data-qd-action="panel-mode" data-panel-mode="collapsed" type="button" title="收起 AI 面板">
+            <span class="material-symbols-outlined">right_panel_close</span>
+          </button>
+        </div>
+      `;
+    }
+    return `
+      <div class="qd-panel-controls">
+        <button class="qd-icon-btn" data-qd-action="panel-mode" data-panel-mode="collapsed" type="button" title="收起 AI 面板">
+          <span class="material-symbols-outlined">right_panel_close</span>
+        </button>
+        <button class="qd-icon-btn" data-qd-action="panel-mode" data-panel-mode="expanded" type="button" title="展开 AI 面板">
+          <span class="material-symbols-outlined">open_in_full</span>
+        </button>
+      </div>
+    `;
+  }
+
+  function renderPanel(activeImage, mode = "open") {
+    if (mode === "collapsed") {
+      return `
+        <button class="qd-rail-btn" data-qd-action="panel-mode" data-panel-mode="open" type="button" title="展开 AI 面板">
+          <span class="material-symbols-outlined">psychology_alt</span>
+          <strong>AI</strong>
+        </button>
+      `;
+    }
     if (!activeImage) {
-      return `<section class="qd-panel-empty"><h3>AI 学习面板</h3><p>先粘贴或上传一道题图。</p></section>`;
+      return `
+        <section class="qd-panel-empty">
+          <div class="qd-panel-empty-head">
+            <h3>AI 学习面板</h3>
+            ${renderPanelControls(mode)}
+          </div>
+          <p>先粘贴或上传一道题图。</p>
+        </section>
+      `;
     }
     const item = findItem(activeImage.id);
     if (!item) return `<section class="qd-panel-empty"><h3>这张题图缺少记录</h3><p>请重新上传。</p></section>`;
@@ -490,7 +544,10 @@
           <h3>题目学习</h3>
           <p>${escapeHtml(activeImage.shortName || activeImage.name)}</p>
         </div>
-        <span class="qd-status-pill ${item.status}">${statusLabel(item.status)}</span>
+        <div class="qd-panel-head-actions">
+          <span class="qd-status-pill ${item.status}">${statusLabel(item.status)}</span>
+          ${renderPanelControls(mode)}
+        </div>
       </div>
       ${STATE.message ? `<div class="qd-message">${escapeHtml(STATE.message)}</div>` : ""}
       <div class="qd-chat" data-qd-chat>
@@ -527,13 +584,29 @@
     `;
   }
 
-  function optionTags(options, current) {
-    return options.map(([value, label]) => `<option value="${value}" ${value === current ? "selected" : ""}>${label}</option>`).join("");
-  }
-
   function nodeOptionTags(subject, current) {
     const nodes = nodesForSubject(subject);
     return [`<option value="">请选择知识点</option>`, ...nodes.map((node) => `<option value="${node.label}" ${node.label === current ? "selected" : ""}>${node.label}</option>`)].join("");
+  }
+
+  function subjectChoiceTags(current) {
+    return SUBJECT_OPTIONS
+      .filter(([key]) => key !== "uncategorized")
+      .map(([value, label]) => `
+        <label class="qd-choice-chip">
+          <input data-qd-draft-subject type="radio" name="subject" value="${value}" ${value === current ? "checked" : ""} />
+          <span>${label}</span>
+        </label>
+      `).join("");
+  }
+
+  function starChoiceTags(current) {
+    return [1, 2, 3].map((value) => `
+      <label class="qd-star-chip">
+        <input type="radio" name="stars" value="${value}" ${Number(current) === value ? "checked" : ""} />
+        <span>${"★".repeat(value)}${"☆".repeat(3 - value)}</span>
+      </label>
+    `).join("");
   }
 
   function renderDraftForm(item) {
@@ -548,28 +621,49 @@
     }
     const subject = draft.subject && draft.subject !== "uncategorized" ? draft.subject : "math";
     return `
-      <form class="qd-draft-form" data-qd-draft-form data-item-id="${item.id}">
-        <h4>学习记录草稿</h4>
-        <div class="qd-draft-grid">
-          <label>科目<select name="subject" data-qd-draft-subject>${optionTags(SUBJECT_OPTIONS.filter(([key]) => key !== "uncategorized"), subject)}</select></label>
-          <label>知识点<select name="nodeLabel">${nodeOptionTags(subject, draft.nodeLabel)}</select></label>
-          <label>星级<select name="stars">${[1, 2, 3].map((n) => `<option value="${n}" ${Number(draft.stars) === n ? "selected" : ""}>${"★".repeat(n)}${"☆".repeat(3 - n)}</option>`).join("")}</select></label>
-          <label>信心分<input name="confidence" type="number" min="0" max="5" value="${Number(draft.meta?.confidence || 0)}" /></label>
-          <label>耗时分钟<input name="timeSpentMinutes" type="number" min="0" value="${Number(draft.meta?.timeSpentMinutes || 0)}" /></label>
-          <label>学习日期<input name="date" type="date" value="${escapeHtml(draft.date || todayKey())}" /></label>
+      <form class="qd-draft-form qd-draft-card" data-qd-draft-form data-item-id="${item.id}">
+        <div class="qd-draft-card-head">
+          <span class="material-symbols-outlined">auto_stories</span>
+          <div>
+            <h4>学习记录草稿</h4>
+            <p>确认几项关键内容，保存后会进入学习档案。</p>
+          </div>
         </div>
-        <label>卡点记录<textarea name="painPoint" rows="2">${escapeHtml(draft.painPoint)}</textarea></label>
-        <label>原题<textarea name="originalQuestion" rows="3">${escapeHtml(draft.originalQuestion)}</textarea></label>
-        <label>今日套路<textarea name="routine" rows="4">${escapeHtml(draft.routine)}</textarea></label>
-        <div class="qd-draft-grid">
-          <label>错误类型<input name="errorType" value="${escapeHtml(draft.meta?.errorType || "")}" /></label>
-          <label>卡住步骤<input name="stuckStep" value="${escapeHtml(draft.meta?.stuckStep || "")}" /></label>
+        <section class="qd-draft-section">
+          <label class="qd-field">
+            <span>科目</span>
+            <div class="qd-choice-row">${subjectChoiceTags(subject)}</div>
+          </label>
+          <div class="qd-draft-grid">
+            <label class="qd-field">知识点<select name="nodeLabel">${nodeOptionTags(subject, draft.nodeLabel)}</select></label>
+            <label class="qd-field">学习日期<input name="date" type="date" value="${escapeHtml(draft.date || todayKey())}" /></label>
+          </div>
+          <label class="qd-field">
+            <span>掌握星级</span>
+            <div class="qd-star-row">${starChoiceTags(draft.stars)}</div>
+          </label>
+        </section>
+        <section class="qd-draft-section qd-draft-core">
+          <label class="qd-field qd-field-main">卡点记录<textarea name="painPoint" rows="2" placeholder="一句话写清真正卡住的地方">${escapeHtml(draft.painPoint)}</textarea></label>
+          <label class="qd-field qd-field-main">原题<textarea name="originalQuestion" rows="3" placeholder="保留题干核心文字、数字和公式">${escapeHtml(draft.originalQuestion)}</textarea></label>
+          <label class="qd-field qd-field-main">今日套路<textarea name="routine" rows="4" placeholder="最多三步：以后再见到这类题怎么做">${escapeHtml(draft.routine)}</textarea></label>
+        </section>
+        <details class="qd-draft-more">
+          <summary><span class="material-symbols-outlined">tune</span>更多归档细节</summary>
+          <div class="qd-draft-grid">
+            <label class="qd-field">错误类型<input name="errorType" value="${escapeHtml(draft.meta?.errorType || "")}" /></label>
+            <label class="qd-field">卡住步骤<input name="stuckStep" value="${escapeHtml(draft.meta?.stuckStep || "")}" /></label>
+            <label class="qd-field">信心分<input name="confidence" type="number" min="0" max="5" value="${Number(draft.meta?.confidence || 0)}" /></label>
+            <label class="qd-field">耗时分钟<input name="timeSpentMinutes" type="number" min="0" value="${Number(draft.meta?.timeSpentMinutes || 0)}" /></label>
+          </div>
+          <label class="qd-field">关键突破<input name="keyInsight" value="${escapeHtml(draft.meta?.keyInsight || "")}" /></label>
+          <label class="qd-field">题型标签<input name="tags" value="${escapeHtml((draft.meta?.tags || []).join("、"))}" /></label>
+        </details>
+        <div class="qd-draft-save-row">
+          <button class="btn btn-primary" data-qd-action="save-record" data-item-id="${item.id}" type="button">
+            <span class="material-symbols-outlined">download_done</span>保存到学习档案
+          </button>
         </div>
-        <label>关键突破<input name="keyInsight" value="${escapeHtml(draft.meta?.keyInsight || "")}" /></label>
-        <label>题型标签<input name="tags" value="${escapeHtml((draft.meta?.tags || []).join("、"))}" /></label>
-        <button class="btn btn-primary" data-qd-action="save-record" data-item-id="${item.id}" type="button">
-          <span class="material-symbols-outlined">download_done</span>保存到学习档案
-        </button>
       </form>
     `;
   }
@@ -589,6 +683,13 @@
       if (loading) loading.hidden = true;
     };
     img.src = url;
+  }
+
+  function persistDraftFromCurrentForm() {
+    const form = STATE.container?.querySelector("[data-qd-draft-form]");
+    const itemId = form?.dataset.itemId;
+    if (!form || !itemId) return;
+    updateItem(itemId, { recordDraft: formDraft(form) });
   }
 
   function bind(container) {
@@ -620,6 +721,12 @@
       const button = event.target.closest("[data-qd-action]");
       if (!button) return;
       const action = button.dataset.qdAction;
+      if (action === "panel-mode") {
+        persistDraftFromCurrentForm();
+        setPanelMode(button.dataset.panelMode || "open");
+        render(container);
+        return;
+      }
       if (action === "filter") {
         STATE.filter = button.dataset.filter || "all";
         render(container);
