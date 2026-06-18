@@ -606,10 +606,10 @@
       }
       if (event.target.matches("[data-qd-draft-subject]")) {
         const form = event.target.closest("[data-qd-draft-form]");
-        const item = items().find((entry) => entry.id === form?.dataset.itemId);
-        if (!item?.recordDraft) return;
-        const draft = { ...item.recordDraft, subject: event.target.value, nodeLabel: "", nodeId: "" };
-        updateItem(item.id, { recordDraft: draft });
+        const itemId = form?.dataset.itemId;
+        if (!itemId) return;
+        const draft = { ...formDraft(form), subject: event.target.value, nodeLabel: "", nodeId: "" };
+        updateItem(itemId, { recordDraft: draft, subject: draft.subject, nodeLabel: "", nodeId: "" });
         render(container);
       }
     });
