@@ -515,3 +515,9 @@ v34 之后的改动：
 按 `docs/prd/question-desk-prd.md` Phase 1.5 打磨题桌内部体验，不做框选、小标、浮窗，不改 `study_log` / `study_card_meta` / 备份结构和保存闭环。`modules/questionDesk.js` 的 AI 面板新增三态 UI 偏好：常规 `open`、收起 `collapsed`、全屏 `expanded`，状态写入既有 `question_desk_ui_state.panelMode`；切换前会先把当前草稿表单内容回写到题桌 item，避免开合时丢未保存编辑。收起后题图区铺满、右侧只留 AI 小入口；全屏时隐藏题图和文件栏，专注读对话和草稿。
 
 学习记录草稿从密集表单改为清新卡片：科目用 chip，星级用星星选择，关键字段（卡点记录、原题、今日套路）放在主体卡片，错误类型/卡住步骤/关键突破/标签/信心分/耗时等 meta 字段默认折叠到「更多归档细节」。`style.css` 统一题桌卡片、按钮、空状态、面板和移动端收起态的浅灰/白纸/蓝色强调风格。`index.html` 静态资源版本号更新到 `20260618e`。
+
+### V5.4 题桌 Phase 2 起步：框选多题、小标与学习浮窗（build `20260618f`）
+
+按 `docs/prd/question-desk-prd.md` Phase 2 的最小闭环起步，不做 PDF、复杂缩放工具或反向跳转。题桌中间题图支持直接拖拽框选区域，新增的区域题写入既有 `question_desk_items`，用 `rect: {x,y,w,h}` 保存相对坐标；旧的一图一题 item 继续兼容。区域题会在题面显示蓝色小标，已问/已保存状态用不同颜色；点击小标打开题桌内浮窗，展示该题最近 AI 对话和已保存学习档案卡片摘要。
+
+AI 问答和生成草稿仍走原 `callAIWithImage()` 链路，但区域题会先在浏览器中按 rect 裁剪题图 Blob，再把裁剪图作为上下文发给视觉模型。保存逻辑仍复用 `applyMochiRecord()`，不改 `study_log` / `study_card_meta` 字段和备份结构。`index.html` 静态资源版本号更新到 `20260618f`。

@@ -41,9 +41,12 @@
   const STATE = {
     container: null,
     activeImageId: "",
+    activeItemId: "",
+    inspectItemId: "",
     filter: "all",
     busy: false,
     message: "",
+    selecting: null,
     imageUrls: new Map(),
   };
 
@@ -313,6 +316,21 @@
     return items().find((item) => item.imageId === imageId) || null;
   }
 
+  function itemsForImage(imageId) {
+    return items().filter((item) => item.imageId === imageId);
+  }
+
+  function activeItemForImage(imageId) {
+    const list = itemsForImage(imageId);
+    return list.find((item) => item.id === STATE.activeItemId) || list[0] || null;
+  }
+
+  function itemLabel(item, index = 0) {
+    if (!item) return "";
+    if (item.rect) return item.title || `第 ${index + 1} 题`;
+    return item.title || "整张题图";
+  }
+
   async function objectUrlFor(imageId) {
     if (!imageId) return "";
     if (STATE.imageUrls.has(imageId)) return STATE.imageUrls.get(imageId);
@@ -321,6 +339,44 @@
     const url = URL.createObjectURL(blob);
     STATE.imageUrls.set(imageId, url);
     return url;
+  }
+
+  function bitmapFromBlob(blob) {
+    if (window.createImageBitmap) return window.createImageBitmap(blob);
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        resolve(img);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error("题图读取失败"));
+      };
+      img.src = url;
+    });
+  }
+
+  async function imageBlobForItem(item) {
+    const blob = await getBlob(item.imageId);
+    if (!blob || !item.rect) return blob;
+    const source = await bitmapFromBlob(blob);
+    const sw = source.width || source.naturalWidth || 0;
+    const sh = source.height || source.naturalHeight || 0;
+    if (!sw || !sh) return blob;
+    const rect = item.rect;
+    const sx = Math.max(0, Math.round(rect.x * sw));
+    const sy = Math.max(0, Math.round(rect.y * sh));
+    const cw = Math.max(1, Math.round(rect.w * sw));
+    const ch = Math.max(1, Math.round(rect.h * sh));
+    const canvas = document.createElement("canvas");
+    canvas.width = cw;
+    canvas.height = ch;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(source, sx, sy, cw, ch, 0, 0, cw, ch);
+    source.close?.();
+    return await new Promise((resolve) => canvas.toBlob((next) => resolve(next || blob), "image/png", 0.92));
   }
 
   async function addImage(file) {
@@ -379,6 +435,33 @@
     saveItems(items().map((item) => item.id === itemId ? { ...item, ...(patch || {}), updatedAt: nowIso() } : item));
   }
 
+  function createRegionItem(image, rect) {
+    if (!image || !rect) return null;
+    const siblings = itemsForImage(image.id);
+    const nextIndex = siblings.filter((item) => item.rect).length + 1;
+    const item = {
+      id: uid("item"),
+      imageId: image.id,
+      subject: image.subject || "uncategorized",
+      nodeId: "",
+      nodeLabel: "",
+      status: "new",
+      title: `第 ${nextIndex} 题`,
+      rect,
+      chat: [],
+      recordDraft: null,
+      savedLogId: "",
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+    };
+    saveItems([item, ...items()]);
+    STATE.activeItemId = item.id;
+    STATE.inspectItemId = item.id;
+    setPanelMode("open");
+    window.MochiApp?.toast?.("已框选一道题");
+    return item;
+  }
+
   function render(container) {
     if (!container) return;
     STATE.container = container;
@@ -388,17 +471,20 @@
     if (activeImage) {
       STATE.activeImageId = activeImage.id;
       saveUi({ activeImageId: activeImage.id });
+      const activeItem = activeItemForImage(activeImage.id);
+      if (activeItem) STATE.activeItemId = activeItem.id;
     }
+    const activeItem = activeImage ? activeItemForImage(activeImage.id) : null;
     container.innerHTML = `
       <div class="question-desk qd-panel-${mode}">
         <aside class="qd-sidebar">
           ${renderSidebar(activeImage)}
         </aside>
         <main class="qd-canvas">
-          ${renderViewer(activeImage)}
+          ${renderViewer(activeImage, activeItem)}
         </main>
         <aside class="qd-panel">
-          ${renderPanel(activeImage, mode)}
+          ${renderPanel(activeImage, activeItem, mode)}
         </aside>
       </div>
     `;
@@ -447,13 +533,17 @@
   }
 
   function renderFileItem(img, active) {
-    const item = findItem(img.id);
+    const list = itemsForImage(img.id);
+    const item = list[0] || null;
+    const savedCount = list.filter((entry) => entry.status === "saved").length;
+    const askedCount = list.filter((entry) => entry.chat?.length).length;
+    const countLabel = list.length > 1 ? ` · ${list.length}题` : "";
     return `
       <button class="qd-file ${active ? "active" : ""}" data-qd-action="select-image" data-image-id="${img.id}" type="button">
         <span class="qd-file-status ${img.status || "new"}"></span>
         <span class="qd-file-main">
           <strong>${escapeHtml(img.shortName || img.name)}</strong>
-          <small>${escapeHtml(subjectLabel(img.subject))} · ${img.status === "saved" ? "已学习" : item?.chat?.length ? "已问 AI" : "未学习"}</small>
+          <small>${escapeHtml(subjectLabel(img.subject))}${countLabel} · ${savedCount ? `已学${savedCount}` : askedCount ? `已问${askedCount}` : item?.chat?.length ? "已问 AI" : "未学习"}</small>
         </span>
       </button>
     `;
@@ -463,7 +553,65 @@
     return `<div class="qd-empty-mini">这里还没有题图。复制一张题目截图，然后按 Ctrl+V。</div>`;
   }
 
-  function renderViewer(activeImage) {
+  function renderRegions(activeImage, activeItem) {
+    const list = itemsForImage(activeImage?.id).filter((item) => item.rect);
+    return list.map((item, index) => {
+      const rect = item.rect || {};
+      return `
+        <button class="qd-region ${item.id === activeItem?.id ? "active" : ""} ${item.status || "new"}"
+          style="left:${rect.x * 100}%;top:${rect.y * 100}%;width:${rect.w * 100}%;height:${rect.h * 100}%"
+          data-qd-action="open-inspector" data-item-id="${item.id}" type="button" title="${escapeHtml(itemLabel(item, index))}">
+          <span>${index + 1}</span>
+        </button>
+      `;
+    }).join("");
+  }
+
+  function renderInspector(activeImage) {
+    const item = items().find((entry) => entry.id === STATE.inspectItemId && entry.imageId === activeImage?.id);
+    if (!item) return "";
+    const log = item.savedLogId ? (window.MochiApp?.readStudyLogs?.() || []).find((entry) => entry.id === item.savedLogId) : null;
+    return `
+      <aside class="qd-inspector">
+        <div class="qd-inspector-head">
+          <div>
+            <strong>${escapeHtml(itemLabel(item))}</strong>
+            <span>${escapeHtml(subjectLabel(item.subject))}${item.nodeLabel ? ` · ${escapeHtml(item.nodeLabel)}` : ""}</span>
+          </div>
+          <button class="qd-icon-btn" data-qd-action="close-inspector" type="button" title="关闭">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="qd-inspector-body">
+          <section>
+            <h4>AI 对话</h4>
+            ${item.chat?.length ? item.chat.slice(-4).map((msg) => `
+              <p class="qd-inspector-chat ${msg.role}"><b>${msg.role === "assistant" ? "AI" : "我"}：</b>${escapeHtml(String(msg.content || "").slice(0, 180))}</p>
+            `).join("") : `<p class="qd-inspector-empty">还没有问过 AI。</p>`}
+          </section>
+          <section>
+            <h4>学习档案卡片</h4>
+            ${log ? `
+              <article class="qd-study-mini-card">
+                <div><b>${escapeHtml(log.nodeLabel || item.nodeLabel || "未归档")}</b><span>${"★".repeat(Number(log.stars || 0))}</span></div>
+                <p>${escapeHtml(log.painPoint || "暂无卡点")}</p>
+                <small>${escapeHtml(log.routine || "暂无套路")}</small>
+              </article>
+            ` : `<p class="qd-inspector-empty">保存到学习档案后，这里会显示卡点和套路。</p>`}
+          </section>
+        </div>
+      </aside>
+    `;
+  }
+
+  function renderSelectionBox() {
+    const selection = STATE.selecting;
+    if (!selection?.preview) return "";
+    const rect = selection.preview;
+    return `<div class="qd-selection-box" style="left:${rect.x * 100}%;top:${rect.y * 100}%;width:${rect.w * 100}%;height:${rect.h * 100}%"></div>`;
+  }
+
+  function renderViewer(activeImage, activeItem) {
     if (!activeImage) {
       return `
         <section class="qd-dropzone">
@@ -477,7 +625,7 @@
       <div class="qd-viewer-top">
         <div>
           <strong>${escapeHtml(activeImage.name)}</strong>
-          <span>${escapeHtml(subjectLabel(activeImage.subject))} · ${activeImage.width || "?"}×${activeImage.height || "?"}</span>
+          <span>${escapeHtml(subjectLabel(activeImage.subject))} · ${activeImage.width || "?"}×${activeImage.height || "?"} · 拖拽题图可框选一道题</span>
         </div>
         <button class="btn btn-soft btn-sm" data-qd-action="rename" data-image-id="${activeImage.id}" type="button">
           <span class="material-symbols-outlined">edit</span>重命名
@@ -485,7 +633,14 @@
       </div>
       <div class="qd-image-stage">
         <div class="qd-image-loading" data-qd-image-loading>读取题图中...</div>
-        <img data-qd-image alt="${escapeHtml(activeImage.name)}" hidden />
+        <div class="qd-image-wrap" data-qd-image-wrap>
+          <img data-qd-image alt="${escapeHtml(activeImage.name)}" hidden />
+          <div class="qd-region-layer">
+            ${renderRegions(activeImage, activeItem)}
+            ${renderSelectionBox()}
+          </div>
+        </div>
+        ${renderInspector(activeImage)}
       </div>
       <p class="qd-local-note">题图保存在本机浏览器，普通 MochiStudy 备份暂不包含题图；题桌图片包会在后续阶段补齐。</p>
     `;
@@ -516,7 +671,7 @@
     `;
   }
 
-  function renderPanel(activeImage, mode = "open") {
+  function renderPanel(activeImage, activeItem, mode = "open") {
     if (mode === "collapsed") {
       return `
         <button class="qd-rail-btn" data-qd-action="panel-mode" data-panel-mode="open" type="button" title="展开 AI 面板">
@@ -536,12 +691,14 @@
         </section>
       `;
     }
-    const item = findItem(activeImage.id);
+    const item = activeItem || findItem(activeImage.id);
     if (!item) return `<section class="qd-panel-empty"><h3>这张题图缺少记录</h3><p>请重新上传。</p></section>`;
+    const imageItems = itemsForImage(activeImage.id);
+    const itemIndex = Math.max(0, imageItems.findIndex((entry) => entry.id === item.id));
     return `
       <div class="qd-panel-head">
         <div>
-          <h3>题目学习</h3>
+          <h3>${escapeHtml(itemLabel(item, itemIndex))}</h3>
           <p>${escapeHtml(activeImage.shortName || activeImage.name)}</p>
         </div>
         <div class="qd-panel-head-actions">
@@ -685,6 +842,25 @@
     img.src = url;
   }
 
+  function pointerRect(event, wrap) {
+    const box = wrap.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (event.clientX - box.left) / box.width));
+    const y = Math.max(0, Math.min(1, (event.clientY - box.top) / box.height));
+    return { x, y };
+  }
+
+  function normalizedRect(a, b) {
+    const x = Math.min(a.x, b.x);
+    const y = Math.min(a.y, b.y);
+    const w = Math.abs(a.x - b.x);
+    const h = Math.abs(a.y - b.y);
+    return { x, y, w, h };
+  }
+
+  function regionImage() {
+    return images().find((image) => image.id === STATE.activeImageId) || null;
+  }
+
   function persistDraftFromCurrentForm() {
     const form = STATE.container?.querySelector("[data-qd-draft-form]");
     const itemId = form?.dataset.itemId;
@@ -717,10 +893,48 @@
         render(container);
       }
     });
+    container.addEventListener("pointerdown", (event) => {
+      const wrap = event.target.closest("[data-qd-image-wrap]");
+      if (!wrap || event.target.closest("[data-qd-action]")) return;
+      const img = wrap.querySelector("[data-qd-image]");
+      if (!img || img.hidden) return;
+      event.preventDefault();
+      wrap.setPointerCapture?.(event.pointerId);
+      const start = pointerRect(event, wrap);
+      STATE.selecting = { pointerId: event.pointerId, start, preview: { ...start, w: 0, h: 0 } };
+      render(container);
+    });
+    container.addEventListener("pointermove", (event) => {
+      if (!STATE.selecting || STATE.selecting.pointerId !== event.pointerId) return;
+      const wrap = event.target.closest("[data-qd-image-wrap]") || container.querySelector("[data-qd-image-wrap]");
+      if (!wrap) return;
+      STATE.selecting.preview = normalizedRect(STATE.selecting.start, pointerRect(event, wrap));
+      render(container);
+    });
+    container.addEventListener("pointerup", (event) => {
+      if (!STATE.selecting || STATE.selecting.pointerId !== event.pointerId) return;
+      const image = regionImage();
+      const rect = STATE.selecting.preview;
+      STATE.selecting = null;
+      if (image && rect && rect.w > 0.03 && rect.h > 0.03) createRegionItem(image, rect);
+      render(container);
+    });
     container.addEventListener("click", async (event) => {
       const button = event.target.closest("[data-qd-action]");
       if (!button) return;
       const action = button.dataset.qdAction;
+      if (action === "open-inspector") {
+        STATE.activeItemId = button.dataset.itemId || "";
+        STATE.inspectItemId = STATE.activeItemId;
+        setPanelMode("open");
+        render(container);
+        return;
+      }
+      if (action === "close-inspector") {
+        STATE.inspectItemId = "";
+        render(container);
+        return;
+      }
       if (action === "panel-mode") {
         persistDraftFromCurrentForm();
         setPanelMode(button.dataset.panelMode || "open");
@@ -763,7 +977,7 @@
     const next = prompt("给这张题图起个名字", img.name);
     if (!next || !next.trim()) return;
     updateImage(imageId, { name: next.trim(), shortName: shortName(next.trim()) });
-    const item = findItem(imageId);
+    const item = itemsForImage(imageId).find((entry) => !entry.rect) || findItem(imageId);
     if (item) updateItem(item.id, { title: shortName(next.trim()) });
     render(STATE.container);
   }
@@ -790,7 +1004,7 @@
       window.MochiApp?.toast?.("先写一句你想问的问题");
       return;
     }
-    const blob = await getBlob(item.imageId);
+    const blob = await imageBlobForItem(item);
     if (!blob) {
       window.MochiApp?.toast?.("题图读取失败");
       return;
@@ -829,7 +1043,7 @@
       render(STATE.container);
       return;
     }
-    const blob = await getBlob(item.imageId);
+    const blob = await imageBlobForItem(item);
     if (!blob) {
       window.MochiApp?.toast?.("题图读取失败");
       return;
