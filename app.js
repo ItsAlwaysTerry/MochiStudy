@@ -5114,7 +5114,7 @@ ${record.originalQuestion || "暂无原题描述。"}
       const cannotSee = /看不到图片|无法查看图片|不能查看图片|无法读取图片|can't see|cannot see|unable to view/i.test(text || "");
       result.innerHTML = `
         <strong>${cannotSee ? "疑似未通过：模型说看不到图片" : "请求成功：请人工确认它是否真的读到了题图"}</strong>
-        <p class="muted">${cannotSee ? "这通常表示当前模型或 endpoint 不支持图片输入。" : "如果下面内容能说出题目关键词、条件或科目，Phase 0 视觉能力基本通过。"}</p>
+        <p class="muted">${cannotSee ? "这通常表示当前模型或 endpoint 不支持图片输入。" : "请先核对下面【图中原文】后的片段是否真的出现在图片里；只有抄得对，Phase 0 才算基本通过。"}</p>
         <pre class="vision-test-output">${escapeHtml(text || "模型没有返回文本。")}</pre>
       `;
       toast(cannotSee ? "模型可能不支持读图" : "视觉 AI 测试完成");

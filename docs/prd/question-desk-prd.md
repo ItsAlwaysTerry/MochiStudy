@@ -343,7 +343,50 @@ Phase 1 一张图片就是一个题目，因此题目对象和图片一一对应
 - `questionsCompleted` 在现有保存逻辑里固定为 1，草稿里保留只是为了表达“一题一记录”，不是新的可配置输入。
 - `meta.source` 使用现有 `normalizeSource()` 能识别的来源词；题桌新学题默认用 `lesson`，如果后续想显示“错题”标签，需要同步扩展来源词表和 UI 文案。
 
-### 8.6 备份与迁移
+### 8.6 Phase 1 学习记录草稿契约
+
+Phase 1 不再依赖 AI 输出 `---MOCHI-RECORD-START---` 文本块，但必须锁定一份可解析的草稿格式，避免 prompt 和 parser 漂移。
+
+题桌单题 prompt 必须输出以下中文标签，Phase 1 parser 只承认这些字段：
+
+```text
+【MochiStudy 学习记录草稿】
+科目：
+知识点：
+掌握星级：
+卡点记录：
+原题：
+今日套路：
+错误类型：
+卡住步骤：
+关键突破：
+题型标签：
+信心分：
+耗时分钟：
+学习日期：
+```
+
+字段映射：
+
+```text
+科目 -> recordDraft.subject
+知识点 -> recordDraft.nodeLabel，并解析为 recordDraft.nodeId
+掌握星级 -> recordDraft.stars
+卡点记录 -> recordDraft.painPoint
+原题 -> recordDraft.originalQuestion
+今日套路 -> recordDraft.routine
+错误类型 -> recordDraft.meta.errorType
+卡住步骤 -> recordDraft.meta.stuckStep
+关键突破 -> recordDraft.meta.keyInsight
+题型标签 -> recordDraft.meta.tags
+信心分 -> recordDraft.meta.confidence
+耗时分钟 -> recordDraft.meta.timeSpentMinutes
+学习日期 -> recordDraft.date
+```
+
+`原题` 是未来复习和 AI 分析会依赖的 durable text，不能默认写“见题桌原图”。AI 必须尽力转写题干核心文字、数字和关键公式；只有公式/图形过密无法完整转写时，才可以在文字摘要后补“详见题桌原图”。因为 IndexedDB 图片在换设备时可能丢失，`originalQuestion` 不能只是一个指向本机图片的悬空引用。
+
+### 8.7 备份与迁移
 
 题桌承诺“问过的题以后能找回来”，因此不能只把图片放 IndexedDB 后完全不管备份。
 

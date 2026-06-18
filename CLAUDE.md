@@ -495,3 +495,5 @@ v34 之后的改动：
 ### V5.0 题桌 Phase 0：视觉 AI go/no-go 验证（build `20260618a`）
 
 按 `docs/prd/question-desk-prd.md` 的 Phase 0 先验证站内视觉 AI，而不是先做题桌 UI。`modules/ai.js` 保持旧 `callAI(systemPrompt, text)` 兼容，同时新增多模态调用链：`callMessages()`、`callAIWithImage()`、`testVisionAI()`；OpenAI-compatible endpoint 使用 content array + `image_url`，Anthropic endpoint 转为 `image` base64 block；`max_tokens` 从硬编码 1000 改为可配置，默认 2200。设置页 AI 配置新增“最大输出 tokens”和“视觉 AI 验证”卡片，可选一张题图直接测试当前 `api_config` 的 endpoint/model 是否真能读图，并展示原始返回或失败原因。新增 `skill/gaokao题桌.md` 作为一图一题的单题视觉讲解 prompt，区别于 `gaokao啃卷子.md` 的跨题排序。`index.html` 静态资源版本号更新到 `20260618a`。
+
+后续校准：视觉验证 prompt 强制模型先抄出图片里的具体数字、题号、公式或题干原文，避免文本模型胡编导致 false pass；设置页验证结果提示用户核对【图中原文】是否真实存在。`docs/prd/question-desk-prd.md` 补充 Phase 1 学习记录草稿字段契约，明确中文标签到 `recordDraft/meta` 的映射；`skill/gaokao题桌.md` 收紧 `原题` 要求，必须尽力转写题干核心文字/数字/公式，不能默认写“见原图”。
