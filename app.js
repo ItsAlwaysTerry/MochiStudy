@@ -1776,13 +1776,16 @@
   }
 
 
-  let learnActiveTab = "review";
+  let learnActiveTab = "desk";
 
   function renderLearn(container, tab) {
     // 不带 tab（后台刷新、点底部「学习」）时保留当前子 tab，避免把正在复习/看档案的用户弹回「今日」。
-    if (tab === "today" || tab === "review" || tab === "map") learnActiveTab = tab;
+    if (tab === "desk" || tab === "today" || tab === "review" || tab === "map") learnActiveTab = tab;
     container.innerHTML = `
       <div class="learn-tab-bar">
+        <button class="learn-tab-btn ${learnActiveTab === "desk" ? "active" : ""}" data-action="learn-tab" data-tab="desk" type="button">
+          <span class="material-symbols-outlined">table_restaurant</span>题桌
+        </button>
         <button class="learn-tab-btn ${learnActiveTab === "today" ? "active" : ""}" data-action="learn-tab" data-tab="today" type="button">
           <span class="material-symbols-outlined">today</span>今日学习
         </button>
@@ -1796,7 +1799,9 @@
       <div id="learn-content-pane"></div>
     `;
     const pane = container.querySelector("#learn-content-pane");
-    if (learnActiveTab === "today") {
+    if (learnActiveTab === "desk") {
+      window.MochiQuestionDesk?.render?.(pane);
+    } else if (learnActiveTab === "today") {
       window.MochiTodayStudy?.render?.(pane);
     } else if (learnActiveTab === "review") {
       window.MochiReviewPage?.render?.(pane);
@@ -1821,6 +1826,7 @@
     if (routeId === "home") window.MochiFarm?.renderFarm?.(view);
     else if (routeId === "schedule") renderSeason(view);
     else if (routeId === "learn") renderLearn(view);
+    else if (routeId === "desk") renderLearn(view, "desk");
     else if (routeId === "today") renderLearn(view, "today");
     else if (routeId === "review") renderLearn(view, "review");
     else if (routeId === "map") renderLearn(view, "map");
@@ -1855,7 +1861,7 @@
   }
 
   function setActive(routeId) {
-    const isLearnRoute = routeId === "today" || routeId === "review" || routeId === "map" || routeId === "learn";
+    const isLearnRoute = routeId === "desk" || routeId === "today" || routeId === "review" || routeId === "map" || routeId === "learn";
     document.querySelectorAll("[data-route]").forEach((el) => {
       const match = el.dataset.route === routeId || (el.dataset.route === "learn" && isLearnRoute);
       el.classList.toggle("active", match);
@@ -2917,6 +2923,7 @@
     if (routeId === "settings") renderSettings(view);
     if (routeId === "home") window.MochiFarm?.renderFarm?.(view);
     if (routeId === "learn") renderLearn(view);
+    if (routeId === "desk") renderLearn(view, "desk");
     if (routeId === "today") renderLearn(view, "today");
     if (routeId === "review") renderLearn(view, "review");
     if (routeId === "map") renderLearn(view, "map");
@@ -5020,11 +5027,17 @@ ${record.originalQuestion || "暂无原题描述。"}
       || key.startsWith("daily_tasks_");
   }
 
+  function isQuestionDeskStorageKey(key) {
+    return key === "question_desk_images"
+      || key === "question_desk_items"
+      || key === "question_desk_ui_state";
+  }
+
   function rawLocalStorageSnapshot() {
     return Object.fromEntries(Array.from({ length: localStorage.length }, (_, index) => {
       const key = localStorage.key(index);
       return key ? [key, localStorage.getItem(key)] : null;
-    }).filter((entry) => entry && !isRetiredStorageKey(entry[0])));
+    }).filter((entry) => entry && !isRetiredStorageKey(entry[0]) && !isQuestionDeskStorageKey(entry[0])));
   }
 
   function createBackupPayload() {
@@ -5231,7 +5244,9 @@ ${record.originalQuestion || "暂无原题描述。"}
     const raw = payload.data.localStorage;
     if (raw && typeof raw === "object" && !Array.isArray(raw)) {
       Object.entries(raw).forEach(([key, value]) => {
-        if (typeof key === "string" && !isRetiredStorageKey(key)) localStorage.setItem(key, String(value ?? ""));
+        if (typeof key === "string" && !isRetiredStorageKey(key) && !isQuestionDeskStorageKey(key)) {
+          localStorage.setItem(key, String(value ?? ""));
+        }
       });
     } else {
       restoreKnownBackupData(payload.data);
@@ -5261,28 +5276,38 @@ ${record.originalQuestion || "暂无原题描述。"}
   }
 
   function progressDataKeys() {
-    const fixed = [STUDY_LOG_KEY, "focus_log", "farm_state", "mochi_state", "achievement_state", CURRENT_SEASON_KEY, CARD_ORDER_KEY, CARD_META_KEY, NODE_SUMMARY_KEY, "mochi_study_points", "mochi_hearts", "daily_task_settings"];
+    const fixed = [STUDY_LOG_KEY, "focus_log", "farm_state", "mochi_state", "achievement_state", CURRENT_SEASON_KEY, CARD_ORDER_KEY, CARD_META_KEY, NODE_SUMMARY_KEY, "question_desk_images", "question_desk_items", "question_desk_ui_state", "mochi_study_points", "mochi_hearts", "daily_task_settings"];
     const dynamic = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
       .filter((key) => key && key.startsWith("daily_tasks_"));
     return [...new Set([...fixed, ...dynamic])];
   }
 
-  function clearProgressData() {
+  async function clearQuestionDeskData() {
+    try {
+      await window.MochiQuestionDesk?.clearStorage?.();
+    } catch {
+      // LocalStorage keys are still removed by the caller; IndexedDB cleanup can be retried by factory reset.
+    }
+  }
+
+  async function clearProgressData() {
     if (!confirm("清空前建议先导出备份。此操作会删除学习记录、专注记录、农场进度和学习状态，无法撤销。确认继续吗？")) return;
     progressDataKeys().forEach((key) => localStorage.removeItem(key));
+    await clearQuestionDeskData();
     toast("学习进度已清空，正在刷新页面");
     location.reload();
   }
 
-  function factoryResetData() {
+  async function factoryResetData() {
     if (!confirm("这会删除 Mochii 在当前浏览器里的全部数据和设置。请先导出备份。确认恢复出厂设置吗？")) return;
     allDataKeys().forEach((key) => localStorage.removeItem(key));
+    await clearQuestionDeskData();
     toast("本地数据和设置已清空，正在刷新页面");
     location.reload();
   }
 
   function allDataKeys() {
-    const fixed = ["mochi_state", "farm_state", STUDY_LOG_KEY, "focus_log", "achievement_state", "achievement_config", "lottery_config", "lottery_history", CURRENT_SEASON_KEY, SEASON_ARCHIVES_KEY, CARD_ORDER_KEY, CARD_META_KEY, NODE_SUMMARY_KEY, "admin_password", "api_config", HOLIDAYS_KEY, HOLIDAY_MODE_KEY, "mochi_debug_panel_open", "mochi_debug_float_collapsed", "mochi_debug_tab", "game_config", "sound_reminder_enabled", "focus_end_sound", "rest_reminder_sound", READING_FONT_KEY, READING_SIZE_KEY];
+    const fixed = ["mochi_state", "farm_state", STUDY_LOG_KEY, "focus_log", "achievement_state", "achievement_config", "lottery_config", "lottery_history", CURRENT_SEASON_KEY, SEASON_ARCHIVES_KEY, CARD_ORDER_KEY, CARD_META_KEY, NODE_SUMMARY_KEY, "question_desk_images", "question_desk_items", "question_desk_ui_state", "admin_password", "api_config", HOLIDAYS_KEY, HOLIDAY_MODE_KEY, "mochi_debug_panel_open", "mochi_debug_float_collapsed", "mochi_debug_tab", "game_config", "sound_reminder_enabled", "focus_end_sound", "rest_reminder_sound", READING_FONT_KEY, READING_SIZE_KEY];
     const dynamic = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
       .filter((key) => key && isRetiredStorageKey(key));
     return [...new Set([...fixed, ...dynamic])];

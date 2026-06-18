@@ -310,7 +310,7 @@ Phase 1 一张图片就是一个题目，因此题目对象和图片一一对应
     ],
     recordDraft: {
       subject: "math",
-      nodeId: "math_函数",
+      nodeId: "math_function",
       nodeLabel: "函数",
       questionsCompleted: 1,
       stars: 2,
@@ -338,7 +338,7 @@ Phase 1 一张图片就是一个题目，因此题目对象和图片一一对应
 注意：
 
 - `nodeId` 必须在保存前由 `subject + nodeLabel` 解析得到，不能让 AI 自由生成未知知识点。
-- `nodeId` 示例使用现有中文标签格式，例如 `math_函数`；不能手写不存在的拼音 id。
+- `nodeId` 必须来自现有节点表或解析 helper，例如当前 `函数` 对应 `math_function`；实现者不能手写或猜测 id 格式。
 - `nodeLabel` 必须落在现有预设知识点列表。
 - `questionsCompleted` 在现有保存逻辑里固定为 1，草稿里保留只是为了表达“一题一记录”，不是新的可配置输入。
 - `meta.source` 使用现有 `normalizeSource()` 能识别的来源词；题桌新学题默认用 `lesson`，如果后续想显示“错题”标签，需要同步扩展来源词表和 UI 文案。
@@ -616,7 +616,7 @@ go/no-go：
 
 - 将 AI 记录草稿转成 `applyMochiRecord()` 需要的结构。
 - 解析 `nodeLabel -> nodeId`。
-- 不重新实现知识点 id 映射；应复用现有解析逻辑。当前 `nodeIdFromLabel(label, subject)` 位于 `app.js` 内部，Phase 1 需要选择其一：导出该 helper 到 `window.MochiApp`，或让题桌保存路径复用现有 MOCHI-RECORD 解析链路。
+- 不重新实现知识点 id 映射；应复用现有解析逻辑或读取 `window.MochiKnowledge.SUBJECTS` 的节点表做精确匹配。当前 `nodeIdFromLabel(label, subject)` 位于 `app.js` 内部且带 fallback，Phase 1 若使用它需要先改成可检测未命中的形式；也可以让题桌保存路径复用现有 MOCHI-RECORD 解析链路。
 - 校验知识点必须来自预设列表。
 - 刷新农场、学习档案、复习队列、勋章和今日学习报告。
 - 保存 `savedLogId` 回题桌题目数据。

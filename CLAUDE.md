@@ -497,3 +497,9 @@ v34 之后的改动：
 按 `docs/prd/question-desk-prd.md` 的 Phase 0 先验证站内视觉 AI，而不是先做题桌 UI。`modules/ai.js` 保持旧 `callAI(systemPrompt, text)` 兼容，同时新增多模态调用链：`callMessages()`、`callAIWithImage()`、`testVisionAI()`；OpenAI-compatible endpoint 使用 content array + `image_url`，Anthropic endpoint 转为 `image` base64 block；`max_tokens` 从硬编码 1000 改为可配置，默认 2200。设置页 AI 配置新增“最大输出 tokens”和“视觉 AI 验证”卡片，可选一张题图直接测试当前 `api_config` 的 endpoint/model 是否真能读图，并展示原始返回或失败原因。新增 `skill/gaokao题桌.md` 作为一图一题的单题视觉讲解 prompt，区别于 `gaokao啃卷子.md` 的跨题排序。`index.html` 静态资源版本号更新到 `20260618a`。
 
 后续校准：视觉验证 prompt 强制模型先抄出图片里的具体数字、题号、公式或题干原文，避免文本模型胡编导致 false pass；设置页验证结果提示用户核对【图中原文】是否真实存在。`docs/prd/question-desk-prd.md` 补充 Phase 1 学习记录草稿字段契约，明确中文标签到 `recordDraft/meta` 的映射；`skill/gaokao题桌.md` 收紧 `原题` 要求，必须尽力转写题干核心文字/数字/公式，不能默认写“见原图”。
+
+### V5.1 题桌 Phase 1 MVP：一图一题站内学习闭环（build `20260618b`）
+
+在「学习」页新增「题桌」子 tab，并设为学习页默认入口；不新增第 5 个底部导航。新增 `modules/questionDesk.js`：支持复制截图后在题桌 `Ctrl+V`、或上传图片；图片 Blob 存 IndexedDB（`mochi_question_desk/question_images_blob`），索引存 localStorage（`question_desk_images` / `question_desk_items` / `question_desk_ui_state`）；默认命名 `未分类-拍题-YYYY-MM-DD-编号`，左侧文件栏按收件箱/三科/已学习/未学习过滤，中间单图查看器，右侧 AI 学习面板。
+
+题桌右侧使用 `window.MochiAI.callAIWithImage()` 把当前题图发给视觉模型，支持多轮提问和“生成学习记录草稿”。草稿 parser 按 PRD 8.6 中文字段契约解析，`meta.source` 由题桌固定注入 `lesson`；知识点必须精确命中预设列表，否则要求学生在表单里手动选择，绝不静默 fallback。保存时复用现有 `applyMochiRecord()` 写入 `study_log` / `study_card_meta`，并刷新农场、学习档案、复习队列和侧边栏状态。Phase 1 暂不做框选、裁剪、题旁小圆标、PDF 和题桌图片包导出；页面提示题图目前保存在本机浏览器，普通 MochiStudy 备份暂不包含题桌图片/索引，清空进度和恢复出厂会清理题桌 IndexedDB。`index.html` 静态资源版本号更新到 `20260618b`。
