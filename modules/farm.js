@@ -498,7 +498,7 @@
             </div>
           </div>
           <div class="home-ai-guide-actions">
-            <p class="home-ai-guide-hint">两个 AI Prompt 在「设置 → AI 使用指南」里可以复制</p>
+            <p class="home-ai-guide-hint">AI Prompt 在「设置 → AI 使用指南」里可以复制</p>
             <button class="btn btn-soft btn-sm" data-route="settings" type="button">
               <span class="material-symbols-outlined">arrow_forward</span>去设置页复制 Prompt
             </button>

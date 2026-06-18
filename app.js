@@ -3726,7 +3726,7 @@
         </section>
         <section class="card" style="grid-column:1 / -1">
           <h3>AI 使用指南</h3>
-          <p class="muted" style="margin-top:4px">五个 AI Prompt，分别用于学新题、复习旧卡点、综合测验、从零重学一章和啃卷子错题。复制后粘贴到 Claude 的「项目说明」里，即可激活对应的 AI 角色。</p>
+          <p class="muted" style="margin-top:4px">这些 AI Prompt 分别用于学新题、复习旧卡点、综合测验、从零重学一章、题桌单题讲解和啃卷子错题。复制后粘贴到 Claude 的「项目说明」里，即可激活对应的 AI 角色。</p>
           <div class="ai-guide-prompts" style="margin-top:16px;display:flex;flex-direction:column;gap:12px">
             <details class="ai-prompt-entry">
               <summary class="ai-prompt-summary">
@@ -3795,6 +3795,21 @@
             <details class="ai-prompt-entry">
               <summary class="ai-prompt-summary">
                 <div>
+                  <strong>题桌 AI 私教</strong>
+                  <span class="muted" style="font-size:12px">题桌内置 · 读取单张题图 → 逐步提示讲题 → 生成学习记录草稿</span>
+                </div>
+                <button class="btn btn-soft btn-sm ai-prompt-copy-btn" data-action="copy-ai-prompt" data-prompt-path="./skill/gaokao题桌.md" type="button">
+                  <span class="material-symbols-outlined">content_copy</span>复制 Prompt
+                </button>
+              </summary>
+              <div class="ai-prompt-steps">
+                <p><strong>使用方法：</strong>这是题桌 Phase 1 的站内单题视觉讲解 Prompt。它不负责多题排序，只负责看一张题图、一步步带学生讲通，并生成学习记录草稿。</p>
+                <p class="muted" style="font-size:12px;margin-top:6px">流程：读图定位 → 先问卡点 → 脚手架提示 → 总结3步套路 → 生成记录草稿</p>
+              </div>
+            </details>
+            <details class="ai-prompt-entry">
+              <summary class="ai-prompt-summary">
+                <div>
                   <strong>啃卷子 AI 私教</strong>
                   <span class="muted" style="font-size:12px">拿到考卷错题时用 · 按高考考频 × 短期提分空间排优先级 → 一道一道带啃 → 输出 MOCHI-RECORD</span>
                 </div>
@@ -3819,8 +3834,28 @@
             </div>
             <div class="field"><label>API Key</label><input type="password" name="apiKey" value="${config.apiKey || ""}" placeholder="sk-..." /></div>
             <div class="field"><label>模型名称</label><input name="model" value="${config.model || ""}" placeholder="deepseek-chat / moonshot-v1-8k / qwen-plus" /></div>
+            <div class="field">
+              <label>最大输出 tokens</label>
+              <input name="maxTokens" type="number" min="256" step="256" value="${config.maxTokens || 2200}" placeholder="2200" />
+              <p class="field-hint">题桌讲题建议 2000 以上；原来的 1000 容易讲到一半截断。</p>
+            </div>
             <button class="btn btn-primary" type="submit"><span class="material-symbols-outlined">save</span>保存配置</button>
           </form>
+        </section>
+        <section class="card">
+          <h3>视觉 AI 验证</h3>
+          <p class="muted">Phase 0 的 go/no-go：用当前 API 配置测试模型是否真的能读题图。读不了图片，就先换支持视觉的模型，不进入题桌 UI 开发。</p>
+          <div class="form-grid" style="margin-top:18px">
+            <div class="field">
+              <label>测试题图</label>
+              <input id="vision-ai-test-image" type="file" accept="image/*" />
+              <p class="field-hint">选一张包含题干的截图或拍照图。系统只做读图验证，不保存这张图片。</p>
+            </div>
+            <button class="btn btn-primary" data-action="test-vision-ai" type="button">
+              <span class="material-symbols-outlined">visibility</span>测试视觉 AI
+            </button>
+            <div id="vision-ai-test-result" class="review-import-result" hidden></div>
+          </div>
         </section>
         <section class="card">
           <h3>数据备份与恢复</h3>
@@ -5048,6 +5083,56 @@ ${record.originalQuestion || "暂无原题描述。"}
     }
   }
 
+  async function testVisionAI(btn) {
+    const input = document.getElementById("vision-ai-test-image");
+    const result = document.getElementById("vision-ai-test-result");
+    const file = input?.files?.[0];
+    if (!result) return;
+    result.hidden = false;
+    if (!file) {
+      result.innerHTML = `<strong>还没有选择题图</strong><p class="muted">先选一张包含题干的图片，再测试当前模型是否能读图。</p>`;
+      return;
+    }
+
+    const form = document.getElementById("api-form");
+    if (form) window.MochiAI.saveConfig(Object.fromEntries(new FormData(form)));
+    const config = window.MochiAI.readConfig();
+    if (!config.apiKey || !config.baseUrl || !config.model) {
+      result.innerHTML = `<strong>AI 配置不完整</strong><p class="muted">请先填写 Base URL、API Key 和模型名称。</p>`;
+      return;
+    }
+
+    const originalHtml = btn?.innerHTML || "";
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<span class="material-symbols-outlined">hourglass_top</span>正在测试`;
+    }
+    result.innerHTML = `<strong>正在请求模型读图...</strong><p class="muted">如果模型不支持视觉，这里通常会直接报错，或者回复看不到图片。</p>`;
+
+    try {
+      const text = await window.MochiAI.testVisionAI(file);
+      const cannotSee = /看不到图片|无法查看图片|不能查看图片|无法读取图片|can't see|cannot see|unable to view/i.test(text || "");
+      result.innerHTML = `
+        <strong>${cannotSee ? "疑似未通过：模型说看不到图片" : "请求成功：请人工确认它是否真的读到了题图"}</strong>
+        <p class="muted">${cannotSee ? "这通常表示当前模型或 endpoint 不支持图片输入。" : "如果下面内容能说出题目关键词、条件或科目，Phase 0 视觉能力基本通过。"}</p>
+        <pre class="vision-test-output">${escapeHtml(text || "模型没有返回文本。")}</pre>
+      `;
+      toast(cannotSee ? "模型可能不支持读图" : "视觉 AI 测试完成");
+    } catch (error) {
+      result.innerHTML = `
+        <strong>测试失败</strong>
+        <p class="muted">${escapeHtml(error.message || "AI 连接失败")}</p>
+        <p class="field-hint">如果错误提到 image、content array、unsupported 或 invalid type，通常说明当前 endpoint/model 不支持视觉输入。</p>
+      `;
+      toast("视觉 AI 测试失败");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+      }
+    }
+  }
+
   async function copyCmd(btn) {
     const text = btn?.dataset?.copyText;
     if (!text) return;
@@ -5612,6 +5697,7 @@ ${record.originalQuestion || "暂无原题描述。"}
       }
       if (name === "copy-ai-prompt") { copyAiPromptFile(action); return; }
       if (name === "copy-cmd") { copyCmd(action); return; }
+      if (name === "test-vision-ai") { testVisionAI(action); return; }
       if (name === "export-data") exportData();
       if (name === "clear-progress") clearProgressData();
       if (name === "factory-reset" || name === "clear-data") factoryResetData();

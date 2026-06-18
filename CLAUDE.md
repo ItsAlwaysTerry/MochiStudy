@@ -491,3 +491,7 @@ v34 之后的改动：
 ### V4.9 设置页加「更新到最新版本」git 指南（build `20260615q`）
 
 换电脑/同步最新版本时方便操作，把 git 拉取指南直接放进设置页（「更新到最新版本」section，在「关于」之前）。三步可折叠：① 常规 `git checkout main` + `git pull origin main`；② 报错时强制同步 `git reset --hard origin/main`（带丢改动警告）；③ 首次 `git clone`。每步有「复制命令」按钮——新 action `copy-cmd` + `copyCmd(btn)` 读 `data-copy-text`（多行用 `&#10;` 编码）写剪贴板。`style.css` 新增 `.update-step`/`.update-step-head`/`.update-step-summary`/`.update-cmd`（深色等宽代码块）。
+
+### V5.0 题桌 Phase 0：视觉 AI go/no-go 验证（build `20260618a`）
+
+按 `docs/prd/question-desk-prd.md` 的 Phase 0 先验证站内视觉 AI，而不是先做题桌 UI。`modules/ai.js` 保持旧 `callAI(systemPrompt, text)` 兼容，同时新增多模态调用链：`callMessages()`、`callAIWithImage()`、`testVisionAI()`；OpenAI-compatible endpoint 使用 content array + `image_url`，Anthropic endpoint 转为 `image` base64 block；`max_tokens` 从硬编码 1000 改为可配置，默认 2200。设置页 AI 配置新增“最大输出 tokens”和“视觉 AI 验证”卡片，可选一张题图直接测试当前 `api_config` 的 endpoint/model 是否真能读图，并展示原始返回或失败原因。新增 `skill/gaokao题桌.md` 作为一图一题的单题视觉讲解 prompt，区别于 `gaokao啃卷子.md` 的跨题排序。`index.html` 静态资源版本号更新到 `20260618a`。
