@@ -134,6 +134,26 @@ button {
   color: #172033;
 }
 
+body.desk-mode .side-nav,
+body.desk-mode .top-bar,
+body.desk-mode .bottom-nav {
+  display: none;
+}
+
+body.desk-mode .content {
+  margin-left: 0;
+  max-width: none;
+  min-height: 100vh;
+  padding: 0;
+}
+
+body.desk-mode .question-desk {
+  min-height: 100vh;
+  padding: 12px;
+  background: #eef2f7;
+  box-sizing: border-box;
+}
+
 .qd-sidebar,
 .qd-canvas,
 .qd-panel {
@@ -148,6 +168,13 @@ button {
   grid-template-rows: auto auto auto 1fr;
   gap: 12px;
   padding: 14px;
+}
+
+.qd-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .qd-head h2 {
@@ -178,6 +205,11 @@ button {
 .qd-upload {
   justify-content: center;
   width: 100%;
+}
+
+.qd-growth-btn,
+.top-desk-btn {
+  flex: 0 0 auto;
 }
 
 .qd-filter-list,
@@ -498,6 +530,16 @@ button {
 
   .qd-draft-grid {
     grid-template-columns: 1fr;
+  }
+
+  .qd-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .qd-growth-btn {
+    width: 100%;
+    justify-content: center;
   }
 }
 

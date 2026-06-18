@@ -409,6 +409,9 @@
           <h2>题桌</h2>
           <p>一图一题，站内问 AI。</p>
         </div>
+        <button class="btn btn-soft btn-sm qd-growth-btn" data-route="home" type="button">
+          <span class="material-symbols-outlined">psychiatry</span>我的成长
+        </button>
       </div>
       <div class="qd-actions">
         <label class="btn btn-primary btn-sm qd-upload">

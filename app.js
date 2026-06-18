@@ -1776,16 +1776,13 @@
   }
 
 
-  let learnActiveTab = "desk";
+  let learnActiveTab = "review";
 
   function renderLearn(container, tab) {
     // 不带 tab（后台刷新、点底部「学习」）时保留当前子 tab，避免把正在复习/看档案的用户弹回「今日」。
-    if (tab === "desk" || tab === "today" || tab === "review" || tab === "map") learnActiveTab = tab;
+    if (tab === "today" || tab === "review" || tab === "map") learnActiveTab = tab;
     container.innerHTML = `
       <div class="learn-tab-bar">
-        <button class="learn-tab-btn ${learnActiveTab === "desk" ? "active" : ""}" data-action="learn-tab" data-tab="desk" type="button">
-          <span class="material-symbols-outlined">table_restaurant</span>题桌
-        </button>
         <button class="learn-tab-btn ${learnActiveTab === "today" ? "active" : ""}" data-action="learn-tab" data-tab="today" type="button">
           <span class="material-symbols-outlined">today</span>今日学习
         </button>
@@ -1799,9 +1796,7 @@
       <div id="learn-content-pane"></div>
     `;
     const pane = container.querySelector("#learn-content-pane");
-    if (learnActiveTab === "desk") {
-      window.MochiQuestionDesk?.render?.(pane);
-    } else if (learnActiveTab === "today") {
+    if (learnActiveTab === "today") {
       window.MochiTodayStudy?.render?.(pane);
     } else if (learnActiveTab === "review") {
       window.MochiReviewPage?.render?.(pane);
@@ -1816,31 +1811,41 @@
     });
   }
 
+  function renderDesk(container) {
+    window.MochiQuestionDesk?.render?.(container);
+  }
+
+  function normalizeRoute(routeId) {
+    const mapped = routeId === "schedule" ? "season" : routeId;
+    return ["desk", "home", "learn", "today", "review", "map", "achievements", "season", "settings"].includes(mapped) ? mapped : "desk";
+  }
+
   function route(routeName) {
-    const rawRouteId = routeName || location.hash.replace("#", "") || "home";
-    const routeId = rawRouteId === "schedule" ? "season" : rawRouteId;
+    const rawRouteId = routeName || location.hash.replace("#", "") || "desk";
+    const routeId = normalizeRoute(rawRouteId);
     if (rawRouteId === "schedule" && location.hash === "#schedule") {
       history.replaceState(null, "", "#season");
     }
+    document.body.classList.toggle("desk-mode", routeId === "desk");
     setActive(routeId);
-    if (routeId === "home") window.MochiFarm?.renderFarm?.(view);
+    if (routeId === "desk") renderDesk(view);
+    else if (routeId === "home") window.MochiFarm?.renderFarm?.(view);
     else if (routeId === "schedule") renderSeason(view);
     else if (routeId === "learn") renderLearn(view);
-    else if (routeId === "desk") renderLearn(view, "desk");
     else if (routeId === "today") renderLearn(view, "today");
     else if (routeId === "review") renderLearn(view, "review");
     else if (routeId === "map") renderLearn(view, "map");
     else if (routeId === "achievements") renderAchievements(view);
     else if (routeId === "season") renderSeason(view);
     else if (routeId === "settings") renderSettings(view);
-    else window.MochiFarm?.renderFarm?.(view);
+    else renderDesk(view);
     window.MochiPet.renderMiniState();
     // 切换页面后回到顶部，避免继承上一个页面的滚动位置（如档案下滑后跳复习页看不到顶部面板）。
     window.scrollTo(0, 0);
   }
 
   function currentRoute() {
-    return location.hash.replace("#", "") || "home";
+    return normalizeRoute(location.hash.replace("#", "") || "desk");
   }
 
   function updateNavBadge() {
@@ -1861,7 +1866,7 @@
   }
 
   function setActive(routeId) {
-    const isLearnRoute = routeId === "desk" || routeId === "today" || routeId === "review" || routeId === "map" || routeId === "learn";
+    const isLearnRoute = routeId === "today" || routeId === "review" || routeId === "map" || routeId === "learn";
     document.querySelectorAll("[data-route]").forEach((el) => {
       const match = el.dataset.route === routeId || (el.dataset.route === "learn" && isLearnRoute);
       el.classList.toggle("active", match);
@@ -1875,7 +1880,7 @@
       route(routeId);
       return;
     }
-    const current = location.hash.replace("#", "") || "home";
+    const current = currentRoute();
     if (current === routeId) route(routeId);
     else location.hash = routeId;
   }
@@ -2923,7 +2928,7 @@
     if (routeId === "settings") renderSettings(view);
     if (routeId === "home") window.MochiFarm?.renderFarm?.(view);
     if (routeId === "learn") renderLearn(view);
-    if (routeId === "desk") renderLearn(view, "desk");
+    if (routeId === "desk") renderDesk(view);
     if (routeId === "today") renderLearn(view, "today");
     if (routeId === "review") renderLearn(view, "review");
     if (routeId === "map") renderLearn(view, "map");
@@ -5498,7 +5503,7 @@ ${record.originalQuestion || "暂无原题描述。"}
   function debugRefreshFarm() {
     renderDebugPanel();
     window.MochiPet?.renderMiniState?.();
-    const routeId = location.hash.replace("#", "") || "home";
+    const routeId = currentRoute();
     if (view && routeId === "home") window.MochiFarm?.renderFarm?.(view);
     if (view && routeId === "season") renderSeason(view);
   }
@@ -5585,7 +5590,7 @@ ${record.originalQuestion || "暂无原题描述。"}
       }, 1000);
     }
     window.MochiPet?.renderMiniState?.();
-    const routeId = location.hash.replace("#", "") || "home";
+    const routeId = currentRoute();
     if (routeId === "home") window.MochiFarm?.renderFarm?.(view);
     if ((routeId === "today" || routeId === "learn") && learnActiveTab === "today") window.MochiTodayStudy?.render?.(document.getElementById("learn-content-pane"));
     if ((routeId === "map" || routeId === "learn") && learnActiveTab === "map") window.MochiCards?.refresh?.();

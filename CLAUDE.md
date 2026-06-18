@@ -503,3 +503,9 @@ v34 之后的改动：
 在「学习」页新增「题桌」子 tab，并设为学习页默认入口；不新增第 5 个底部导航。新增 `modules/questionDesk.js`：支持复制截图后在题桌 `Ctrl+V`、或上传图片；图片 Blob 存 IndexedDB（`mochi_question_desk/question_images_blob`），索引存 localStorage（`question_desk_images` / `question_desk_items` / `question_desk_ui_state`）；默认命名 `未分类-拍题-YYYY-MM-DD-编号`，左侧文件栏按收件箱/三科/已学习/未学习过滤，中间单图查看器，右侧 AI 学习面板。
 
 题桌右侧使用 `window.MochiAI.callAIWithImage()` 把当前题图发给视觉模型，支持多轮提问和“生成学习记录草稿”。草稿 parser 按 PRD 8.6 中文字段契约解析，`meta.source` 由题桌固定注入 `lesson`；知识点必须精确命中预设列表，否则要求学生在表单里手动选择，绝不静默 fallback。保存时复用现有 `applyMochiRecord()` 写入 `study_log` / `study_card_meta`，并刷新农场、学习档案、复习队列和侧边栏状态。Phase 1 暂不做框选、裁剪、题旁小圆标、PDF 和题桌图片包导出；页面提示题图目前保存在本机浏览器，普通 MochiStudy 备份暂不包含题桌图片/索引，清空进度和恢复出厂会清理题桌 IndexedDB。`index.html` 静态资源版本号更新到 `20260618b`。
+
+### V5.2 题桌外壳化：题桌成为默认主界面（build `20260618c`）
+
+按 `docs/prd/question-desk-prd.md` 的 2026-06-18 方向修订，题桌从「学习页子 tab」升级为应用默认主外壳。空 hash 默认渲染 `#desk`，`#desk` 不再经过 `renderLearn()`，而是直接调用 `MochiQuestionDesk.render(view)`；`body.desk-mode` 隐藏旧 MochiStudy 的侧边栏、顶栏和移动端底部导航，并让题桌三栏占满视口。旧 MochiStudy 仍保留原有首页/学习/勋章/赛季/设置结构，作为次级“成长世界”通过题桌左上角「我的成长」进入；旧站侧边栏和顶栏新增「返回题桌」入口。
+
+「学习」页子 tab 恢复为 今日学习 / 复习队列 / 学习档案，默认回到复习队列；题桌不再出现在学习 tab 内。V5.1 中“题桌是学习页默认子 tab”的表述仅作为历史记录，不代表当前架构。`index.html` 静态资源版本号更新到 `20260618c`。
