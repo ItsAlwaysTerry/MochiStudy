@@ -1592,12 +1592,9 @@
         <div class="qd-viewer-top">
           <div>
             <strong>${escapeHtml(activeImage.name)}</strong>
-            <span>${escapeHtml(subjectLabel(activeImage.subject))} · ${activeImage.width || "?"}×${activeImage.height || "?"} · ${lasso ? "套索开启：在题图上圈/划题目区域" : "点套索后可圈出一道题"}</span>
+            <span>${escapeHtml(subjectLabel(activeImage.subject))} · ${activeImage.width || "?"}×${activeImage.height || "?"}</span>
           </div>
           <div class="qd-viewer-actions">
-            <button class="btn btn-soft btn-sm qd-lasso-btn ${lasso ? "active" : ""}" data-qd-action="toggle-lasso" type="button" aria-pressed="${lasso ? "true" : "false"}">
-              <span class="material-symbols-outlined">${lassoIcon}</span>${lassoLabel}
-            </button>
             <button class="btn btn-soft btn-sm" data-qd-action="rename" data-image-id="${activeImage.id}" type="button">
               <span class="material-symbols-outlined">edit</span>重命名
             </button>
@@ -1605,6 +1602,12 @@
               <span class="material-symbols-outlined">delete</span>删除
             </button>
           </div>
+        </div>
+        <div class="qd-viewer-lasso-row ${lasso ? "active" : ""}">
+          <span class="qd-viewer-lasso-hint">${lasso ? "在题图上圈出一道题，松手后可调整" : "一张纸有多道题？点右边「套索」逐题圈出来；只有一道题，直接在右侧问 AI 就行。"}</span>
+          <button class="btn btn-soft btn-sm qd-lasso-btn ${lasso ? "active" : ""}" data-qd-action="toggle-lasso" type="button" aria-pressed="${lasso ? "true" : "false"}">
+            <span class="material-symbols-outlined">${lassoIcon}</span>${lassoLabel}
+          </button>
         </div>
         ${renderGrindSessionBar()}
       </div>
@@ -1692,9 +1695,10 @@
             <span class="material-symbols-outlined">send</span>问 AI
           </button>
           <button class="btn btn-soft btn-sm" data-qd-action="draft" data-item-id="${item.id}" type="button" ${STATE.busy ? "disabled" : ""}>
-            <span class="material-symbols-outlined">edit_note</span>生成记录草稿
+            <span class="material-symbols-outlined">edit_note</span>学懂了，整理成记录
           </button>
         </div>
+        <p class="qd-panel-flow-hint">先问 AI 把这道题弄懂，弄懂后点「整理成记录」存进学习档案。</p>
       </div>
       ${renderDraftForm(item)}
     `;
@@ -1761,31 +1765,36 @@
 
   function renderRecognitionCard(item) {
     const info = item.recognition || null;
+    // 没识别过：折叠成一行可选入口，平时不占视觉。多数题直接问 AI 即可，
+    // 只有"一张纸多道题、不确定框全没"时才需要核对。
     if (!info) {
       return `
-        <section class="qd-recognition-card empty">
-          <div class="qd-recognition-head">
+        <details class="qd-recognition-card empty">
+          <summary class="qd-recognition-row">
             <span class="material-symbols-outlined">document_scanner</span>
-            <strong>题目识别</strong>
-            <button class="qd-recognition-retry" data-qd-action="recognize-question" data-item-id="${item.id}" type="button" ${STATE.busy ? "disabled" : ""}>识别</button>
-          </div>
-          <p>识别后会在这里显示题号、科目和题干转写，方便核对有没有框全。</p>
-        </section>
+            <span class="qd-recognition-state">核对题号 / 题干（可选）</span>
+          </summary>
+          <p class="qd-recognition-summary">不确定 AI 有没有看全这道题时再用；平时直接在下面问 AI 就行。</p>
+          <button class="btn btn-soft btn-sm" data-qd-action="recognize-question" data-item-id="${item.id}" type="button" ${STATE.busy ? "disabled" : ""}>
+            <span class="material-symbols-outlined">document_scanner</span>识别这道题
+          </button>
+        </details>
       `;
     }
     const stale = info.stale === true;
     const complete = !stale && info.isComplete !== false;
+    // 需要注意（要重识别 / 可能没截全）时默认展开提醒；正常识别完整则折叠。
+    const needAttention = stale || !complete;
     const meta = [info.questionNumber || "", recognitionSubjectLabel(info.subject)].filter(Boolean).join(" · ");
+    const stateLabel = stale ? "需要重识别" : complete ? "识别完整" : "可能没截全";
     const summary = stale ? "选区已经调整过，请重新识别后再核对题干。" : (info.warning || info.summary || "");
     const transcript = info.transcript || info.raw || "";
     return `
-      <section class="qd-recognition-card ${complete ? "complete" : "incomplete"}">
-        <div class="qd-recognition-head">
+      <details class="qd-recognition-card ${complete ? "complete" : "incomplete"}" ${needAttention ? "open" : ""}>
+        <summary class="qd-recognition-row">
           <span class="material-symbols-outlined">${complete ? "check_circle" : "error"}</span>
-          <strong>${stale ? "需要重识别" : complete ? "识别完整" : "可能没截全"}</strong>
-          ${meta ? `<em>${escapeHtml(meta)}</em>` : ""}
-          <button class="qd-recognition-retry" data-qd-action="recognize-question" data-item-id="${item.id}" type="button" ${STATE.busy ? "disabled" : ""}>重识别</button>
-        </div>
+          <span class="qd-recognition-state">${stateLabel}${meta ? ` · ${escapeHtml(meta)}` : ""}</span>
+        </summary>
         ${summary ? `<p class="qd-recognition-summary">${escapeHtml(summary)}</p>` : ""}
         <div class="qd-recognition-edit" data-qd-recognition-form data-item-id="${item.id}">
           <div class="qd-recognition-grid">
@@ -1810,11 +1819,16 @@
             <input data-recognition-field="isComplete" type="checkbox" ${complete ? "checked" : ""} />
             <span>这道题已经识别完整</span>
           </label>
-          <button class="btn btn-soft btn-sm" data-qd-action="save-recognition" data-item-id="${item.id}" type="button">
-            <span class="material-symbols-outlined">save</span>保存题干
-          </button>
+          <div class="qd-recognition-edit-actions">
+            <button class="btn btn-soft btn-sm" data-qd-action="save-recognition" data-item-id="${item.id}" type="button">
+              <span class="material-symbols-outlined">save</span>保存题干
+            </button>
+            <button class="btn btn-ghost btn-sm qd-recognition-retry" data-qd-action="recognize-question" data-item-id="${item.id}" type="button" ${STATE.busy ? "disabled" : ""}>
+              <span class="material-symbols-outlined">refresh</span>重识别
+            </button>
+          </div>
         </div>
-      </section>
+      </details>
     `;
   }
 

@@ -626,6 +626,42 @@ body.desk-mode .question-desk {
   justify-content: flex-end;
 }
 
+.qd-viewer-lasso-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  border: 1px solid var(--qd-line);
+  border-radius: 12px;
+  padding: 8px 12px;
+  background: #f8fafc;
+}
+
+.qd-viewer-lasso-row.active {
+  border-color: rgba(37, 99, 235, 0.28);
+  background: #eff6ff;
+}
+
+.qd-viewer-lasso-hint {
+  flex: 1 1 220px;
+  min-width: 0;
+  color: var(--qd-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.qd-viewer-lasso-row .qd-lasso-btn {
+  flex: 0 0 auto;
+}
+
+.qd-panel-flow-hint {
+  margin: 8px 0 0;
+  color: var(--qd-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
 .qd-grind-session-bar {
   display: flex;
   align-items: center;
@@ -1204,17 +1240,73 @@ body.desk-mode .question-desk {
 }
 
 .qd-recognition-card {
-  display: grid;
-  gap: 8px;
+  display: block;
   border: 1px solid #dbe3ee;
   border-radius: 14px;
   padding: 10px;
   background: rgba(255, 255, 255, 0.9);
 }
 
+.qd-recognition-card > * + * {
+  margin-top: 8px;
+}
+
 .qd-recognition-card.incomplete {
   border-color: rgba(220, 38, 38, 0.22);
   background: #fff7f7;
+}
+
+details.qd-recognition-card > summary.qd-recognition-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  cursor: pointer;
+  list-style: none;
+}
+
+details.qd-recognition-card > summary.qd-recognition-row::-webkit-details-marker {
+  display: none;
+}
+
+.qd-recognition-row > .material-symbols-outlined {
+  flex: 0 0 auto;
+  color: #2563eb;
+  font-size: 18px;
+}
+
+.qd-recognition-card.incomplete .qd-recognition-row > .material-symbols-outlined {
+  color: #dc2626;
+}
+
+.qd-recognition-state {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: #172033;
+  font-size: 13px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qd-recognition-row::after {
+  content: "expand_more";
+  flex: 0 0 auto;
+  font-family: "Material Symbols Outlined";
+  font-size: 18px;
+  color: var(--qd-muted);
+  transition: transform 0.2s ease;
+}
+
+details.qd-recognition-card[open] > summary.qd-recognition-row::after {
+  transform: rotate(180deg);
+}
+
+.qd-recognition-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .qd-recognition-head {
