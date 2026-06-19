@@ -272,7 +272,7 @@
     }
 
     updateTimerDom();
-    if (document.body.classList.contains("focus-mode")) {
+    if (document.body.classList.contains("focus-mode") || document.body.classList.contains("focus-mini-mode")) {
       window.MochiApp?.tickFocusOverlay?.();
     } else {
       window.MochiPet?.renderMiniState?.();
@@ -402,7 +402,7 @@
     }
     if (state.phase !== "focusing" && state.phase !== "resting") return;
     updateTimerDom();
-    if (document.body.classList.contains("focus-mode")) {
+    if (document.body.classList.contains("focus-mode") || document.body.classList.contains("focus-mini-mode")) {
       window.MochiApp?.tickFocusOverlay?.();
     }
   });

@@ -4792,7 +4792,7 @@ ${record.originalQuestion || "暂无原题描述。"}
   }
 
   function exitFocusMode() {
-    if (!document.body.classList.contains("focus-mode")) return;
+    if (!document.body.classList.contains("focus-mode") && !document.body.classList.contains("focus-mini-mode")) return;
     document.body.classList.remove("focus-mode");
     document.body.classList.remove("focus-mini-mode");
     focusOverlayMinimized = false;
@@ -4819,6 +4819,7 @@ ${record.originalQuestion || "暂无原题描述。"}
   function setFocusOverlayMinimized(minimized) {
     const timer = window.MochiTimer?.getState?.() || {};
     focusOverlayMinimized = Boolean(minimized && timer.phase === "focusing");
+    document.body.classList.toggle("focus-mode", !focusOverlayMinimized);
     document.body.classList.toggle("focus-mini-mode", focusOverlayMinimized);
     refreshFocusOverlay();
   }
@@ -4835,6 +4836,7 @@ ${record.originalQuestion || "暂无原题描述。"}
     if (focusOverlayMinimized && timer.phase === "focusing") return renderFocusMiniOverlay(timer);
     if (timer.phase === "deciding") {
       focusOverlayMinimized = false;
+      document.body.classList.add("focus-mode");
       document.body.classList.remove("focus-mini-mode");
       const actualMins = timer.pendingActualMins || 0;
       const restMins = timer.pendingRestMins || 5;

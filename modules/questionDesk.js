@@ -1750,6 +1750,15 @@
     return "未判断";
   }
 
+  function recognitionSubjectOptions(current) {
+    return [
+      ["unknown", "未判断"],
+      ["math", "数学"],
+      ["physics", "物理"],
+      ["chemistry", "化学"],
+    ].map(([value, label]) => `<option value="${value}" ${value === current ? "selected" : ""}>${label}</option>`).join("");
+  }
+
   function renderRecognitionCard(item) {
     const info = item.recognition || null;
     if (!info) {
@@ -1778,8 +1787,32 @@
           <button class="qd-recognition-retry" data-qd-action="recognize-question" data-item-id="${item.id}" type="button" ${STATE.busy ? "disabled" : ""}>重识别</button>
         </div>
         ${summary ? `<p class="qd-recognition-summary">${escapeHtml(summary)}</p>` : ""}
-        <div class="qd-recognition-transcript">
-          ${transcript ? formatText(transcript) : "还没有题干转写。可以重识别，或调整框后再识别。"}
+        <div class="qd-recognition-edit" data-qd-recognition-form data-item-id="${item.id}">
+          <div class="qd-recognition-grid">
+            <label>
+              <span>题号</span>
+              <input data-recognition-field="questionNumber" value="${escapeHtml(info.questionNumber || "")}" placeholder="如 2 / 12(a)" />
+            </label>
+            <label>
+              <span>科目</span>
+              <select data-recognition-field="subject">${recognitionSubjectOptions(info.subject || "unknown")}</select>
+            </label>
+          </div>
+          <label>
+            <span>题干摘要</span>
+            <input data-recognition-field="summary" value="${escapeHtml(info.summary || "")}" placeholder="这题在问什么" />
+          </label>
+          <label>
+            <span>题干原文</span>
+            <textarea data-recognition-field="transcript" rows="4" placeholder="可手动修正 AI 少识别或错识别的数字、公式">${escapeHtml(transcript || "")}</textarea>
+          </label>
+          <label class="qd-recognition-check">
+            <input data-recognition-field="isComplete" type="checkbox" ${complete ? "checked" : ""} />
+            <span>这道题已经识别完整</span>
+          </label>
+          <button class="btn btn-soft btn-sm" data-qd-action="save-recognition" data-item-id="${item.id}" type="button">
+            <span class="material-symbols-outlined">save</span>保存题干
+          </button>
         </div>
       </section>
     `;
@@ -2444,6 +2477,10 @@
         await recognizeQuestion(button.dataset.itemId);
         return;
       }
+      if (action === "save-recognition") {
+        saveRecognitionEdits(button.dataset.itemId);
+        return;
+      }
       if (action === "ask-ai") {
         await askAi(button.dataset.itemId);
         return;
@@ -2479,6 +2516,35 @@
       status: "asked",
     });
     updateImage(item.imageId, { status: "asked" });
+  }
+
+  function saveRecognitionEdits(itemId) {
+    const item = items().find((entry) => entry.id === itemId);
+    const form = STATE.container?.querySelector(`[data-qd-recognition-form][data-item-id="${CSS.escape(itemId || "")}"]`);
+    if (!item || !form) return;
+    const field = (name) => form.querySelector(`[data-recognition-field="${name}"]`);
+    const subject = field("subject")?.value || "unknown";
+    const recognition = {
+      ...(item.recognition || {}),
+      questionNumber: String(field("questionNumber")?.value || "").trim().slice(0, 24),
+      subject: ["math", "physics", "chemistry", "unknown"].includes(subject) ? subject : "unknown",
+      summary: String(field("summary")?.value || "").trim().slice(0, 80),
+      transcript: String(field("transcript")?.value || "").trim().slice(0, 520),
+      isComplete: Boolean(field("isComplete")?.checked),
+      stale: false,
+      warning: "",
+      contextVersion: contextVersion(item),
+      updatedAt: nowIso(),
+    };
+    const patch = {
+      recognition,
+      title: recognition.summary || item.title,
+    };
+    if (["math", "physics", "chemistry"].includes(recognition.subject)) patch.subject = recognition.subject;
+    updateItem(item.id, patch);
+    if (patch.subject) updateImageSubject(item.imageId, patch.subject);
+    STATE.message = "题干已保存，下一次问 AI 会优先使用这版题干。";
+    render(STATE.container);
   }
 
   async function recognizeQuestion(itemId) {
