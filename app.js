@@ -3875,6 +3875,9 @@
           <div class="settings-list" style="margin-top:18px">
             <button class="btn btn-outline" data-action="export-data"><span class="material-symbols-outlined">download</span>导出备份</button>
             <label class="btn btn-outline" style="cursor:pointer"><span class="material-symbols-outlined">upload</span>导入恢复<input id="backup-import" type="file" accept="application/json" hidden /></label>
+            <button class="btn btn-outline" data-action="export-question-desk"><span class="material-symbols-outlined">inventory_2</span>导出题桌图片包</button>
+            <label class="btn btn-outline" style="cursor:pointer"><span class="material-symbols-outlined">unarchive</span>导入题桌图片包<input id="question-desk-import" type="file" accept="application/json" hidden /></label>
+            <p class="field-hint">普通备份保存学习档案、专注和设置；题桌图片包额外保存题桌原图、框选区域和对话现场，换设备前建议一起导出。</p>
           </div>
         </section>
         <section class="card">
@@ -5285,6 +5288,44 @@ ${record.originalQuestion || "暂无原题描述。"}
     toast("备份文件已导出");
   }
 
+  async function exportQuestionDeskPackage() {
+    try {
+      const payload = await window.MochiQuestionDesk?.exportPackage?.();
+      if (!payload) throw new Error("题桌模块还没加载完成");
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `mochistudy-question-desk-${todayKey()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      const count = payload.data?.images?.length || 0;
+      toast(`题桌图片包已导出：${count} 张题图`);
+    } catch (error) {
+      toast(error.message || "题桌图片包导出失败");
+    }
+  }
+
+  function importQuestionDeskPackage(file, inputEl) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const payload = JSON.parse(String(reader.result || "{}"));
+        if (!confirm("导入题桌图片包会替换当前题桌里的题图、框选和对话现场。已保存到学习档案的记录不会被删除。继续吗？")) return;
+        const result = await window.MochiQuestionDesk?.importPackage?.(payload);
+        toast(`题桌图片包已导入：${result?.imageCount || 0} 张题图`);
+        navigate("desk");
+      } catch (error) {
+        toast(error.message || "题桌图片包导入失败");
+      }
+    };
+    reader.onerror = () => toast("题桌图片包读取失败");
+    reader.onloadend = () => {
+      if (inputEl) inputEl.value = "";
+    };
+    reader.readAsText(file);
+  }
   function validateBackupPayload(payload) {
     if (!payload || typeof payload !== "object") return "备份文件格式不正确";
     if (!payload.version) return "备份文件缺少 version 字段";
@@ -5837,6 +5878,7 @@ ${record.originalQuestion || "暂无原题描述。"}
       if (name === "copy-cmd") { copyCmd(action); return; }
       if (name === "test-vision-ai") { testVisionAI(action); return; }
       if (name === "export-data") exportData();
+      if (name === "export-question-desk") exportQuestionDeskPackage();
       if (name === "clear-progress") clearProgressData();
       if (name === "factory-reset" || name === "clear-data") factoryResetData();
       if (name === "open-holiday-form") openHolidayForm();
@@ -5904,6 +5946,7 @@ ${record.originalQuestion || "暂无原题描述。"}
 
   function handleChange(event) {
     if (event.target.id === "backup-import") importData(event.target.files?.[0]);
+    if (event.target.id === "question-desk-import") importQuestionDeskPackage(event.target.files?.[0], event.target);
     if (event.target.id === "focus-end-sound-select") {
       localStorage.setItem("focus_end_sound", event.target.value || "soft");
       playFocusEndSound(event.target.value || "soft");
@@ -6129,3 +6172,4 @@ ${record.originalQuestion || "暂无原题描述。"}
 
   init();
 })();
+

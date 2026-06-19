@@ -161,6 +161,24 @@
     });
   }
 
+  function blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(reader.error || new Error("图片打包失败"));
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  function dataUrlToBlob(dataUrl) {
+    const [head, body] = String(dataUrl || "").split(",");
+    const mimeType = (head.match(/data:([^;]+);base64/) || [])[1] || "image/png";
+    const binary = atob(body || "");
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    return new Blob([bytes], { type: mimeType });
+  }
+
   async function deleteBlob(id) {
     const db = await openDb();
     return new Promise((resolve) => {
@@ -169,6 +187,59 @@
       tx.oncomplete = () => resolve(true);
       tx.onerror = () => resolve(false);
     });
+  }
+
+  async function exportPackage() {
+    const imageRows = images();
+    const blobRows = [];
+    for (const image of imageRows) {
+      const blob = await getBlob(image.id);
+      if (!blob) continue;
+      blobRows.push({
+        id: image.id,
+        mimeType: blob.type || image.mimeType || "image/png",
+        dataUrl: await blobToDataUrl(blob),
+      });
+    }
+    return {
+      version: "1.0",
+      type: "mochi-question-desk-package",
+      exportDate: todayKey(),
+      data: {
+        images: imageRows,
+        items: items(),
+        ui: readUi(),
+        notebooks: readJson(NOTEBOOKS_KEY, []),
+        blobs: blobRows,
+      },
+    };
+  }
+
+  async function importPackage(payload) {
+    if (!payload || payload.type !== "mochi-question-desk-package" || !payload.data) {
+      throw new Error("题桌包格式不正确");
+    }
+    const data = payload.data;
+    const nextImages = Array.isArray(data.images) ? data.images : [];
+    const nextItems = Array.isArray(data.items) ? data.items : [];
+    const nextUi = data.ui && typeof data.ui === "object" && !Array.isArray(data.ui) ? data.ui : {};
+    const nextNotebooks = Array.isArray(data.notebooks) ? data.notebooks : [];
+    const blobRows = Array.isArray(data.blobs) ? data.blobs : [];
+    await clearStorage();
+    saveImages(nextImages);
+    saveItems(nextItems);
+    const activeImageId = nextUi.activeImageId || nextImages[0]?.id || "";
+    writeJson(UI_KEY, { ...nextUi, activeImageId });
+    writeJson(NOTEBOOKS_KEY, nextNotebooks);
+    for (const row of blobRows) {
+      if (!row?.id || !row.dataUrl) continue;
+      await putBlob(row.id, dataUrlToBlob(row.dataUrl), row.mimeType || "image/png");
+    }
+    STATE.activeImageId = activeImageId;
+    STATE.activeItemId = "";
+    STATE.inspectItemId = "";
+    STATE.imageUrls.clear();
+    return { imageCount: nextImages.length, blobCount: blobRows.length, itemCount: nextItems.length };
   }
 
   function imageDimensions(file) {
@@ -2776,5 +2847,6 @@
     render(STATE.container);
   }
 
-  window.MochiQuestionDesk = { render, parseDraft, clearStorage };
+  window.MochiQuestionDesk = { render, parseDraft, clearStorage, exportPackage, importPackage };
 })();
+
