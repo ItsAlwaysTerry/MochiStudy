@@ -15,8 +15,12 @@
   ];
 
   const SOURCE_TYPE = "拍题";
+  const PDF_SOURCE_TYPE = "PDF";
+  const PDFJS_URL = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js";
+  const PDFJS_WORKER_URL = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
   const DeskAI = window.MochiQuestionDeskAI || {};
   const Selection = window.MochiQuestionDeskSelection || {};
+  let pdfJsPromise = null;
 
   const STATE = {
     container: null,
@@ -279,6 +283,20 @@
     return `${prefix}${String(next).padStart(2, "0")}`;
   }
 
+  function fileBaseName(file) {
+    return String(file?.name || "PDF试卷")
+      .replace(/\.[^.]+$/, "")
+      .replace(/[\\/:*?"<>|]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 28) || "PDF试卷";
+  }
+
+  function pdfPageName(file, pageNumber, totalPages) {
+    const width = String(Math.max(1, totalPages || 1)).length;
+    return `${fileBaseName(file)}-P${String(pageNumber).padStart(Math.max(2, width), "0")}`;
+  }
+
   function normalizeImageEntry(img) {
     return {
       ...img,
@@ -475,6 +493,57 @@
     });
   }
 
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const existing = document.querySelector(`script[src="${src}"]`);
+      if (existing) {
+        existing.addEventListener("load", () => resolve(true), { once: true });
+        existing.addEventListener("error", () => reject(new Error("脚本加载失败")), { once: true });
+        if (window.pdfjsLib) resolve(true);
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = src;
+      script.async = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => reject(new Error("PDF.js 加载失败"));
+      document.head.appendChild(script);
+    });
+  }
+
+  async function loadPdfJs() {
+    if (window.pdfjsLib) return window.pdfjsLib;
+    if (!pdfJsPromise) {
+      pdfJsPromise = loadScript(PDFJS_URL).then(() => {
+        if (!window.pdfjsLib) throw new Error("PDF.js 没有初始化");
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_URL;
+        return window.pdfjsLib;
+      }).catch((error) => {
+        pdfJsPromise = null;
+        throw error;
+      });
+    }
+    return pdfJsPromise;
+  }
+
+  async function renderPdfPage(page) {
+    const first = page.getViewport({ scale: 1 });
+    const maxSide = Math.max(first.width, first.height) || 1;
+    const scale = Math.min(2.2, Math.max(1.3, 2200 / maxSide));
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.floor(viewport.width));
+    canvas.height = Math.max(1, Math.floor(viewport.height));
+    const ctx = canvas.getContext("2d", { alpha: false });
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    const blob = await new Promise((resolve) => canvas.toBlob((next) => resolve(next), "image/png"));
+    page.cleanup?.();
+    if (!blob) throw new Error("PDF 页面渲染失败");
+    return { blob, width: canvas.width, height: canvas.height };
+  }
+
   async function imageBlobForItem(item) {
     const blob = await getBlob(item.imageId);
     if (!blob || !item.rect) return blob;
@@ -570,36 +639,33 @@
     };
   }
 
-  async function addImage(file) {
-    if (!file || !String(file.type || "").startsWith("image/")) {
-      window.MochiApp?.toast?.("请粘贴或上传图片");
-      return;
-    }
-    const date = todayKey();
+  async function createImageRecord(blob, options = {}) {
+    const date = options.date || todayKey();
     const id = uid("img");
     const itemId = uid("item");
-    const dims = await imageDimensions(file);
-    const name = defaultName(date);
-    await putBlob(id, file, file.type || "image/png");
+    const dims = options.width && options.height ? { width: options.width, height: options.height } : await imageDimensions(blob);
+    const name = options.name || defaultName(date);
+    await putBlob(id, blob, options.mimeType || blob.type || "image/png");
     const image = {
       id,
       name,
       shortName: shortName(name),
-      subject: "uncategorized",
-      sourceType: SOURCE_TYPE,
+      subject: options.subject || "uncategorized",
+      sourceType: options.sourceType || SOURCE_TYPE,
       date,
-      mimeType: file.type || "image/png",
+      mimeType: options.mimeType || blob.type || "image/png",
       width: dims.width,
       height: dims.height,
       status: "new",
       createdAt: nowIso(),
       updatedAt: nowIso(),
       savedLogId: "",
+      ...(options.extra || {}),
     };
     const item = {
       id: itemId,
       imageId: id,
-      subject: "uncategorized",
+      subject: image.subject,
       nodeId: "",
       nodeLabel: "",
       status: "new",
@@ -610,14 +676,85 @@
       createdAt: nowIso(),
       updatedAt: nowIso(),
     };
-    saveImages([image, ...images()]);
-    saveItems([item, ...items()]);
-    STATE.activeImageId = id;
+    return { image, item };
+  }
+
+  async function addImage(file) {
+    if (!file || !String(file.type || "").startsWith("image/")) {
+      window.MochiApp?.toast?.("请粘贴或上传图片");
+      return;
+    }
+    const record = await createImageRecord(file);
+    saveImages([record.image, ...images()]);
+    saveItems([record.item, ...items()]);
+    STATE.activeImageId = record.image.id;
     STATE.filter = "uncategorized";
     STATE.search = "";
-    saveUi({ activeImageId: id, filter: STATE.filter, search: "" });
+    saveUi({ activeImageId: record.image.id, filter: STATE.filter, search: "" });
     window.MochiApp?.toast?.("题图已加入题桌");
     render(STATE.container);
+  }
+
+  async function addPdf(file) {
+    if (!file) return;
+    STATE.busy = true;
+    STATE.message = "正在把 PDF 拆成题图...";
+    render(STATE.container);
+    try {
+      const pdfjsLib = await loadPdfJs();
+      const bytes = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+      const date = todayKey();
+      const pdfId = uid("pdf");
+      const nextImages = [];
+      const nextItems = [];
+      for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+        const page = await pdf.getPage(pageNumber);
+        const rendered = await renderPdfPage(page);
+        const name = pdfPageName(file, pageNumber, pdf.numPages);
+        const record = await createImageRecord(rendered.blob, {
+          date,
+          name,
+          sourceType: PDF_SOURCE_TYPE,
+          mimeType: "image/png",
+          width: rendered.width,
+          height: rendered.height,
+          extra: {
+            pdfId,
+            pdfName: fileBaseName(file),
+            pdfPage: pageNumber,
+            pdfPageCount: pdf.numPages,
+          },
+        });
+        nextImages.push(record.image);
+        nextItems.push(record.item);
+      }
+      if (!nextImages.length) throw new Error("PDF 没有可导入的页面");
+      saveImages([...nextImages, ...images()]);
+      saveItems([...nextItems, ...items()]);
+      STATE.activeImageId = nextImages[0].id;
+      STATE.filter = "uncategorized";
+      STATE.search = "";
+      saveUi({ activeImageId: nextImages[0].id, filter: STATE.filter, search: "" });
+      window.MochiApp?.toast?.(`PDF 已导入：${nextImages.length} 页`);
+    } catch (error) {
+      const message = String(error?.message || "");
+      window.MochiApp?.toast?.(message.includes("PDF.js") || message.includes("脚本加载") ? "PDF 模块加载失败，请检查网络后重试" : message || "PDF 导入失败");
+    } finally {
+      STATE.busy = false;
+      STATE.message = "";
+      render(STATE.container);
+    }
+  }
+
+  async function addFile(file) {
+    const type = String(file?.type || "");
+    const name = String(file?.name || "").toLowerCase();
+    if (type === "application/pdf" || name.endsWith(".pdf")) {
+      await addPdf(file);
+      return;
+    }
+    await addImage(file);
   }
 
   function updateImage(imageId, patch) {
@@ -828,14 +965,14 @@
       <div class="qd-actions">
         <div class="qd-action-row">
           <label class="btn btn-primary btn-sm qd-upload">
-            <span class="material-symbols-outlined">add_photo_alternate</span>上传题图
-            <input data-qd-file type="file" accept="image/*" hidden />
+            <span class="material-symbols-outlined">add_photo_alternate</span>上传题图/PDF
+            <input data-qd-file type="file" accept="image/*,.pdf,application/pdf" multiple hidden />
           </label>
           <button class="btn btn-soft btn-sm qd-grind-btn" data-qd-action="open-grind" type="button">
             <span class="material-symbols-outlined">format_list_numbered</span>啃卷子
           </button>
         </div>
-        <p class="qd-hint">也可以复制截图后在题桌按 Ctrl+V。</p>
+        <p class="qd-hint">也可以复制截图后在题桌按 Ctrl+V；PDF 会自动拆成页。</p>
       </div>
       <label class="qd-search">
         <span class="material-symbols-outlined">search</span>
@@ -2306,7 +2443,8 @@
     });
     container.addEventListener("change", async (event) => {
       if (event.target.matches("[data-qd-file]")) {
-        await addImage(event.target.files?.[0]);
+        const selectedFiles = [...(event.target.files || [])];
+        for (const file of selectedFiles) await addFile(file);
         event.target.value = "";
       }
       if (event.target.matches("[data-qd-grind-source-check]")) {
