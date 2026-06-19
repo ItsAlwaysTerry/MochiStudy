@@ -5,6 +5,7 @@
   const IMAGES_KEY = "question_desk_images";
   const ITEMS_KEY = "question_desk_items";
   const UI_KEY = "question_desk_ui_state";
+  const NOTEBOOKS_KEY = "question_desk_notebooks";
 
   const SUBJECT_OPTIONS = [
     ["uncategorized", "未分类"],
@@ -14,29 +15,8 @@
   ];
 
   const SOURCE_TYPE = "拍题";
-
-  const QUESTION_DESK_PROMPT = [
-    "你是 MochiStudy 题桌里的单题 AI 私教，专门陪基础薄弱的高中理科生啃一张题图。",
-    "先读图识别题目大意，再判断科目和最接近的知识点。",
-    "不要一次性给完整答案。先问学生卡在哪里，再用脚手架一步一步提示。",
-    "学生说不知道时，把问题拆得更小；学生方向错了，不说错了，而是引导他验证。",
-    "当学生要求生成记录或你判断题目已经讲通时，输出以下固定格式：",
-    "【MochiStudy 学习记录草稿】",
-    "科目：[数学/物理/化学]",
-    "知识点：[必须从预设列表选择]",
-    "掌握星级：[1-3]",
-    "卡点记录：[一句话]",
-    "原题：[尽力转写题干核心文字、数字和关键公式，不超过120字；不能只写见原图]",
-    "今日套路：[3步以内]",
-    "错误类型：[概念不清/审题/计算/其他]",
-    "卡住步骤：[一句话，可为空]",
-    "关键突破：[一句话]",
-    "题型标签：[用顿号分隔，最多3个]",
-    "信心分：[1-5]",
-    "耗时分钟：[整数]",
-    "学习日期：[YYYY-MM-DD]",
-    "知识点必须从以下列表选：数学：集合、函数、三角函数、数列、不等式、向量、概率统计、导数、立体几何、解析几何；物理：运动学、动力学、动量、能量守恒、电场、磁场、电磁感应、波动、热学；化学：原子结构、化学键、氧化还原反应、化学反应、化学平衡、电化学、有机化学。",
-  ].join("\n");
+  const DeskAI = window.MochiQuestionDeskAI || {};
+  const Selection = window.MochiQuestionDeskSelection || {};
 
   const STATE = {
     container: null,
@@ -44,9 +24,15 @@
     activeItemId: "",
     inspectItemId: "",
     filter: "all",
+    search: "",
     busy: false,
     message: "",
+    grindOpen: false,
+    grindSourceSelected: new Set(),
+    grindSelected: new Set(),
     selecting: null,
+    editingRegion: null,
+    adjustingItemId: "",
     imageUrls: new Map(),
   };
 
@@ -107,6 +93,14 @@
     saveUi({ panelMode: normalizePanelMode(mode) });
   }
 
+  function lassoMode() {
+    return readUi().lassoMode === true;
+  }
+
+  function setLassoMode(enabled) {
+    saveUi({ lassoMode: Boolean(enabled) });
+  }
+
   function uid(prefix) {
     return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   }
@@ -137,8 +131,10 @@
     localStorage.removeItem(IMAGES_KEY);
     localStorage.removeItem(ITEMS_KEY);
     localStorage.removeItem(UI_KEY);
+    localStorage.removeItem(NOTEBOOKS_KEY);
     STATE.activeImageId = "";
     STATE.filter = "all";
+    STATE.search = "";
     STATE.message = "";
     STATE.imageUrls.forEach((url) => URL.revokeObjectURL(url));
     STATE.imageUrls.clear();
@@ -162,6 +158,16 @@
       const request = tx.objectStore(IMAGE_STORE).get(id);
       request.onsuccess = () => resolve(request.result?.blob || null);
       request.onerror = () => reject(request.error || new Error("图片读取失败"));
+    });
+  }
+
+  async function deleteBlob(id) {
+    const db = await openDb();
+    return new Promise((resolve) => {
+      const tx = db.transaction(IMAGE_STORE, "readwrite");
+      tx.objectStore(IMAGE_STORE).delete(id);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => resolve(false);
     });
   }
 
@@ -202,6 +208,13 @@
     return `${prefix}${String(next).padStart(2, "0")}`;
   }
 
+  function normalizeImageEntry(img) {
+    return {
+      ...img,
+      subject: ["math", "physics", "chemistry"].includes(img.subject) ? img.subject : "uncategorized",
+    };
+  }
+
   function shortName(name) {
     return String(name || "")
       .replace(/(\d{4})-(\d{2})-(\d{2})/, "$2-$3")
@@ -213,7 +226,11 @@
   }
 
   function formatText(value) {
-    return escapeHtml(value).replace(/\n/g, "<br>");
+    const normalized = String(value ?? "")
+      .replace(/\\\(([\s\S]*?)\\\)/g, (_, formula) => `$${formula}$`)
+      .replace(/\\\[([\s\S]*?)\\\]/g, (_, formula) => `$${formula}$`);
+    const rendered = window.MochiApp?.formatRichText?.(normalized) ?? escapeHtml(normalized);
+    return rendered.replace(/\n/g, "<br>");
   }
 
   function nodesForSubject(subject) {
@@ -299,17 +316,46 @@
     };
   }
 
+  function imageMatchesSearch(img, query) {
+    const q = String(query || "").trim().toLowerCase();
+    if (!q) return true;
+    const imageText = [
+      img.name,
+      img.shortName,
+      img.date,
+      subjectLabel(img.subject),
+    ].join(" ").toLowerCase();
+    if (imageText.includes(q)) return true;
+    return itemsForImage(img.id).some((item) => [
+      item.title,
+      item.nodeLabel,
+      item.recordDraft?.painPoint,
+      item.recordDraft?.originalQuestion,
+      item.recognition?.questionNumber,
+      item.recognition?.summary,
+      item.recognition?.transcript,
+    ].join(" ").toLowerCase().includes(q));
+  }
+
+  function imageMatchesFilter(img, filter) {
+    if (filter === "all") return true;
+    if (filter === "uncategorized") return !["math", "physics", "chemistry"].includes(img.subject);
+    return ["math", "physics", "chemistry"].includes(filter) && img.subject === filter;
+  }
+
   function filterImages(list, filter) {
-    if (filter === "all") return list;
-    if (filter === "saved") return list.filter((img) => img.status === "saved");
-    if (filter === "unsaved") return list.filter((img) => img.status !== "saved");
-    return list.filter((img) => img.subject === filter);
+    return list
+      .map(normalizeImageEntry)
+      .filter((img) => imageMatchesFilter(img, filter) && imageMatchesSearch(img, STATE.search));
   }
 
   function findActiveImage() {
-    const list = images();
+    const list = images().map(normalizeImageEntry);
     if (!STATE.activeImageId && readUi().activeImageId) STATE.activeImageId = readUi().activeImageId;
-    return list.find((img) => img.id === STATE.activeImageId) || list[0] || null;
+    const active = list.find((img) => img.id === STATE.activeImageId);
+    const visible = filterImages(list, STATE.filter || "all");
+    if (active && visible.some((img) => img.id === active.id)) return active;
+    return visible[0] || null;
   }
 
   function findItem(imageId) {
@@ -327,7 +373,7 @@
 
   function itemLabel(item, index = 0) {
     if (!item) return "";
-    if (item.rect) return item.title || `第 ${index + 1} 题`;
+    if (item.rect) return item.nodeLabel || item.recordDraft?.nodeLabel || item.title || "题目标记";
     return item.title || "整张题图";
   }
 
@@ -379,6 +425,80 @@
     return await new Promise((resolve) => canvas.toBlob((next) => resolve(next || blob), "image/png", 0.92));
   }
 
+  function grindLabel(index) {
+    return "ABCDEFGHIJKLMNOPQRSTUVWXYZ".charAt(index) || String(index + 1);
+  }
+
+  async function blobForGrindCandidate(candidate) {
+    if (candidate.kind === "item" && candidate.itemId) {
+      const item = items().find((entry) => entry.id === candidate.itemId);
+      if (item) return imageBlobForItem(item);
+    }
+    if (candidate.rect) return imageBlobForItem({ imageId: candidate.imageId, rect: candidate.rect });
+    return getBlob(candidate.imageId);
+  }
+
+  async function buildGrindOverview(selectedCandidates) {
+    const entries = [];
+    for (let index = 0; index < selectedCandidates.length; index += 1) {
+      const candidate = selectedCandidates[index];
+      const blob = await blobForGrindCandidate(candidate);
+      if (!blob) continue;
+      const bitmap = await bitmapFromBlob(blob);
+      entries.push({ candidate, bitmap, label: grindLabel(index) });
+    }
+    if (entries.length < 2) throw new Error("至少需要两张可读取的题图。");
+
+    const tileW = 520;
+    const tileH = 360;
+    const gap = 18;
+    const cols = entries.length <= 3 ? entries.length : 2;
+    const rows = Math.ceil(entries.length / cols);
+    const canvas = document.createElement("canvas");
+    canvas.width = cols * tileW + (cols + 1) * gap;
+    canvas.height = rows * tileH + (rows + 1) * gap;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#f8fafc";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.font = "700 26px sans-serif";
+    ctx.textBaseline = "middle";
+
+    entries.forEach((entry, index) => {
+      const col = index % cols;
+      const row = Math.floor(index / cols);
+      const x = gap + col * (tileW + gap);
+      const y = gap + row * (tileH + gap);
+      ctx.fillStyle = "#ffffff";
+      ctx.strokeStyle = "#dbe3ee";
+      ctx.lineWidth = 2;
+      ctx.fillRect(x, y, tileW, tileH);
+      ctx.strokeRect(x, y, tileW, tileH);
+      ctx.fillStyle = "#2563eb";
+      ctx.fillRect(x, y, 52, 42);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(entry.label, x + 18, y + 22);
+
+      const maxW = tileW - 28;
+      const maxH = tileH - 62;
+      const scale = Math.min(maxW / entry.bitmap.width, maxH / entry.bitmap.height);
+      const drawW = Math.max(1, Math.round(entry.bitmap.width * scale));
+      const drawH = Math.max(1, Math.round(entry.bitmap.height * scale));
+      const dx = x + Math.round((tileW - drawW) / 2);
+      const dy = y + 50 + Math.round((maxH - drawH) / 2);
+      ctx.drawImage(entry.bitmap, dx, dy, drawW, drawH);
+      entry.bitmap.close?.();
+    });
+
+    const blob = await new Promise((resolve) => canvas.toBlob((next) => resolve(next), "image/jpeg", 0.88));
+    if (!blob) throw new Error("总览图生成失败。");
+    return {
+      blob,
+      labels: entries.map((entry) => entry.label),
+      byLabel: new Map(entries.map((entry) => [entry.label, entry.candidate])),
+      legend: entries.map((entry) => `${entry.label}=${entry.candidate.title || entry.candidate.sourceName || ""}`),
+    };
+  }
+
   async function addImage(file) {
     if (!file || !String(file.type || "").startsWith("image/")) {
       window.MochiApp?.toast?.("请粘贴或上传图片");
@@ -422,7 +542,9 @@
     saveImages([image, ...images()]);
     saveItems([item, ...items()]);
     STATE.activeImageId = id;
-    saveUi({ activeImageId: id });
+    STATE.filter = "uncategorized";
+    STATE.search = "";
+    saveUi({ activeImageId: id, filter: STATE.filter, search: "" });
     window.MochiApp?.toast?.("题图已加入题桌");
     render(STATE.container);
   }
@@ -431,14 +553,122 @@
     saveImages(images().map((img) => img.id === imageId ? { ...img, ...(patch || {}), updatedAt: nowIso() } : img));
   }
 
+  function updateImageSubject(imageId, subject, patch = {}) {
+    if (!["math", "physics", "chemistry"].includes(subject)) return;
+    updateImage(imageId, { ...patch, subject });
+    if (STATE.filter !== "all" && STATE.filter !== subject) {
+      STATE.filter = subject;
+      saveUi({ filter: STATE.filter });
+    }
+  }
+
+  async function deleteImages(imageIds) {
+    const ids = new Set((imageIds || []).filter(Boolean));
+    if (!ids.size) return;
+    saveImages(images().filter((img) => !ids.has(img.id)));
+    saveItems(items().filter((item) => !ids.has(item.imageId)));
+    ids.forEach((id) => {
+      const url = STATE.imageUrls.get(id);
+      if (url) URL.revokeObjectURL(url);
+      STATE.imageUrls.delete(id);
+    });
+    await Promise.all([...ids].map((id) => deleteBlob(id)));
+    if (ids.has(STATE.activeImageId)) STATE.activeImageId = "";
+    if (ids.has(readUi().activeImageId)) saveUi({ activeImageId: "" });
+    STATE.activeItemId = "";
+    STATE.inspectItemId = "";
+  }
+
   function updateItem(itemId, patch) {
     saveItems(items().map((item) => item.id === itemId ? { ...item, ...(patch || {}), updatedAt: nowIso() } : item));
   }
 
-  function createRegionItem(image, rect) {
+  function contextVersion(item) {
+    const value = Number(item?.contextVersion || 0);
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  }
+
+  function messageContextVersion(msg) {
+    const value = Number(msg?.contextVersion || 0);
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  }
+
+  function rectChangedEnough(before, after) {
+    if (!before || !after) return false;
+    const delta = Math.abs((before.x || 0) - (after.x || 0))
+      + Math.abs((before.y || 0) - (after.y || 0))
+      + Math.abs((before.w || 0) - (after.w || 0))
+      + Math.abs((before.h || 0) - (after.h || 0));
+    return delta > 0.015;
+  }
+
+  function contextPatchAfterRectChange(item, nextRect) {
+    if (!rectChangedEnough(item?.rect, nextRect)) return {};
+    const nextVersion = contextVersion(item) + 1;
+    const recognition = item?.recognition ? {
+      ...item.recognition,
+      stale: true,
+      isComplete: false,
+      warning: "选区已调整，请重新识别确认题干。",
+      updatedAt: nowIso(),
+    } : null;
+    return {
+      contextVersion: nextVersion,
+      contextChangedAt: nowIso(),
+      recognition,
+    };
+  }
+
+  function splitChatByContext(item) {
+    const version = contextVersion(item);
+    const active = [];
+    const archived = [];
+    (item?.chat || []).forEach((msg) => {
+      if (messageContextVersion(msg) === version) active.push(msg);
+      else archived.push(msg);
+    });
+    return { active, archived };
+  }
+
+  function recognitionContextText(item) {
+    const info = item?.recognition;
+    if (!info || info.stale) return "";
+    return [
+      info.questionNumber ? `题号：${info.questionNumber}` : "",
+      info.subject && info.subject !== "unknown" ? `科目：${recognitionSubjectLabel(info.subject)}` : "",
+      info.summary ? `题干摘要：${info.summary}` : "",
+      info.transcript ? `题干转写：${info.transcript}` : "",
+    ].filter(Boolean).join("\n");
+  }
+
+  function deleteItem(itemId) {
+    const target = items().find((item) => item.id === itemId);
+    if (!target || regionFinalized(target)) return false;
+    saveItems(items().filter((item) => item.id !== itemId));
+    if (STATE.activeItemId === itemId) STATE.activeItemId = "";
+    if (STATE.inspectItemId === itemId) STATE.inspectItemId = "";
+    return true;
+  }
+
+  function clearDraftRegionsForImage(imageId) {
+    if (!imageId) return false;
+    const draftIds = new Set(items()
+      .filter((item) => item.imageId === imageId && item.rect && !regionFinalized(item))
+      .map((item) => item.id));
+    if (!draftIds.size) return false;
+    saveItems(items().filter((item) => !draftIds.has(item.id)));
+    if (draftIds.has(STATE.activeItemId)) STATE.activeItemId = "";
+    if (draftIds.has(STATE.inspectItemId)) STATE.inspectItemId = "";
+    return true;
+  }
+
+  function pendingRegionForImage(imageId) {
+    return items().find((item) => item.imageId === imageId && item.rect && !regionFinalized(item)) || null;
+  }
+
+  function createRegionItem(image, rect, options = {}) {
     if (!image || !rect) return null;
-    const siblings = itemsForImage(image.id);
-    const nextIndex = siblings.filter((item) => item.rect).length + 1;
+    const safeRect = Selection.expandSelectionRect(rect);
     const item = {
       id: uid("item"),
       imageId: image.id,
@@ -446,19 +676,20 @@
       nodeId: "",
       nodeLabel: "",
       status: "new",
-      title: `第 ${nextIndex} 题`,
-      rect,
+      title: "题目标记",
+      rect: safeRect,
       chat: [],
       recordDraft: null,
       savedLogId: "",
       createdAt: nowIso(),
       updatedAt: nowIso(),
     };
-    saveItems([item, ...items()]);
+    const remaining = items().filter((entry) => !(entry.imageId === image.id && entry.rect && !regionFinalized(entry)));
+    saveItems([item, ...remaining]);
     STATE.activeItemId = item.id;
-    STATE.inspectItemId = item.id;
+    STATE.inspectItemId = "";
     setPanelMode("open");
-    window.MochiApp?.toast?.("已框选一道题");
+    if (!options.quiet) window.MochiApp?.toast?.("已圈出选区，可以先调整再问 AI");
     return item;
   }
 
@@ -466,6 +697,9 @@
     if (!container) return;
     STATE.container = container;
     bind(container);
+    const ui = readUi();
+    STATE.filter = ui.filter || STATE.filter || "all";
+    STATE.search = ui.search || STATE.search || "";
     const activeImage = findActiveImage();
     const mode = panelMode();
     if (activeImage) {
@@ -487,46 +721,59 @@
           ${renderPanel(activeImage, activeItem, mode)}
         </aside>
       </div>
+      ${STATE.grindOpen ? renderGrindSheet() : ""}
     `;
     hydrateImage(activeImage);
   }
 
+  function renderFilterButton(key, label, count) {
+    return `
+      <button class="qd-filter ${STATE.filter === key ? "active" : ""}" data-qd-action="filter" data-filter="${escapeHtml(key)}" type="button">
+        <span>${escapeHtml(label)}</span><b>${count}</b>
+      </button>
+    `;
+  }
+
   function renderSidebar(activeImage) {
-    const all = images();
+    const all = images().map(normalizeImageEntry);
     const visible = filterImages(all, STATE.filter);
     const filters = [
-      ["all", "收件箱", all.length],
+      ["all", "全部", all.length],
+      ["uncategorized", "未整理", all.filter((i) => i.subject === "uncategorized").length],
       ["math", "数学", all.filter((i) => i.subject === "math").length],
       ["physics", "物理", all.filter((i) => i.subject === "physics").length],
       ["chemistry", "化学", all.filter((i) => i.subject === "chemistry").length],
-      ["saved", "已学习", all.filter((i) => i.status === "saved").length],
-      ["unsaved", "未学习", all.filter((i) => i.status !== "saved").length],
     ];
     return `
       <div class="qd-head">
         <div>
           <h2>题桌</h2>
-          <p>一图一题，站内问 AI。</p>
+          <p>粘题、命名，按科目找回来。</p>
         </div>
         <button class="btn btn-soft btn-sm qd-growth-btn" data-route="home" type="button">
           <span class="material-symbols-outlined">psychiatry</span>我的成长
         </button>
       </div>
       <div class="qd-actions">
-        <label class="btn btn-primary btn-sm qd-upload">
-          <span class="material-symbols-outlined">add_photo_alternate</span>上传题图
-          <input data-qd-file type="file" accept="image/*" hidden />
-        </label>
+        <div class="qd-action-row">
+          <label class="btn btn-primary btn-sm qd-upload">
+            <span class="material-symbols-outlined">add_photo_alternate</span>上传题图
+            <input data-qd-file type="file" accept="image/*" hidden />
+          </label>
+          <button class="btn btn-soft btn-sm qd-grind-btn" data-qd-action="open-grind" type="button">
+            <span class="material-symbols-outlined">format_list_numbered</span>啃卷子
+          </button>
+        </div>
         <p class="qd-hint">也可以复制截图后在题桌按 Ctrl+V。</p>
       </div>
+      <label class="qd-search">
+        <span class="material-symbols-outlined">search</span>
+        <input data-qd-search value="${escapeHtml(STATE.search)}" placeholder="搜名字、知识点、题干" />
+      </label>
       <div class="qd-filter-list">
-        ${filters.map(([key, label, count]) => `
-          <button class="qd-filter ${STATE.filter === key ? "active" : ""}" data-qd-action="filter" data-filter="${key}" type="button">
-            <span>${label}</span><b>${count}</b>
-          </button>
-        `).join("")}
+        ${filters.map(([key, label, count]) => renderFilterButton(key, label, count)).join("")}
       </div>
-      <div class="qd-file-list">
+      <div class="qd-file-list" data-qd-file-list>
         ${visible.length ? visible.map((img) => renderFileItem(img, activeImage?.id === img.id)).join("") : renderEmptyFiles()}
       </div>
     `;
@@ -550,18 +797,729 @@
   }
 
   function renderEmptyFiles() {
-    return `<div class="qd-empty-mini">这里还没有题图。复制一张题目截图，然后按 Ctrl+V。</div>`;
+    return `<div class="qd-empty-mini">${escapeHtml(emptyFilterText())}</div>`;
+  }
+
+  function grindCandidates() {
+    const allItems = items();
+    return images()
+      .map(normalizeImageEntry)
+      .flatMap((img) => {
+        const regions = allItems.filter((item) => item.imageId === img.id && item.rect);
+        if (regions.length) {
+          return regions.map((item, index) => ({
+            key: `item:${item.id}`,
+            kind: "item",
+            imageId: img.id,
+            itemId: item.id,
+            subject: item.subject || img.subject,
+            date: img.date,
+            title: itemLabel(item, index),
+            sourceName: img.shortName || img.name,
+            status: item.status || "new",
+          }));
+        }
+        return [{
+          key: `image:${img.id}`,
+          kind: "image",
+          imageId: img.id,
+          itemId: "",
+          subject: img.subject,
+          date: img.date,
+          title: img.shortName || img.name,
+          sourceName: "整张题图",
+          status: img.status || "new",
+        }];
+      })
+      .slice(0, 40);
+  }
+
+  function grindPlan() {
+    const value = readUi().grindPlan;
+    return value && Array.isArray(value.items) ? value : null;
+  }
+
+  function initGrindSelection(force = false) {
+    const candidates = grindScan() ? grindCandidates() : [];
+    const validKeys = new Set(candidates.map((candidate) => candidate.key));
+    const validSelected = [...STATE.grindSelected].filter((key) => validKeys.has(key));
+    if (!force && validSelected.length) {
+      STATE.grindSelected = new Set(validSelected);
+      return;
+    }
+    STATE.grindSelected = new Set(candidates.slice(0, 8).map((candidate) => candidate.key));
+  }
+
+  function cleanScanRect(rect) {
+    if (!rect || typeof rect !== "object") return null;
+    const x = Number(rect.x);
+    const y = Number(rect.y);
+    const w = Number(rect.w);
+    const h = Number(rect.h);
+    if (![x, y, w, h].every(Number.isFinite) || w <= 0 || h <= 0) return null;
+    return {
+      x: Math.max(0, Math.min(0.98, x)),
+      y: Math.max(0, Math.min(0.98, y)),
+      w: Math.max(0.02, Math.min(1, w)),
+      h: Math.max(0.02, Math.min(1, h)),
+    };
+  }
+
+  function questionNumberText(value) {
+    const text = String(value || "").trim();
+    if (!text) return "未标号";
+    if (/^第.+题$/.test(text)) return text;
+    return `第${text.replace(/^第/, "").replace(/题$/, "")}题`;
+  }
+
+  function grindSources() {
+    return images().map(normalizeImageEntry).slice(0, 60);
+  }
+
+  function grindScan() {
+    const value = readUi().grindScan;
+    return value && Array.isArray(value.questions) ? value : null;
+  }
+
+  function regionCandidate(img, item, index = 0) {
+    const questionNumber = item.recognition?.questionNumber || "";
+    const title = item.recognition?.summary || item.recordDraft?.originalQuestion || itemLabel(item, index) || "题目区域";
+    return {
+      key: `item:${item.id}`,
+      kind: "item",
+      imageId: img.id,
+      itemId: item.id,
+      subject: item.subject || img.subject,
+      date: img.date,
+      title: `${questionNumberText(questionNumber)} · ${title}`,
+      questionNumber,
+      rect: cleanScanRect(item.rect),
+      sourceName: img.shortName || img.name,
+      status: item.status || "new",
+    };
+  }
+
+  function imageCandidate(img) {
+    return {
+      key: `image:${img.id}`,
+      kind: "image",
+      imageId: img.id,
+      itemId: "",
+      subject: img.subject,
+      date: img.date,
+      title: `${questionNumberText("")} · ${img.shortName || img.name}`,
+      questionNumber: "",
+      rect: null,
+      sourceName: img.shortName || img.name,
+      status: img.status || "new",
+    };
+  }
+
+  function duplicateQuestionKey(question) {
+    const rawTitle = String(question.title || question.summary || "");
+    if (/未识别题号|整张图未拆出具体题|题目标记/.test(rawTitle)) return "";
+    const title = rawTitle
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, "")
+      .slice(0, 32);
+    const number = String(question.questionNumber || "").replace(/[^\p{L}\p{N}]+/gu, "");
+    if (!title && !number) return "";
+    return [question.subject || "", number, title].join("::");
+  }
+
+  function dedupeQuestions(questions) {
+    const seen = new Set();
+    const unique = [];
+    const duplicates = [];
+    (questions || []).forEach((question) => {
+      const key = duplicateQuestionKey(question);
+      if (key && seen.has(key)) {
+        duplicates.push(question);
+        return;
+      }
+      if (key) seen.add(key);
+      unique.push(question);
+    });
+    return { unique, duplicates };
+  }
+
+  function fallbackQuestionCandidates() {
+    const allItems = items();
+    return grindSources()
+      .flatMap((img) => {
+        const regions = allItems.filter((item) => item.imageId === img.id && item.rect);
+        return regions.length ? regions.map((item, index) => regionCandidate(img, item, index)) : [imageCandidate(img)];
+      })
+      .slice(0, 80);
+  }
+
+  function regionCandidate(img, item, index = 0) {
+    const questionNumber = item.recognition?.questionNumber || "";
+    const fallback = item.recognition ? itemLabel(item, index) : "手动框选 · 未识别题号";
+    const title = item.recognition?.summary || item.recordDraft?.originalQuestion || fallback;
+    return {
+      key: `item:${item.id}`,
+      kind: "item",
+      imageId: img.id,
+      itemId: item.id,
+      subject: item.subject || img.subject,
+      date: img.date,
+      title: `${questionNumberText(questionNumber)} · ${title}`,
+      questionNumber,
+      rect: cleanScanRect(item.rect),
+      sourceName: img.shortName || img.name,
+      status: item.status || "new",
+    };
+  }
+
+  function grindCandidates() {
+    const scan = grindScan();
+    const imageMap = new Map(grindSources().map((img) => [img.id, img]));
+    if (scan?.questions?.length) {
+      return scan.questions
+        .map((entry, index) => {
+          const img = imageMap.get(entry.imageId);
+          if (!img) return null;
+          const questionNumber = String(entry.questionNumber || "").trim();
+          const title = entry.title || entry.summary || img.shortName || img.name;
+          return {
+            key: entry.key || `scan:${entry.imageId}:${index}`,
+            kind: entry.kind || "scan",
+            imageId: entry.imageId,
+            itemId: entry.itemId || "",
+            subject: ["math", "physics", "chemistry"].includes(entry.subject) ? entry.subject : img.subject,
+            date: entry.date || img.date,
+            title: `${questionNumberText(questionNumber)} · ${title}`,
+            questionNumber,
+            rect: cleanScanRect(entry.rect),
+            sourceName: entry.sourceName || img.shortName || img.name,
+            status: entry.status || "new",
+          };
+        })
+        .filter(Boolean)
+        .slice(0, 80);
+    }
+    return fallbackQuestionCandidates();
+  }
+
+  function initGrindSelection(force = false) {
+    const candidates = grindScan() ? grindCandidates() : [];
+    const validKeys = new Set(candidates.map((candidate) => candidate.key));
+    const validSelected = [...STATE.grindSelected].filter((key) => validKeys.has(key));
+    if (!force && validSelected.length) {
+      STATE.grindSelected = new Set(validSelected);
+      return;
+    }
+    STATE.grindSelected = new Set(candidates.slice(0, 12).map((candidate) => candidate.key));
+  }
+
+  function initGrindSourceSelection(force = false) {
+    const sources = grindSources();
+    const validIds = new Set(sources.map((source) => source.id));
+    const validSelected = [...STATE.grindSourceSelected].filter((id) => validIds.has(id));
+    if (!force && validSelected.length) {
+      STATE.grindSourceSelected = new Set(validSelected);
+      return;
+    }
+    STATE.grindSourceSelected = new Set(sources.map((source) => source.id));
+  }
+
+  function renderGrindSheet() {
+    initGrindSelection();
+    const candidates = grindScan() ? grindCandidates() : [];
+    const selectedCount = [...STATE.grindSelected].filter((key) => candidates.some((item) => item.key === key)).length;
+    const plan = grindPlan();
+    return `
+      <div class="qd-grind-overlay">
+        <section class="qd-grind-sheet" role="dialog" aria-modal="true" aria-label="啃卷子排序">
+          <div class="qd-grind-head">
+            <div>
+              <h3>啃卷子排序</h3>
+              <p>默认把题目/卷子素材当作不会；已经会的取消勾选就行。</p>
+            </div>
+            <button class="qd-icon-btn" data-qd-action="close-grind" type="button" title="关闭">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          <div class="qd-grind-body">
+            <section class="qd-grind-picker">
+              <div class="qd-grind-section-head">
+                <strong>不会的题</strong>
+                <span>已选 ${selectedCount} 个，最多 8 个</span>
+              </div>
+              <div class="qd-grind-list">
+                ${candidates.length ? candidates.map(renderGrindCandidate).join("") : `<p class="qd-empty-mini">现在没有可排序素材。先粘几张题再来排序。</p>`}
+              </div>
+              <button class="btn btn-primary qd-grind-run" data-qd-action="run-grind" type="button" ${selectedCount < 2 || selectedCount > 8 || STATE.busy ? "disabled" : ""}>
+                <span class="material-symbols-outlined">auto_awesome</span>${STATE.busy ? "AI 正在排序..." : "让 AI 排优先级"}
+              </button>
+              <p class="qd-hint">已经框选过的卷子会按题目列出；没框选过的图片按整张图列出。默认前 8 个按“不会”处理。</p>
+            </section>
+            <section class="qd-grind-result">
+              <div class="qd-grind-section-head">
+                <strong>推荐顺序</strong>
+                ${plan ? `<span>${escapeHtml(shortDate(plan.createdAt))}</span>` : ""}
+              </div>
+              ${plan ? renderGrindPlan(plan) : `<div class="qd-grind-empty">排序后会在这里出现“先学哪张”和原因。</div>`}
+            </section>
+          </div>
+        </section>
+      </div>
+    `;
+  }
+
+  function renderGrindCandidate(candidate) {
+    const checked = STATE.grindSelected.has(candidate.key);
+    return `
+      <label class="qd-grind-choice ${checked ? "selected" : "skipped"}">
+        <input data-qd-grind-check type="checkbox" value="${escapeHtml(candidate.key)}" ${checked ? "checked" : ""} />
+        <span>
+          <strong>${escapeHtml(candidate.title)}</strong>
+          <small>${escapeHtml(candidate.kind === "item" ? candidate.sourceName : "整张题图")} · ${escapeHtml(subjectLabel(candidate.subject))} · ${escapeHtml(shortDate(candidate.date))} · ${checked ? "不会，参与排序" : "已会，暂不排序"}</small>
+        </span>
+      </label>
+    `;
+  }
+
+  function renderGrindPlan(plan) {
+    return `
+      <div class="qd-grind-order">
+        ${plan.items.map((item) => {
+          return `
+            <article class="qd-grind-card">
+              <b>${item.rank}</b>
+              <div>
+                <strong>${escapeHtml(item.title || item.sourceName || "题图")}</strong>
+                <p>${escapeHtml(item.reason || "先学这道，性价比较高。")}</p>
+                <small>考频 ${item.frequency || "?"} · 提分 ${item.scoreGain || "?"} · 优先 ${item.priority || "?"}</small>
+              </div>
+              <button class="btn btn-soft btn-sm" data-qd-action="start-grind-item" data-image-id="${escapeHtml(item.imageId)}" data-item-id="${escapeHtml(item.itemId || "")}" type="button">开始学</button>
+            </article>
+          `;
+        }).join("")}
+      </div>
+    `;
+  }
+
+  function refreshGrindQuestionControls(container) {
+    const candidates = grindCandidates();
+    const selectedCount = [...STATE.grindSelected].filter((key) => candidates.some((item) => item.key === key)).length;
+    const overLimit = selectedCount > 12;
+    const count = container.querySelector("[data-qd-grind-count]");
+    if (count) count.textContent = `已选 ${selectedCount} 题${overLimit ? "，最多 12 题" : ""}`;
+    const run = container.querySelector('[data-qd-action="run-grind"]');
+    if (run) run.disabled = !grindScan() || selectedCount < 2 || overLimit || STATE.busy;
+    container.querySelectorAll("[data-qd-grind-check]").forEach((input) => {
+      const choice = input.closest(".qd-grind-choice");
+      if (!choice) return;
+      choice.classList.toggle("selected", input.checked);
+      choice.classList.toggle("skipped", !input.checked);
+      const meta = choice.querySelector("[data-qd-grind-choice-state]");
+      if (meta) meta.textContent = input.checked ? "不会，参与排序" : "已会，暂不排序";
+    });
+  }
+
+  function renderGrindCandidate(candidate) {
+    const checked = STATE.grindSelected.has(candidate.key);
+    const sourceType = candidate.kind === "item" ? "手动框选" : candidate.rect ? "AI识别区域" : "整张图";
+    return `
+      <label class="qd-grind-choice ${checked ? "selected" : "skipped"}">
+        <input data-qd-grind-check type="checkbox" value="${escapeHtml(candidate.key)}" ${checked ? "checked" : ""} />
+        <span>
+          <strong>${escapeHtml(candidate.title)}</strong>
+          <small>${escapeHtml(sourceType)} · ${escapeHtml(candidate.sourceName)} · ${escapeHtml(subjectLabel(candidate.subject))} · <b data-qd-grind-choice-state>${checked ? "不会，参与排序" : "已会，暂不排序"}</b></small>
+        </span>
+      </label>
+    `;
+  }
+
+  function grindSession() {
+    const value = readUi().grindSession;
+    return value && value.active && Array.isArray(value.items) && value.items.length ? value : null;
+  }
+
+  function currentGrindSessionItem() {
+    const session = grindSession();
+    if (!session) return null;
+    const index = Math.max(0, Math.min(session.items.length - 1, Number(session.currentIndex) || 0));
+    return session.items[index] || null;
+  }
+
+  function isCurrentGrindItem(item) {
+    const current = currentGrindSessionItem();
+    if (!item || !current) return false;
+    return Boolean((current.itemId && current.itemId === item.id) || (!current.itemId && current.imageId === item.imageId && current.rect && item.rect));
+  }
+
+  function saveGrindSession(session) {
+    saveUi({ grindSession: session || null });
+  }
+
+  function activateGrindPlanItem(planItem) {
+    if (!planItem?.imageId) return null;
+    const img = images().find((entry) => entry.id === planItem.imageId);
+    if (!img) return null;
+    let nextItemId = planItem.itemId || "";
+    if (!nextItemId && planItem.rect) {
+      const created = createRegionItem(normalizeImageEntry(img), planItem.rect, { quiet: true });
+      if (created) {
+        nextItemId = created.id;
+        const recognition = {
+          questionNumber: planItem.questionNumber || "",
+          subject: ["math", "physics", "chemistry"].includes(planItem.subject) ? planItem.subject : "unknown",
+          summary: planItem.title || "",
+          transcript: "",
+          isComplete: true,
+          warning: "",
+          raw: "",
+          updatedAt: nowIso(),
+        };
+        updateItem(created.id, { recognition, title: planItem.title || created.title, subject: planItem.subject || created.subject });
+      }
+    }
+    STATE.activeImageId = planItem.imageId;
+    STATE.activeItemId = nextItemId || "";
+    STATE.inspectItemId = "";
+    STATE.filter = "all";
+    STATE.search = "";
+    STATE.grindOpen = false;
+    setPanelMode("open");
+    saveUi({ activeImageId: planItem.imageId, filter: "all", search: "" });
+    return { imageId: planItem.imageId, itemId: nextItemId };
+  }
+
+  function startGrindSession(targetKey = "") {
+    const plan = grindPlan();
+    const planItems = Array.isArray(plan?.items) ? plan.items : [];
+    if (!planItems.length) return;
+    const startIndex = Math.max(0, planItems.findIndex((item) => item.targetKey === targetKey));
+    const currentIndex = startIndex >= 0 ? startIndex : 0;
+    const session = {
+      active: true,
+      items: planItems,
+      currentIndex,
+      startedAt: nowIso(),
+      updatedAt: nowIso(),
+    };
+    saveGrindSession(session);
+    activateGrindSessionIndex(currentIndex, session);
+  }
+
+  function activateGrindSessionIndex(index, session = grindSession()) {
+    if (!session?.items?.length) return;
+    STATE.adjustingItemId = "";
+    const currentIndex = Math.max(0, Math.min(session.items.length - 1, Number(index) || 0));
+    const planItem = session.items[currentIndex];
+    const activated = activateGrindPlanItem(planItem);
+    const nextSession = {
+      ...session,
+      currentIndex,
+      updatedAt: nowIso(),
+      items: session.items.map((item, idx) => idx === currentIndex && activated?.itemId ? { ...item, itemId: activated.itemId } : item),
+    };
+    saveGrindSession(nextSession);
+    render(STATE.container);
+  }
+
+  function moveGrindSession(delta) {
+    const session = grindSession();
+    if (!session) return;
+    activateGrindSessionIndex((Number(session.currentIndex) || 0) + delta, session);
+  }
+
+  function exitGrindSession() {
+    saveGrindSession(null);
+    STATE.adjustingItemId = "";
+    render(STATE.container);
+  }
+
+  function editCurrentGrindRegion() {
+    const session = grindSession();
+    const current = currentGrindSessionItem();
+    if (!session || !current) return;
+    let itemId = current.itemId || "";
+    if (!itemId && current.rect) {
+      const activated = activateGrindPlanItem(current);
+      itemId = activated?.itemId || "";
+      const index = Math.max(0, Math.min(session.items.length - 1, Number(session.currentIndex) || 0));
+      saveGrindSession({
+        ...session,
+        updatedAt: nowIso(),
+        items: session.items.map((item, idx) => idx === index && itemId ? { ...item, itemId } : item),
+      });
+    }
+    if (!itemId) return;
+    STATE.adjustingItemId = itemId;
+    STATE.activeItemId = itemId;
+    STATE.inspectItemId = "";
+    setPanelMode("open");
+    render(STATE.container);
+  }
+
+  function renderGrindSessionBar() {
+    const session = grindSession();
+    if (!session) return "";
+    const index = Math.max(0, Math.min(session.items.length - 1, Number(session.currentIndex) || 0));
+    const item = session.items[index] || {};
+    const atStart = index <= 0;
+    const atEnd = index >= session.items.length - 1;
+    const canAdjust = Boolean(item.itemId || item.rect);
+    const adjusting = Boolean(STATE.adjustingItemId && item.itemId === STATE.adjustingItemId);
+    return `
+      <div class="qd-grind-session-bar">
+        <div>
+          <strong>啃卷子中 · 第 ${index + 1} / ${session.items.length} 题</strong>
+          <span>${escapeHtml(item.title || item.sourceName || "当前题目")}${item.rect ? "" : " · 整张图学习"}</span>
+        </div>
+        <div class="qd-grind-session-actions">
+          <button class="btn btn-soft btn-sm" data-qd-action="grind-prev" type="button" ${atStart ? "disabled" : ""}>上一题</button>
+          ${canAdjust ? `<button class="btn ${adjusting ? "btn-primary" : "btn-soft"} btn-sm" data-qd-action="${adjusting ? "finish-region-adjust" : "grind-edit-current"}" data-item-id="${escapeHtml(item.itemId || "")}" type="button">${adjusting ? "完成" : "调整框"}</button>` : ""}
+          <button class="btn btn-primary btn-sm" data-qd-action="grind-next" type="button" ${atEnd ? "disabled" : ""}>下一题</button>
+          <button class="btn btn-soft btn-sm" data-qd-action="grind-exit" type="button">退出</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderGrindPlan(plan) {
+    return `
+      <div class="qd-grind-order qd-grind-plan">
+        ${plan.items.map((item) => `
+          <article class="qd-grind-card">
+            <b>${item.rank}</b>
+            <div>
+              <strong>${escapeHtml(item.title || item.sourceName || "题目")}</strong>
+              <p>${escapeHtml(item.reason || "先学这题，性价比较高。")}</p>
+              <small>考频 ${item.frequency || "?"} · 提分 ${item.scoreGain || "?"} · 优先 ${item.priority || "?"}</small>
+            </div>
+            <button class="btn btn-soft btn-sm" data-qd-action="start-grind-session" data-target-key="${escapeHtml(item.targetKey || "")}" type="button">从这题开始</button>
+          </article>
+        `).join("")}
+      </div>
+    `;
+  }
+
+  function renderGrindSheet() {
+    initGrindSourceSelection();
+    const scan = grindScan();
+    if (scan) initGrindSelection();
+    const sources = grindSources();
+    const sourceSelectedCount = [...STATE.grindSourceSelected].filter((id) => sources.some((source) => source.id === id)).length;
+    const candidates = scan ? grindCandidates() : [];
+    const selectedCount = [...STATE.grindSelected].filter((key) => candidates.some((item) => item.key === key)).length;
+    const plan = grindPlan();
+    const overLimit = selectedCount > 12;
+    return `
+      <div class="qd-grind-overlay">
+        <section class="qd-grind-sheet" role="dialog" aria-modal="true" aria-label="啃卷子排序">
+          <div class="qd-grind-head">
+            <div>
+              <h3>啃卷子</h3>
+              <p>先让 AI 把卷子拆成题目清单，再取消已经会的题，最后按题目排序。</p>
+            </div>
+            <button class="qd-icon-btn" data-qd-action="close-grind" type="button" title="关闭">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          <div class="qd-grind-body">
+            <section class="qd-grind-picker">
+              <div class="qd-grind-section-head">
+                <strong>1. 选择卷子/题图</strong>
+                <span>已选 ${sourceSelectedCount} 张</span>
+              </div>
+              <div class="qd-grind-list">
+                ${sources.length ? sources.map(renderGrindSource).join("") : `<p class="qd-empty-mini">先粘贴几张题图，再来啃卷子。</p>`}
+              </div>
+              <button class="btn btn-primary qd-grind-run" data-qd-action="scan-grind-sources" type="button" ${!sourceSelectedCount || STATE.busy ? "disabled" : ""}>
+                <span class="material-symbols-outlined">document_scanner</span>${STATE.busy ? "AI 正在识别..." : "识别题目"}
+              </button>
+              <p class="qd-hint">识别时会尽量保留原卷子的题号；读不到题号就显示“未标号”。</p>
+            </section>
+            <section class="qd-grind-result">
+              <div class="qd-grind-section-head">
+                <strong>2. 选择不会的题</strong>
+                <span>${scan ? `已选 ${selectedCount} 题${overLimit ? "，最多 12 题" : ""}` : "等待识别"}</span>
+              </div>
+              <div class="qd-grind-list qd-grind-question-list">
+                ${scan
+                  ? (candidates.length ? candidates.map(renderGrindCandidate).join("") : `<div class="qd-grind-empty">没有识别出题目。可以先手动套索框题，再回来排序。</div>`)
+                  : `<div class="qd-grind-empty">先在左侧选择素材并点击“识别题目”。AI 会把每张卷子里的题按原题号列出来。</div>`}
+              </div>
+              <button class="btn btn-primary qd-grind-run" data-qd-action="run-grind" type="button" ${!scan || selectedCount < 2 || overLimit || STATE.busy ? "disabled" : ""}>
+                <span class="material-symbols-outlined">auto_awesome</span>${STATE.busy ? "AI 正在排序..." : "让 AI 排优先级"}
+              </button>
+              ${plan ? renderGrindPlan(plan) : `<div class="qd-grind-empty qd-grind-plan-empty">排序后会在这里出现“先学哪题”和原因。</div>`}
+            </section>
+          </div>
+        </section>
+      </div>
+    `;
+  }
+
+  function renderGrindSource(source) {
+    const checked = STATE.grindSourceSelected.has(source.id);
+    const count = itemsForImage(source.id).filter((item) => item.rect).length;
+    return `
+      <label class="qd-grind-choice ${checked ? "selected" : "skipped"}">
+        <input data-qd-grind-source-check type="checkbox" value="${escapeHtml(source.id)}" ${checked ? "checked" : ""} />
+        <span>
+          <strong>${escapeHtml(source.shortName || source.name)}</strong>
+          <small>${escapeHtml(subjectLabel(source.subject))} · ${escapeHtml(shortDate(source.date))}${count ? ` · 已框 ${count} 题` : ""}</small>
+        </span>
+      </label>
+    `;
+  }
+
+  function renderGrindCandidate(candidate) {
+    const checked = STATE.grindSelected.has(candidate.key);
+    const sourceType = candidate.kind === "item" ? "手动框选" : candidate.rect ? "AI识别区域" : "整张图";
+    return `
+      <label class="qd-grind-choice ${checked ? "selected" : "skipped"}">
+        <input data-qd-grind-check type="checkbox" value="${escapeHtml(candidate.key)}" ${checked ? "checked" : ""} />
+        <span>
+          <strong>${escapeHtml(candidate.title)}</strong>
+          <small>${escapeHtml(sourceType)} · ${escapeHtml(candidate.sourceName)} · ${escapeHtml(subjectLabel(candidate.subject))} · <b data-qd-grind-choice-state>${checked ? "不会，参与排序" : "已会，暂不排序"}</b></small>
+        </span>
+      </label>
+    `;
+  }
+
+  function renderGrindPlan(plan) {
+    return `
+      <div class="qd-grind-order qd-grind-plan">
+        ${plan.items.map((item) => `
+          <article class="qd-grind-card">
+            <b>${item.rank}</b>
+            <div>
+              <strong>${escapeHtml(item.title || item.sourceName || "题目")}</strong>
+              <p>${escapeHtml(item.reason || "先学这题，性价比较高。")}</p>
+              <small>考频 ${item.frequency || "?"} · 提分 ${item.scoreGain || "?"} · 优先 ${item.priority || "?"}</small>
+            </div>
+            <button class="btn btn-soft btn-sm" data-qd-action="start-grind-session" data-target-key="${escapeHtml(item.targetKey || "")}" type="button">从这题开始</button>
+          </article>
+        `).join("")}
+      </div>
+    `;
+  }
+
+  function renderGrindSheet() {
+    initGrindSourceSelection();
+    const scan = grindScan();
+    if (scan) initGrindSelection();
+    const sources = grindSources();
+    const sourceSelectedCount = [...STATE.grindSourceSelected].filter((id) => sources.some((source) => source.id === id)).length;
+    const candidates = scan ? grindCandidates() : [];
+    const selectedCount = [...STATE.grindSelected].filter((key) => candidates.some((item) => item.key === key)).length;
+    const plan = grindPlan();
+    const overLimit = selectedCount > 12;
+    const stepClass = plan ? "plan" : scan ? "questions" : "sources";
+    return `
+      <div class="qd-grind-overlay">
+        <section class="qd-grind-sheet qd-grind-step-${stepClass}" role="dialog" aria-modal="true" aria-label="啃卷子排序">
+          <div class="qd-grind-head">
+            <div>
+              <h3>${plan ? "推荐学习顺序" : scan ? "选择不会的题" : "啃卷子"}</h3>
+              <p>${plan ? "按这个顺序逐题开始学；学完回来点下一题就行。" : scan ? "默认都当作不会，会的题取消勾选，再排序。" : "先选卷子/题图，让 AI 拆成题目清单。"}</p>
+            </div>
+            <button class="qd-icon-btn" data-qd-action="close-grind" type="button" title="关闭">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          ${plan ? `
+            <div class="qd-grind-plan-only">
+              <div class="qd-grind-section-head">
+                <strong>排序结果</strong>
+                <span>${escapeHtml(shortDate(plan.createdAt))}</span>
+              </div>
+              ${renderGrindPlan(plan)}
+              <button class="btn btn-soft qd-grind-run" data-qd-action="restart-grind" type="button">
+                <span class="material-symbols-outlined">refresh</span>重新选题
+              </button>
+            </div>
+          ` : `
+            <div class="qd-grind-body">
+              <section class="qd-grind-picker">
+                <div class="qd-grind-section-head">
+                  <strong>1. 选择卷子/题图</strong>
+                  <span>已选 ${sourceSelectedCount} 张</span>
+                </div>
+                <div class="qd-grind-list">
+                  ${sources.length ? sources.map(renderGrindSource).join("") : `<p class="qd-empty-mini">先粘贴几张题图，再来啃卷子。</p>`}
+                </div>
+                <button class="btn btn-primary qd-grind-run" data-qd-action="scan-grind-sources" type="button" ${!sourceSelectedCount || STATE.busy ? "disabled" : ""}>
+                  <span class="material-symbols-outlined">document_scanner</span>${STATE.busy ? "AI 正在识别..." : "识别题目"}
+                </button>
+                <p class="qd-hint">已手动框过的素材会优先使用框选区域；没框过的整张图会交给 AI 拆题。</p>
+              </section>
+              <section class="qd-grind-result">
+                <div class="qd-grind-section-head">
+                  <strong>2. 选择不会的题</strong>
+                  <span data-qd-grind-count>${scan ? `已选 ${selectedCount} 题${overLimit ? "，最多 12 题" : ""}` : "等待识别"}</span>
+                </div>
+                <div class="qd-grind-list qd-grind-question-list">
+                  ${scan
+                    ? (candidates.length ? candidates.map(renderGrindCandidate).join("") : `<div class="qd-grind-empty">没有识别出题目。可以先手动套索框题，再回来排序。</div>`)
+                    : `<div class="qd-grind-empty">先在左侧选择素材并点击“识别题目”。AI 会按原题号列出每张卷子里的题。</div>`}
+                </div>
+                ${scan?.duplicateCount ? `<p class="qd-hint">已自动跳过 ${scan.duplicateCount} 道疑似重复题。</p>` : ""}
+                <button class="btn btn-primary qd-grind-run" data-qd-action="run-grind" type="button" ${!scan || selectedCount < 2 || overLimit || STATE.busy ? "disabled" : ""}>
+                  <span class="material-symbols-outlined">auto_awesome</span>${STATE.busy ? "AI 正在排序..." : "让 AI 排优先级"}
+                </button>
+              </section>
+            </div>
+          `}
+        </section>
+      </div>
+    `;
+  }
+
+  function filterLabel(filter = STATE.filter) {
+    if (filter === "math") return "数学";
+    if (filter === "physics") return "物理";
+    if (filter === "chemistry") return "化学";
+    if (filter === "uncategorized") return "未整理";
+    return "全部";
+  }
+
+  function emptyFilterText() {
+    if (STATE.search) return "没有找到匹配的题图。";
+    if (STATE.filter === "all") return "这里还没有题图。复制一张题目截图，然后按 Ctrl+V。";
+    return `${filterLabel()}这里还没有题图。`;
   }
 
   function renderRegions(activeImage, activeItem) {
     const list = itemsForImage(activeImage?.id).filter((item) => item.rect);
     return list.map((item, index) => {
-      const rect = item.rect || {};
+      if (isCurrentGrindItem(item) && STATE.adjustingItemId !== item.id) {
+        return `
+          <div class="qd-region-focus" style="${Selection.rectStyle(item.rect)}"></div>
+        `;
+      }
+      if (regionEditable(item)) {
+        const rect = item.rect || {};
+        const active = item.id === activeItem?.id;
+        const finalized = regionFinalized(item);
+        return `
+          <div class="qd-region-box ${active ? "active" : ""} ${finalized ? "adjusting" : ""}" data-qd-region-box data-item-id="${item.id}" style="${Selection.rectStyle(rect)}" title="拖动调整选区">
+            <span class="qd-region-box-badge">${finalized ? "调整中" : "待确认"}</span>
+            <button class="qd-region-box-action" data-qd-action="${finalized ? "finish-region-adjust" : "open-region-panel"}" data-item-id="${item.id}" type="button" title="${finalized ? "完成调整" : "用这个选区提问"}">
+              <span class="material-symbols-outlined">${finalized ? "done" : "psychology_alt"}</span>
+            </button>
+            ${finalized ? "" : `
+              <button class="qd-region-box-delete" data-qd-action="delete-region" data-item-id="${item.id}" type="button" title="删除这个选区">
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            `}
+            ${["nw", "ne", "sw", "se"].map((handle) => `<span class="qd-region-handle ${handle}" data-qd-region-handle="${handle}" data-item-id="${item.id}"></span>`).join("")}
+          </div>
+        `;
+      }
+      const pos = Selection.markerPosition(item);
       return `
         <button class="qd-region ${item.id === activeItem?.id ? "active" : ""} ${item.status || "new"}"
-          style="left:${rect.x * 100}%;top:${rect.y * 100}%;width:${rect.w * 100}%;height:${rect.h * 100}%"
+          style="left:${pos.x * 100}%;top:${pos.y * 100}%"
           data-qd-action="open-inspector" data-item-id="${item.id}" type="button" title="${escapeHtml(itemLabel(item, index))}">
-          <span>${index + 1}</span>
+          <span class="material-symbols-outlined">psychology_alt</span>
         </button>
       `;
     }).join("");
@@ -570,9 +1528,15 @@
   function renderInspector(activeImage) {
     const item = items().find((entry) => entry.id === STATE.inspectItemId && entry.imageId === activeImage?.id);
     if (!item) return "";
+    const pos = Selection.markerPosition(item);
+    const alignRight = pos.x > 0.62;
+    const left = alignRight ? Math.max(2, pos.x * 100 - 3) : Math.min(76, pos.x * 100 + 3);
+    const top = Math.min(72, Math.max(2, pos.y * 100 + 3));
+    const shift = alignRight ? "-100%" : "0";
     const log = item.savedLogId ? (window.MochiApp?.readStudyLogs?.() || []).find((entry) => entry.id === item.savedLogId) : null;
+    const { active: activeChat, archived: archivedChat } = splitChatByContext(item);
     return `
-      <aside class="qd-inspector">
+      <aside class="qd-inspector" style="--qi-left:${left}%;--qi-top:${top}%;--qi-x-shift:${shift}">
         <div class="qd-inspector-head">
           <div>
             <strong>${escapeHtml(itemLabel(item))}</strong>
@@ -584,12 +1548,6 @@
         </div>
         <div class="qd-inspector-body">
           <section>
-            <h4>AI 对话</h4>
-            ${item.chat?.length ? item.chat.slice(-4).map((msg) => `
-              <p class="qd-inspector-chat ${msg.role}"><b>${msg.role === "assistant" ? "AI" : "我"}：</b>${escapeHtml(String(msg.content || "").slice(0, 180))}</p>
-            `).join("") : `<p class="qd-inspector-empty">还没有问过 AI。</p>`}
-          </section>
-          <section>
             <h4>学习档案卡片</h4>
             ${log ? `
               <article class="qd-study-mini-card">
@@ -599,16 +1557,20 @@
               </article>
             ` : `<p class="qd-inspector-empty">保存到学习档案后，这里会显示卡点和套路。</p>`}
           </section>
+          <section>
+            <h4>AI 对话</h4>
+            ${activeChat.length ? activeChat.slice(-4).map((msg) => `
+              <p class="qd-inspector-chat ${msg.role}"><b>${msg.role === "assistant" ? "AI" : "我"}：</b>${escapeHtml(String(msg.content || "").slice(0, 180))}</p>
+            `).join("") : `<p class="qd-inspector-empty">${archivedChat.length ? "当前框还没有新对话，旧对话在右栏可展开。" : "还没有问过 AI。"}</p>`}
+          </section>
+          ${item.rect ? `
+            <button class="btn btn-soft btn-sm qd-inspector-adjust" data-qd-action="adjust-region" data-item-id="${item.id}" type="button">
+              <span class="material-symbols-outlined">crop</span>重新调整选区
+            </button>
+          ` : ""}
         </div>
       </aside>
     `;
-  }
-
-  function renderSelectionBox() {
-    const selection = STATE.selecting;
-    if (!selection?.preview) return "";
-    const rect = selection.preview;
-    return `<div class="qd-selection-box" style="left:${rect.x * 100}%;top:${rect.y * 100}%;width:${rect.w * 100}%;height:${rect.h * 100}%"></div>`;
   }
 
   function renderViewer(activeImage, activeItem) {
@@ -616,28 +1578,42 @@
       return `
         <section class="qd-dropzone">
           <span class="material-symbols-outlined">content_paste</span>
-          <h2>粘贴一道题，开始题桌</h2>
-          <p>复制截图后按 Ctrl+V，或从左侧上传图片。第一版按“一张图 = 一道题”处理。</p>
+          <h2>${escapeHtml(emptyFilterText())}</h2>
+          <p>复制截图后按 Ctrl+V，或从左侧上传图片。题图会先进入「未整理」，识别或保存后再自动归到对应科目。</p>
         </section>
       `;
     }
+    const lasso = lassoMode();
+    const pendingRegion = pendingRegionForImage(activeImage.id);
+    const lassoLabel = pendingRegion && lasso ? "取消选区" : lasso ? "套索中" : "套索";
+    const lassoIcon = pendingRegion && lasso ? "close" : "gesture";
     return `
-      <div class="qd-viewer-top">
-        <div>
-          <strong>${escapeHtml(activeImage.name)}</strong>
-          <span>${escapeHtml(subjectLabel(activeImage.subject))} · ${activeImage.width || "?"}×${activeImage.height || "?"} · 拖拽题图可框选一道题</span>
+      <div class="qd-viewer-head-stack">
+        <div class="qd-viewer-top">
+          <div>
+            <strong>${escapeHtml(activeImage.name)}</strong>
+            <span>${escapeHtml(subjectLabel(activeImage.subject))} · ${activeImage.width || "?"}×${activeImage.height || "?"} · ${lasso ? "套索开启：在题图上圈/划题目区域" : "点套索后可圈出一道题"}</span>
+          </div>
+          <div class="qd-viewer-actions">
+            <button class="btn btn-soft btn-sm qd-lasso-btn ${lasso ? "active" : ""}" data-qd-action="toggle-lasso" type="button" aria-pressed="${lasso ? "true" : "false"}">
+              <span class="material-symbols-outlined">${lassoIcon}</span>${lassoLabel}
+            </button>
+            <button class="btn btn-soft btn-sm" data-qd-action="rename" data-image-id="${activeImage.id}" type="button">
+              <span class="material-symbols-outlined">edit</span>重命名
+            </button>
+            <button class="btn btn-soft btn-sm qd-danger-btn" data-qd-action="delete-image" data-image-id="${activeImage.id}" type="button">
+              <span class="material-symbols-outlined">delete</span>删除
+            </button>
+          </div>
         </div>
-        <button class="btn btn-soft btn-sm" data-qd-action="rename" data-image-id="${activeImage.id}" type="button">
-          <span class="material-symbols-outlined">edit</span>重命名
-        </button>
+        ${renderGrindSessionBar()}
       </div>
       <div class="qd-image-stage">
         <div class="qd-image-loading" data-qd-image-loading>读取题图中...</div>
-        <div class="qd-image-wrap" data-qd-image-wrap>
+        <div class="qd-image-wrap ${lasso ? "qd-lasso-enabled" : ""}" data-qd-image-wrap>
           <img data-qd-image alt="${escapeHtml(activeImage.name)}" hidden />
           <div class="qd-region-layer">
             ${renderRegions(activeImage, activeItem)}
-            ${renderSelectionBox()}
           </div>
         </div>
         ${renderInspector(activeImage)}
@@ -687,7 +1663,7 @@
             <h3>AI 学习面板</h3>
             ${renderPanelControls(mode)}
           </div>
-          <p>先粘贴或上传一道题图。</p>
+          <p>${escapeHtml(emptyFilterText())}</p>
         </section>
       `;
     }
@@ -707,9 +1683,8 @@
         </div>
       </div>
       ${STATE.message ? `<div class="qd-message">${escapeHtml(STATE.message)}</div>` : ""}
-      <div class="qd-chat" data-qd-chat>
-        ${item.chat?.length ? item.chat.map(renderChatMessage).join("") : `<p class="qd-chat-empty">问它第一句，比如“这题怎么下手？”</p>`}
-      </div>
+      ${item.rect ? renderRecognitionCard(item) : ""}
+      ${renderChatHistory(item)}
       <div class="qd-question-box">
         <textarea data-qd-question rows="3" placeholder="问这道题，例如：这题第一步怎么想？"></textarea>
         <div class="qd-panel-actions">
@@ -732,12 +1707,81 @@
     return "新题";
   }
 
+  function renderChatHistory(item) {
+    const { active, archived } = splitChatByContext(item);
+    const activeBlock = active.length ? `
+      <details class="qd-chat-shell" open>
+        <summary>
+          <span>本题对话</span>
+          <b>${active.length}</b>
+        </summary>
+        <div class="qd-chat" data-qd-chat>
+          ${active.map(renderChatMessage).join("")}
+        </div>
+      </details>
+    ` : `<p class="qd-chat-empty">还没有本题对话，直接在下面问第一句。</p>`;
+    const archivedBlock = archived.length ? `
+      <details class="qd-chat-shell archived">
+        <summary>
+          <span>调整前旧对话</span>
+          <b>${archived.length}</b>
+        </summary>
+        <div class="qd-chat">
+          ${archived.map(renderChatMessage).join("")}
+        </div>
+      </details>
+    ` : "";
+    return `${activeBlock}${archivedBlock}`;
+  }
+
   function renderChatMessage(msg) {
     return `
       <article class="qd-chat-msg ${msg.role === "assistant" ? "assistant" : "user"}">
         <strong>${msg.role === "assistant" ? "AI" : "我"}</strong>
         <p>${formatText(msg.content)}</p>
       </article>
+    `;
+  }
+
+  function recognitionSubjectLabel(subject) {
+    if (subject === "math") return "数学";
+    if (subject === "physics") return "物理";
+    if (subject === "chemistry") return "化学";
+    return "未判断";
+  }
+
+  function renderRecognitionCard(item) {
+    const info = item.recognition || null;
+    if (!info) {
+      return `
+        <section class="qd-recognition-card empty">
+          <div class="qd-recognition-head">
+            <span class="material-symbols-outlined">document_scanner</span>
+            <strong>题目识别</strong>
+            <button class="qd-recognition-retry" data-qd-action="recognize-question" data-item-id="${item.id}" type="button" ${STATE.busy ? "disabled" : ""}>识别</button>
+          </div>
+          <p>识别后会在这里显示题号、科目和题干转写，方便核对有没有框全。</p>
+        </section>
+      `;
+    }
+    const stale = info.stale === true;
+    const complete = !stale && info.isComplete !== false;
+    const meta = [info.questionNumber || "", recognitionSubjectLabel(info.subject)].filter(Boolean).join(" · ");
+    const summary = stale ? "选区已经调整过，请重新识别后再核对题干。" : (info.warning || info.summary || "");
+    const transcript = info.transcript || info.raw || "";
+    return `
+      <section class="qd-recognition-card ${complete ? "complete" : "incomplete"}">
+        <div class="qd-recognition-head">
+          <span class="material-symbols-outlined">${complete ? "check_circle" : "error"}</span>
+          <strong>${stale ? "需要重识别" : complete ? "识别完整" : "可能没截全"}</strong>
+          ${meta ? `<em>${escapeHtml(meta)}</em>` : ""}
+          <button class="qd-recognition-retry" data-qd-action="recognize-question" data-item-id="${item.id}" type="button" ${STATE.busy ? "disabled" : ""}>重识别</button>
+        </div>
+        ${summary ? `<p class="qd-recognition-summary">${escapeHtml(summary)}</p>` : ""}
+        <div class="qd-recognition-transcript">
+          ${transcript ? formatText(transcript) : "还没有题干转写。可以重识别，或调整框后再识别。"}
+        </div>
+      </section>
     `;
   }
 
@@ -849,12 +1893,51 @@
     return { x, y };
   }
 
-  function normalizedRect(a, b) {
-    const x = Math.min(a.x, b.x);
-    const y = Math.min(a.y, b.y);
-    const w = Math.abs(a.x - b.x);
-    const h = Math.abs(a.y - b.y);
-    return { x, y, w, h };
+  function regionFinalized(item) {
+    return Boolean(item?.savedLogId || item?.recordDraft || (item?.chat || []).length || ["asked", "drafted", "saved"].includes(item?.status));
+  }
+
+  function regionEditable(item) {
+    if (grindSession() && STATE.adjustingItemId !== item?.id) return false;
+    return Boolean(item?.rect && (!regionFinalized(item) || STATE.adjustingItemId === item.id));
+  }
+
+  function updateRegionBoxPreview(container, itemId, rect) {
+    if (!container || !itemId || !rect) return;
+    const box = [...container.querySelectorAll("[data-qd-region-box]")].find((entry) => entry.dataset.itemId === itemId);
+    if (box) box.setAttribute("style", Selection.rectStyle(rect));
+  }
+
+  function cancelRegionWork() {
+    const image = regionImage();
+    const hadSelection = Boolean(STATE.selecting || STATE.editingRegion || STATE.adjustingItemId || lassoMode());
+    const adjusting = Boolean(STATE.adjustingItemId);
+    STATE.selecting = null;
+    STATE.editingRegion = null;
+    STATE.adjustingItemId = "";
+    setLassoMode(false);
+    if (!adjusting) clearDraftRegionsForImage(image?.id);
+    return hadSelection;
+  }
+
+  function clearLassoPreview(wrap) {
+    wrap?.querySelector("[data-qd-lasso-preview]")?.remove();
+  }
+
+  function updateLassoPreview(wrap, points) {
+    if (!wrap) return;
+    let svg = wrap.querySelector("[data-qd-lasso-preview]");
+    if (!svg) {
+      svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("class", "qd-lasso-preview");
+      svg.setAttribute("data-qd-lasso-preview", "");
+      svg.setAttribute("viewBox", "0 0 100 100");
+      svg.setAttribute("preserveAspectRatio", "none");
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+      svg.appendChild(line);
+      wrap.appendChild(svg);
+    }
+    svg.querySelector("polyline")?.setAttribute("points", Selection.lassoPolyline(points));
   }
 
   function regionImage() {
@@ -866,6 +1949,230 @@
     const itemId = form?.dataset.itemId;
     if (!form || !itemId) return;
     updateItem(itemId, { recordDraft: formDraft(form) });
+  }
+
+  function refreshFileList(container) {
+    const list = container?.querySelector("[data-qd-file-list]");
+    if (!list) return;
+    const activeImage = findActiveImage();
+    const visible = filterImages(images(), STATE.filter);
+    list.innerHTML = visible.length ? visible.map((img) => renderFileItem(img, activeImage?.id === img.id)).join("") : renderEmptyFiles();
+  }
+
+  function refreshAfterSearch(container, input) {
+    const cursor = input.selectionStart ?? String(input.value || "").length;
+    const visible = filterImages(images(), STATE.filter);
+    const activeStillVisible = visible.some((img) => img.id === STATE.activeImageId);
+    if (activeStillVisible || !STATE.activeImageId) {
+      refreshFileList(container);
+      return;
+    }
+    render(container);
+    const nextInput = container.querySelector("[data-qd-search]");
+    if (!nextInput) return;
+    nextInput.focus();
+    nextInput.setSelectionRange?.(cursor, cursor);
+  }
+
+  async function deleteImageWithConfirm(imageId) {
+    const img = images().find((entry) => entry.id === imageId);
+    if (!img) return;
+    if (!confirm(`删除「${img.name || "这张题图"}」？题桌里的图片和对话会删除，已保存到学习档案的卡片不会删除。`)) return;
+    await deleteImages([imageId]);
+    window.MochiApp?.toast?.("题图已删除");
+    render(STATE.container);
+  }
+
+  function scanRowsFromRegions(img, allItems) {
+    return allItems
+      .filter((item) => item.imageId === img.id && item.rect)
+      .map((item, index) => {
+        const candidate = regionCandidate(img, item, index);
+        return {
+          ...candidate,
+          title: item.recognition?.summary || item.recordDraft?.originalQuestion || itemLabel(item, index) || "题目区域",
+        };
+      });
+  }
+
+  async function scanOneGrindSource(img, allItems) {
+    const regionRows = scanRowsFromRegions(img, allItems);
+    if (regionRows.length) return regionRows;
+    const blob = await getBlob(img.id);
+    if (!blob) return [];
+    const response = await window.MochiAI.callAIWithImage(
+      DeskAI.PAPER_SCAN_PROMPT,
+      `请识别这张卷子/题图里的所有题目。务必保留原题号；读不到题号就让 questionNumber 为空。只输出约定 JSON。素材名：${img.shortName || img.name}`,
+      blob,
+      { maxTokens: 1800 }
+    );
+    const rows = DeskAI.parsePaperScan?.(response || "") || [];
+    if (!rows.length) {
+      return [{
+        key: `scan:${img.id}:0`,
+        kind: "scan",
+        imageId: img.id,
+        itemId: "",
+        subject: img.subject,
+        date: img.date,
+        title: "整张图未拆出具体题",
+        summary: "",
+        questionNumber: "",
+        rect: null,
+        sourceName: img.shortName || img.name,
+        status: img.status || "new",
+      }];
+    }
+    return rows.map((row, index) => ({
+      key: `scan:${img.id}:${index}`,
+      kind: "scan",
+      imageId: img.id,
+      itemId: "",
+      subject: ["math", "physics", "chemistry"].includes(row.subject) ? row.subject : img.subject,
+      date: img.date,
+      title: row.title || row.summary || "题目",
+      summary: row.summary || "",
+      questionNumber: row.questionNumber || "",
+      rect: cleanScanRect(row.rect),
+      sourceName: img.shortName || img.name,
+      status: img.status || "new",
+    }));
+  }
+
+  async function scanGrindSources() {
+    if (!hasAiConfig()) {
+      STATE.message = "请先到设置页填写支持图片输入的 AI 配置。";
+      render(STATE.container);
+      return;
+    }
+    const sourceMap = new Map(grindSources().map((source) => [source.id, source]));
+    const selectedSources = [...STATE.grindSourceSelected].map((id) => sourceMap.get(id)).filter(Boolean);
+    if (!selectedSources.length) {
+      window.MochiApp?.toast?.("先选择至少一张卷子/题图");
+      return;
+    }
+    STATE.busy = true;
+    STATE.message = "AI 正在识别卷子里的题目...";
+    saveUi({ grindPlan: null });
+    render(STATE.container);
+    try {
+      const allItems = items();
+      const questions = [];
+      for (const img of selectedSources) {
+        const rows = await scanOneGrindSource(img, allItems);
+        rows.forEach((row, index) => questions.push({
+          ...row,
+          key: row.key || `scan:${img.id}:${index}`,
+          sourceName: row.sourceName || img.shortName || img.name,
+          date: row.date || img.date,
+        }));
+      }
+      const deduped = dedupeQuestions(questions);
+      saveUi({
+        grindScan: {
+          createdAt: nowIso(),
+          sourceIds: selectedSources.map((img) => img.id),
+          questions: deduped.unique,
+          duplicateCount: deduped.duplicates.length,
+        },
+        grindPlan: null,
+      });
+      STATE.grindSelected = new Set(deduped.unique.slice(0, 12).map((question) => question.key));
+      window.MochiApp?.toast?.(`已识别 ${deduped.unique.length} 道题${deduped.duplicates.length ? `，已跳过 ${deduped.duplicates.length} 道疑似重复题` : ""}`);
+    } catch (error) {
+      STATE.message = error.message || "题目识别失败";
+      window.MochiApp?.toast?.("题目识别失败");
+    } finally {
+      STATE.busy = false;
+      render(STATE.container);
+    }
+  }
+
+  async function runGrindSort() {
+    if (!hasAiConfig()) {
+      STATE.message = "请先到设置页填写支持图片输入的 AI 配置。";
+      render(STATE.container);
+      return;
+    }
+    const candidates = grindScan() ? grindCandidates() : [];
+    const selected = [...STATE.grindSelected]
+      .map((key) => candidates.find((candidate) => candidate.key === key))
+      .filter(Boolean)
+      .slice(0, 12);
+    if (selected.length < 2) {
+      window.MochiApp?.toast?.("至少选择两张题图");
+      return;
+    }
+    STATE.busy = true;
+    render(STATE.container);
+    try {
+      const overview = await buildGrindOverview(selected);
+      const response = await window.MochiAI.callAIWithImage(
+        DeskAI.PAPER_GRIND_PROMPT,
+        `请根据这张编号总览图，对 ${overview.labels.join("、")} 这些题排序。只输出约定 JSON。`,
+        overview.blob,
+        { maxTokens: 1600 }
+      );
+      const rows = DeskAI.parsePaperGrind(response || "", overview.labels);
+      const items = rows.map((row, index) => {
+        const candidate = overview.byLabel.get(row.label);
+        return candidate ? {
+          ...row,
+          rank: index + 1,
+          targetKey: candidate.key,
+          imageId: candidate.imageId,
+          itemId: candidate.itemId,
+          kind: candidate.kind,
+          sourceName: candidate.sourceName,
+          questionNumber: candidate.questionNumber || "",
+          rect: candidate.rect || null,
+          title: row.title || candidate.title,
+        } : null;
+      }).filter(Boolean);
+      if (!items.length) throw new Error("AI 没有返回可用排序。");
+      saveUi({ grindPlan: { createdAt: nowIso(), imageIds: selected.map((img) => img.id), items } });
+      window.MochiApp?.toast?.("排序完成，先学第 1 道");
+    } catch (error) {
+      STATE.message = error.message || "啃卷子排序失败";
+      window.MochiApp?.toast?.("啃卷子排序失败");
+    } finally {
+      STATE.busy = false;
+      render(STATE.container);
+    }
+  }
+
+  function startGrindItem(targetKey = "", imageId = "", itemId = "") {
+    const planItem = grindPlan()?.items?.find((entry) => entry.targetKey === targetKey) || grindCandidates().find((entry) => entry.key === targetKey) || null;
+    const nextImageId = planItem?.imageId || imageId;
+    let nextItemId = planItem?.itemId || itemId || "";
+    const img = images().find((entry) => entry.id === nextImageId);
+    if (!img) return;
+    if (!nextItemId && planItem?.rect) {
+      const created = createRegionItem(normalizeImageEntry(img), planItem.rect);
+      if (created) {
+        nextItemId = created.id;
+        const recognition = {
+          questionNumber: planItem.questionNumber || "",
+          subject: ["math", "physics", "chemistry"].includes(planItem.subject) ? planItem.subject : "unknown",
+          summary: planItem.title || "",
+          transcript: "",
+          isComplete: true,
+          warning: "",
+          raw: "",
+          updatedAt: nowIso(),
+        };
+        updateItem(created.id, { recognition, title: planItem.title || created.title, subject: planItem.subject || created.subject });
+      }
+    }
+    STATE.activeImageId = nextImageId;
+    STATE.activeItemId = nextItemId || "";
+    STATE.inspectItemId = "";
+    STATE.filter = "all";
+    STATE.search = "";
+    STATE.grindOpen = false;
+    setPanelMode("open");
+    saveUi({ activeImageId: nextImageId, filter: "all", search: "" });
+    render(STATE.container);
   }
 
   function bind(container) {
@@ -884,49 +2191,169 @@
         await addImage(event.target.files?.[0]);
         event.target.value = "";
       }
+      if (event.target.matches("[data-qd-grind-source-check]")) {
+        const id = event.target.value || "";
+        if (event.target.checked) STATE.grindSourceSelected.add(id);
+        else STATE.grindSourceSelected.delete(id);
+        STATE.grindSelected = new Set();
+        saveUi({ grindScan: null, grindPlan: null });
+        render(container);
+        return;
+      }
+      if (event.target.matches("[data-qd-grind-check]")) {
+        const id = event.target.value || "";
+        if (event.target.checked) STATE.grindSelected.add(id);
+        else STATE.grindSelected.delete(id);
+        refreshGrindQuestionControls(container);
+        return;
+      }
       if (event.target.matches("[data-qd-draft-subject]")) {
         const form = event.target.closest("[data-qd-draft-form]");
         const itemId = form?.dataset.itemId;
         if (!itemId) return;
         const draft = { ...formDraft(form), subject: event.target.value, nodeLabel: "", nodeId: "" };
         updateItem(itemId, { recordDraft: draft, subject: draft.subject, nodeLabel: "", nodeId: "" });
+        const item = items().find((entry) => entry.id === itemId);
+        if (item) updateImageSubject(item.imageId, draft.subject);
         render(container);
       }
     });
+    container.addEventListener("input", (event) => {
+      if (!event.target.matches("[data-qd-search]")) return;
+      STATE.search = event.target.value || "";
+      saveUi({ search: STATE.search });
+      refreshAfterSearch(container, event.target);
+    });
+    container.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      if (event.target.closest("textarea,input,select")) return;
+      if (!cancelRegionWork()) return;
+      event.preventDefault();
+      window.MochiApp?.toast?.("已取消当前选区");
+      render(container);
+    });
     container.addEventListener("pointerdown", (event) => {
+      const handle = event.target.closest("[data-qd-region-handle]");
+      const regionBox = event.target.closest("[data-qd-region-box]");
+      if (handle || (regionBox && !event.target.closest("[data-qd-action]"))) {
+        const itemId = (handle || regionBox).dataset.itemId || "";
+        const item = items().find((entry) => entry.id === itemId);
+        const wrap = container.querySelector("[data-qd-image-wrap]");
+        if (!item?.rect || !wrap || !regionEditable(item)) return;
+        event.preventDefault();
+        wrap.setPointerCapture?.(event.pointerId);
+        STATE.activeItemId = item.id;
+        STATE.editingRegion = {
+          pointerId: event.pointerId,
+          itemId: item.id,
+          mode: handle ? handle.dataset.qdRegionHandle : "move",
+          start: pointerRect(event, wrap),
+          rect: { ...item.rect },
+        };
+        return;
+      }
       const wrap = event.target.closest("[data-qd-image-wrap]");
       if (!wrap || event.target.closest("[data-qd-action]")) return;
+      if (!lassoMode()) return;
       const img = wrap.querySelector("[data-qd-image]");
       if (!img || img.hidden) return;
       event.preventDefault();
       wrap.setPointerCapture?.(event.pointerId);
       const start = pointerRect(event, wrap);
-      STATE.selecting = { pointerId: event.pointerId, start, preview: { ...start, w: 0, h: 0 } };
-      render(container);
+      STATE.selecting = { pointerId: event.pointerId, points: [start] };
+      updateLassoPreview(wrap, STATE.selecting.points);
     });
     container.addEventListener("pointermove", (event) => {
+      if (STATE.editingRegion && STATE.editingRegion.pointerId === event.pointerId) {
+        const wrap = container.querySelector("[data-qd-image-wrap]");
+        if (!wrap) return;
+        const next = Selection.editRectFromPointer(STATE.editingRegion, pointerRect(event, wrap));
+        STATE.editingRegion.preview = next;
+        updateRegionBoxPreview(container, STATE.editingRegion.itemId, next);
+        return;
+      }
       if (!STATE.selecting || STATE.selecting.pointerId !== event.pointerId) return;
       const wrap = event.target.closest("[data-qd-image-wrap]") || container.querySelector("[data-qd-image-wrap]");
       if (!wrap) return;
-      STATE.selecting.preview = normalizedRect(STATE.selecting.start, pointerRect(event, wrap));
-      render(container);
+      STATE.selecting.points.push(pointerRect(event, wrap));
+      updateLassoPreview(wrap, STATE.selecting.points);
     });
     container.addEventListener("pointerup", (event) => {
+      if (STATE.editingRegion && STATE.editingRegion.pointerId === event.pointerId) {
+        const edit = STATE.editingRegion;
+        STATE.editingRegion = null;
+        if (edit.preview) {
+          const item = items().find((entry) => entry.id === edit.itemId);
+          updateItem(edit.itemId, { rect: edit.preview, ...contextPatchAfterRectChange(item, edit.preview) });
+        }
+        render(container);
+        return;
+      }
       if (!STATE.selecting || STATE.selecting.pointerId !== event.pointerId) return;
+      const wrap = event.target.closest("[data-qd-image-wrap]") || container.querySelector("[data-qd-image-wrap]");
       const image = regionImage();
-      const rect = STATE.selecting.preview;
+      const rect = Selection.pointsRect(STATE.selecting.points);
       STATE.selecting = null;
-      if (image && rect && rect.w > 0.03 && rect.h > 0.03) createRegionItem(image, rect);
+      clearLassoPreview(wrap);
+      if (image && rect && (rect.w > 0.01 || rect.h > 0.01)) createRegionItem(image, rect);
       render(container);
+    });
+    container.addEventListener("pointercancel", (event) => {
+      if (STATE.editingRegion && STATE.editingRegion.pointerId === event.pointerId) {
+        STATE.editingRegion = null;
+        render(container);
+        return;
+      }
+      if (!STATE.selecting || STATE.selecting.pointerId !== event.pointerId) return;
+      const wrap = event.target.closest("[data-qd-image-wrap]") || container.querySelector("[data-qd-image-wrap]");
+      STATE.selecting = null;
+      clearLassoPreview(wrap);
     });
     container.addEventListener("click", async (event) => {
       const button = event.target.closest("[data-qd-action]");
       if (!button) return;
       const action = button.dataset.qdAction;
+      if (action === "toggle-lasso") {
+        const next = !lassoMode();
+        if (!next) {
+          if (cancelRegionWork()) window.MochiApp?.toast?.("已取消当前选区");
+        } else {
+          setLassoMode(true);
+        }
+        render(container);
+        return;
+      }
       if (action === "open-inspector") {
         STATE.activeItemId = button.dataset.itemId || "";
         STATE.inspectItemId = STATE.activeItemId;
         setPanelMode("open");
+        render(container);
+        return;
+      }
+      if (action === "open-region-panel") {
+        STATE.activeItemId = button.dataset.itemId || "";
+        STATE.inspectItemId = "";
+        setPanelMode("open");
+        render(container);
+        return;
+      }
+      if (action === "delete-region") {
+        if (deleteItem(button.dataset.itemId || "")) {
+          window.MochiApp?.toast?.("已删除这个选区");
+          render(container);
+        }
+        return;
+      }
+      if (action === "adjust-region") {
+        STATE.adjustingItemId = button.dataset.itemId || "";
+        STATE.activeItemId = STATE.adjustingItemId;
+        STATE.inspectItemId = "";
+        setPanelMode("open");
+        render(container);
+        return;
+      }
+      if (action === "finish-region-adjust") {
+        STATE.adjustingItemId = "";
         render(container);
         return;
       }
@@ -943,7 +2370,63 @@
       }
       if (action === "filter") {
         STATE.filter = button.dataset.filter || "all";
+        saveUi({ filter: STATE.filter });
         render(container);
+        return;
+      }
+      if (action === "open-grind") {
+        STATE.grindOpen = true;
+        initGrindSourceSelection(true);
+        initGrindSelection(true);
+        render(container);
+        return;
+      }
+      if (action === "close-grind") {
+        STATE.grindOpen = false;
+        render(container);
+        return;
+      }
+      if (action === "scan-grind-sources") {
+        await scanGrindSources();
+        return;
+      }
+      if (action === "restart-grind") {
+        saveUi({ grindScan: null, grindPlan: null });
+        STATE.grindSelected = new Set();
+        initGrindSourceSelection(true);
+        render(container);
+        return;
+      }
+      if (action === "start-grind-session") {
+        startGrindSession(button.dataset.targetKey || "");
+        return;
+      }
+      if (action === "grind-prev") {
+        moveGrindSession(-1);
+        return;
+      }
+      if (action === "grind-next") {
+        moveGrindSession(1);
+        return;
+      }
+      if (action === "grind-edit-current") {
+        editCurrentGrindRegion();
+        return;
+      }
+      if (action === "grind-exit") {
+        exitGrindSession();
+        return;
+      }
+      if (action === "run-grind") {
+        await runGrindSort();
+        return;
+      }
+      if (action === "start-grind-item") {
+        startGrindItem(button.dataset.targetKey || "", button.dataset.imageId || "", button.dataset.itemId || "");
+        return;
+      }
+      if (action === "delete-image") {
+        await deleteImageWithConfirm(button.dataset.imageId);
         return;
       }
       if (action === "select-image") {
@@ -955,6 +2438,10 @@
       }
       if (action === "rename") {
         renameImage(button.dataset.imageId);
+        return;
+      }
+      if (action === "recognize-question") {
+        await recognizeQuestion(button.dataset.itemId);
         return;
       }
       if (action === "ask-ai") {
@@ -983,11 +2470,55 @@
   }
 
   function appendChat(item, messages) {
+    const version = contextVersion(item);
     updateItem(item.id, {
-      chat: [...(item.chat || []), ...messages],
+      chat: [
+        ...(item.chat || []),
+        ...messages.map((msg) => ({ ...msg, contextVersion: version })),
+      ],
       status: "asked",
     });
     updateImage(item.imageId, { status: "asked" });
+  }
+
+  async function recognizeQuestion(itemId) {
+    const item = items().find((entry) => entry.id === itemId);
+    if (!item) return;
+    if (!hasAiConfig()) {
+      STATE.message = "请先到设置页填写支持图片输入的 AI 配置。";
+      render(STATE.container);
+      return;
+    }
+    const blob = await imageBlobForItem(item);
+    if (!blob) {
+      window.MochiApp?.toast?.("题图读取失败");
+      return;
+    }
+    STATE.busy = true;
+    STATE.message = "AI 正在识别选区...";
+    render(STATE.container);
+    try {
+      const response = await window.MochiAI.callAIWithImage(
+        DeskAI.QUESTION_RECOGNITION_PROMPT,
+        "请识别这张选区截图，只输出约定 JSON。",
+        blob,
+        { maxTokens: 700 }
+      );
+      const recognition = DeskAI.parseRecognition(response || "");
+      recognition.stale = false;
+      recognition.contextVersion = contextVersion(item);
+      const patch = { recognition };
+      if (["math", "physics", "chemistry"].includes(recognition.subject)) patch.subject = recognition.subject;
+      updateItem(item.id, patch);
+      if (patch.subject) updateImageSubject(item.imageId, patch.subject);
+      STATE.message = recognition.isComplete ? "识别完成，可以继续问 AI。" : "识别完成，但可能没截全，请调整选区。";
+    } catch (error) {
+      STATE.message = error.message || "识别失败";
+      window.MochiApp?.toast?.("识别失败");
+    } finally {
+      STATE.busy = false;
+      render(STATE.container);
+    }
   }
 
   async function askAi(itemId) {
@@ -1011,20 +2542,25 @@
     }
     STATE.busy = true;
     STATE.message = "AI 正在看题...";
-    appendChat(item, [{ role: "user", content: question, createdAt: nowIso() }]);
     render(STATE.container);
     try {
       const current = items().find((entry) => entry.id === itemId) || item;
-      const history = (current.chat || [])
+      const stableQuestion = recognitionContextText(current);
+      const { active } = splitChatByContext(current);
+      const history = [...active, { role: "user", content: question }]
         .slice(-8)
         .map((msg) => `${msg.role === "assistant" ? "AI" : "学生"}：${msg.content}`)
         .join("\n\n");
       const response = await window.MochiAI.callAIWithImage(
-        QUESTION_DESK_PROMPT,
-        `这是本题的对话历史：\n${history}\n\n请继续回应学生。`,
+        DeskAI.QUESTION_DESK_PROMPT,
+        `${stableQuestion ? `这是已经识别出的当前题目信息，请优先以它为准；图片只用于校验和补充：\n${stableQuestion}\n\n` : ""}这是本题当前版本的对话历史：\n${history}\n\n请继续回应学生。`,
         blob
       );
-      appendChat(items().find((entry) => entry.id === itemId) || item, [{ role: "assistant", content: response || "我没有生成回复，请再试一次。", createdAt: nowIso() }]);
+      appendChat(items().find((entry) => entry.id === itemId) || item, [
+        { role: "user", content: question, createdAt: nowIso() },
+        { role: "assistant", content: response || "我没有生成回复，请再试一次。", createdAt: nowIso() },
+      ]);
+      STATE.adjustingItemId = "";
       STATE.message = "";
     } catch (error) {
       STATE.message = error.message || "AI 连接失败";
@@ -1052,24 +2588,26 @@
     STATE.message = "正在生成学习记录草稿...";
     render(STATE.container);
     try {
-      const history = (item.chat || [])
+      const stableQuestion = recognitionContextText(item);
+      const { active } = splitChatByContext(item);
+      const history = active
         .map((msg) => `${msg.role === "assistant" ? "AI" : "学生"}：${msg.content}`)
         .join("\n\n");
       const response = await window.MochiAI.callAIWithImage(
-        QUESTION_DESK_PROMPT,
-        `请根据这张题图和以下对话，生成【MochiStudy 学习记录草稿】。必须使用固定中文标签，不要输出 MOCHI-RECORD 块。\n\n${history || "学生还没有详细对话，请根据题图生成一份保守草稿，并把不确定的地方写短一点。"}`,
+        DeskAI.QUESTION_DESK_PROMPT,
+        `请根据这张题图、当前题目识别信息和以下对话，生成【MochiStudy 学习记录草稿】。必须使用固定中文标签，不要输出 MOCHI-RECORD 块。\n\n${stableQuestion ? `当前题目识别信息：\n${stableQuestion}\n\n` : ""}${history || "学生还没有详细对话，请根据题图生成一份保守草稿，并把不确定的地方写短一点。"}`,
         blob
       );
       const draft = parseDraft(response || "");
       updateItem(item.id, {
-        chat: [...(item.chat || []), { role: "assistant", content: response || "未生成草稿。", createdAt: nowIso() }],
+        chat: [...(item.chat || []), { role: "assistant", content: response || "未生成草稿。", createdAt: nowIso(), contextVersion: contextVersion(item) }],
         recordDraft: draft,
         subject: draft.subject || item.subject,
         nodeLabel: draft.nodeLabel || item.nodeLabel,
         nodeId: draft.nodeId || item.nodeId,
         status: "drafted",
       });
-      if (draft.subject) updateImage(item.imageId, { subject: draft.subject, status: "asked" });
+      if (draft.subject) updateImageSubject(item.imageId, draft.subject, { status: "asked" });
       STATE.message = draft.nodeId ? "草稿已生成，确认后保存。" : "草稿已生成，请手动确认科目和知识点。";
     } catch (error) {
       STATE.message = error.message || "生成草稿失败";
@@ -1148,7 +2686,7 @@
       nodeLabel: draft.nodeLabel,
     });
     const item = items().find((entry) => entry.id === itemId);
-    if (item) updateImage(item.imageId, { status: "saved", subject: draft.subject, savedLogId: after });
+    if (item) updateImageSubject(item.imageId, draft.subject, { status: "saved", savedLogId: after });
     window.MochiPet?.renderMiniState?.();
     window.MochiFarm?.refreshFarmSummary?.();
     window.MochiCards?.refresh?.();

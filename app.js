@@ -4776,10 +4776,16 @@ ${record.originalQuestion || "暂无原题描述。"}
   }
   // ── end 专注承诺门 ────────────────────────────────────────────────────────
 
+  let focusOverlayMinimized = false;
+  let focusMiniDrag = null;
+
   function enterFocusMode() {
+    focusOverlayMinimized = false;
     document.body.classList.add("focus-mode");
+    document.body.classList.remove("focus-mini-mode");
     const overlay = document.getElementById("focus-overlay");
     if (!overlay) return;
+    overlay.classList.remove("mini");
     overlay.hidden = false;
     overlay.innerHTML = renderFocusOverlay();
     bindFocusOverlay(overlay);
@@ -4788,10 +4794,33 @@ ${record.originalQuestion || "暂无原题描述。"}
   function exitFocusMode() {
     if (!document.body.classList.contains("focus-mode")) return;
     document.body.classList.remove("focus-mode");
+    document.body.classList.remove("focus-mini-mode");
+    focusOverlayMinimized = false;
     const overlay = document.getElementById("focus-overlay");
-    if (overlay) overlay.hidden = true;
+    if (overlay) {
+      overlay.classList.remove("mini");
+      overlay.hidden = true;
+    }
     const viewEl = document.getElementById("view");
     if (viewEl && currentRoute() === "home") window.MochiFarm?.renderFarm?.(viewEl);
+  }
+
+  function focusMiniPosition() {
+    return readJson("focus_mini_position", { right: 18, bottom: 18 });
+  }
+
+  function writeFocusMiniPosition(pos) {
+    writeJson("focus_mini_position", {
+      right: Math.max(8, Math.round(Number(pos?.right) || 18)),
+      bottom: Math.max(8, Math.round(Number(pos?.bottom) || 18)),
+    });
+  }
+
+  function setFocusOverlayMinimized(minimized) {
+    const timer = window.MochiTimer?.getState?.() || {};
+    focusOverlayMinimized = Boolean(minimized && timer.phase === "focusing");
+    document.body.classList.toggle("focus-mini-mode", focusOverlayMinimized);
+    refreshFocusOverlay();
   }
 
   function getFocusEncouragement(mins) {
@@ -4803,7 +4832,10 @@ ${record.originalQuestion || "暂无原题描述。"}
 
   function renderFocusOverlay() {
     const timer = window.MochiTimer?.getState?.() || {};
+    if (focusOverlayMinimized && timer.phase === "focusing") return renderFocusMiniOverlay(timer);
     if (timer.phase === "deciding") {
+      focusOverlayMinimized = false;
+      document.body.classList.remove("focus-mini-mode");
       const actualMins = timer.pendingActualMins || 0;
       const restMins = timer.pendingRestMins || 5;
       const c = activeCommitment();
@@ -4887,6 +4919,9 @@ ${record.originalQuestion || "暂无原题描述。"}
             <span class="material-symbols-outlined">stop_circle</span>
             结束这一轮
           </button>
+          <button class="btn btn-ghost btn-sm" data-action="minimize-focus-overlay" type="button">
+            最小化计时
+          </button>
           <button class="btn btn-ghost btn-sm" data-action="give-up" type="button" style="color:rgba(255,255,255,0.35);margin-top:4px">
             放弃本轮
           </button>
@@ -4906,6 +4941,20 @@ ${record.originalQuestion || "暂无原题描述。"}
     `;
   }
 
+  function renderFocusMiniOverlay(timer) {
+    const elapsedSecs = Number(timer.elapsedSecs || 0);
+    const mins = String(Math.floor(elapsedSecs / 60)).padStart(2, "0");
+    const secs = String(elapsedSecs % 60).padStart(2, "0");
+    const pos = focusMiniPosition();
+    return `
+      <button class="focus-mini-card" data-action="restore-focus-overlay" data-focus-mini style="right:${pos.right}px;bottom:${pos.bottom}px" type="button" title="返回专注页">
+        <span class="material-symbols-outlined">timer</span>
+        <strong class="focus-time">${mins}:${secs}</strong>
+        <small>${timer.microGoal ? escapeHtml(timer.microGoal) : "专注中"}</small>
+      </button>
+    `;
+  }
+
   function bindFocusOverlay(overlay) {
     overlay.onclick = (event) => {
       const button = event.target.closest("[data-action]");
@@ -4914,7 +4963,18 @@ ${record.originalQuestion || "暂无原题描述。"}
       event.preventDefault();
       event.stopPropagation();
       if (action === "stop-and-rest") {
+        focusOverlayMinimized = false;
+        document.body.classList.remove("focus-mini-mode");
         window.MochiTimer?.stopAndRest?.();
+        return;
+      }
+      if (action === "minimize-focus-overlay") {
+        setFocusOverlayMinimized(true);
+        return;
+      }
+      if (action === "restore-focus-overlay") {
+        if (focusMiniDrag?.moved) return;
+        setFocusOverlayMinimized(false);
         return;
       }
       if (action === "confirm-rest") {
@@ -4926,6 +4986,8 @@ ${record.originalQuestion || "暂无原题描述。"}
         return;
       }
       if (action === "give-up") {
+        focusOverlayMinimized = false;
+        document.body.classList.remove("focus-mini-mode");
         window.MochiTimer?.giveUp?.();
         return;
       }
@@ -4946,6 +5008,47 @@ ${record.originalQuestion || "暂无原题描述。"}
           overlay.querySelector("#focus-record-paste"),
           overlay.querySelector("#focus-upload-result")
         );
+      }
+    };
+    overlay.onpointerdown = (event) => {
+      const mini = event.target.closest("[data-focus-mini]");
+      if (!mini || event.button !== 0) return;
+      const pos = focusMiniPosition();
+      focusMiniDrag = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        startRight: pos.right,
+        startBottom: pos.bottom,
+        moved: false,
+      };
+      mini.setPointerCapture?.(event.pointerId);
+    };
+    overlay.onpointermove = (event) => {
+      if (!focusMiniDrag || focusMiniDrag.pointerId !== event.pointerId) return;
+      const dx = event.clientX - focusMiniDrag.startX;
+      const dy = event.clientY - focusMiniDrag.startY;
+      if (Math.abs(dx) + Math.abs(dy) > 4) focusMiniDrag.moved = true;
+      const next = {
+        right: Math.min(window.innerWidth - 80, Math.max(8, focusMiniDrag.startRight - dx)),
+        bottom: Math.min(window.innerHeight - 54, Math.max(8, focusMiniDrag.startBottom - dy)),
+      };
+      const mini = overlay.querySelector("[data-focus-mini]");
+      if (mini) {
+        mini.style.right = `${next.right}px`;
+        mini.style.bottom = `${next.bottom}px`;
+      }
+      focusMiniDrag.next = next;
+    };
+    overlay.onpointerup = (event) => {
+      if (!focusMiniDrag || focusMiniDrag.pointerId !== event.pointerId) return;
+      if (focusMiniDrag.next) writeFocusMiniPosition(focusMiniDrag.next);
+      const moved = focusMiniDrag.moved;
+      focusMiniDrag = moved ? { moved: true } : null;
+      if (moved) {
+        event.preventDefault();
+        event.stopPropagation();
+        setTimeout(() => { if (focusMiniDrag?.moved) focusMiniDrag = null; }, 0);
       }
     };
     const focusPaste = overlay.querySelector("#focus-record-paste");
@@ -4976,7 +5079,9 @@ ${record.originalQuestion || "暂无原题描述。"}
   function refreshFocusOverlay() {
     const overlay = document.getElementById("focus-overlay");
     if (!overlay || overlay.hidden) return;
-    const importOpen = !overlay.querySelector(".focus-import-body")?.hidden;
+    overlay.classList.toggle("mini", focusOverlayMinimized);
+    const importBody = overlay.querySelector(".focus-import-body");
+    const importOpen = importBody ? !importBody.hidden : false;
     const importValue = overlay.querySelector("#focus-record-paste")?.value || "";
     overlay.innerHTML = renderFocusOverlay();
     const body = overlay.querySelector(".focus-import-body");
@@ -5035,7 +5140,8 @@ ${record.originalQuestion || "暂无原题描述。"}
   function isQuestionDeskStorageKey(key) {
     return key === "question_desk_images"
       || key === "question_desk_items"
-      || key === "question_desk_ui_state";
+      || key === "question_desk_ui_state"
+      || key === "question_desk_notebooks";
   }
 
   function rawLocalStorageSnapshot() {
@@ -5281,7 +5387,7 @@ ${record.originalQuestion || "暂无原题描述。"}
   }
 
   function progressDataKeys() {
-    const fixed = [STUDY_LOG_KEY, "focus_log", "farm_state", "mochi_state", "achievement_state", CURRENT_SEASON_KEY, CARD_ORDER_KEY, CARD_META_KEY, NODE_SUMMARY_KEY, "question_desk_images", "question_desk_items", "question_desk_ui_state", "mochi_study_points", "mochi_hearts", "daily_task_settings"];
+    const fixed = [STUDY_LOG_KEY, "focus_log", "farm_state", "mochi_state", "achievement_state", CURRENT_SEASON_KEY, CARD_ORDER_KEY, CARD_META_KEY, NODE_SUMMARY_KEY, "question_desk_images", "question_desk_items", "question_desk_ui_state", "question_desk_notebooks", "mochi_study_points", "mochi_hearts", "daily_task_settings"];
     const dynamic = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
       .filter((key) => key && key.startsWith("daily_tasks_"));
     return [...new Set([...fixed, ...dynamic])];
@@ -5312,7 +5418,7 @@ ${record.originalQuestion || "暂无原题描述。"}
   }
 
   function allDataKeys() {
-    const fixed = ["mochi_state", "farm_state", STUDY_LOG_KEY, "focus_log", "achievement_state", "achievement_config", "lottery_config", "lottery_history", CURRENT_SEASON_KEY, SEASON_ARCHIVES_KEY, CARD_ORDER_KEY, CARD_META_KEY, NODE_SUMMARY_KEY, "question_desk_images", "question_desk_items", "question_desk_ui_state", "admin_password", "api_config", HOLIDAYS_KEY, HOLIDAY_MODE_KEY, "mochi_debug_panel_open", "mochi_debug_float_collapsed", "mochi_debug_tab", "game_config", "sound_reminder_enabled", "focus_end_sound", "rest_reminder_sound", READING_FONT_KEY, READING_SIZE_KEY];
+    const fixed = ["mochi_state", "farm_state", STUDY_LOG_KEY, "focus_log", "achievement_state", "achievement_config", "lottery_config", "lottery_history", CURRENT_SEASON_KEY, SEASON_ARCHIVES_KEY, CARD_ORDER_KEY, CARD_META_KEY, NODE_SUMMARY_KEY, "question_desk_images", "question_desk_items", "question_desk_ui_state", "question_desk_notebooks", "admin_password", "api_config", HOLIDAYS_KEY, HOLIDAY_MODE_KEY, "mochi_debug_panel_open", "mochi_debug_float_collapsed", "mochi_debug_tab", "game_config", "sound_reminder_enabled", "focus_end_sound", "rest_reminder_sound", "focus_mini_position", READING_FONT_KEY, READING_SIZE_KEY];
     const dynamic = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
       .filter((key) => key && isRetiredStorageKey(key));
     return [...new Set([...fixed, ...dynamic])];
