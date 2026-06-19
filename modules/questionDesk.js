@@ -901,6 +901,21 @@
     return item;
   }
 
+  function renderPreservingStageScroll(container) {
+    const stage = container?.querySelector("[data-qd-image-stage]");
+    const scrollLeft = stage?.scrollLeft || 0;
+    const scrollTop = stage?.scrollTop || 0;
+    const restore = () => {
+      const nextStage = container?.querySelector("[data-qd-image-stage]");
+      if (!nextStage) return;
+      nextStage.scrollLeft = scrollLeft;
+      nextStage.scrollTop = scrollTop;
+    };
+    render(container);
+    restore();
+    window.requestAnimationFrame?.(restore);
+    window.setTimeout(restore, 80);
+  }
   function render(container) {
     if (!container) return;
     STATE.container = container;
@@ -1879,7 +1894,7 @@
         </div>
         ${renderGrindSessionBar()}
       </div>
-      <div class="qd-image-stage">
+      <div class="qd-image-stage" data-qd-image-stage>
         <div class="qd-image-loading" data-qd-image-loading>读取题图中...</div>
         <div class="qd-image-wrap ${lasso ? "qd-lasso-enabled" : ""}" data-qd-image-wrap>
           <img data-qd-image alt="${escapeHtml(activeImage.name)}" hidden />
@@ -2642,8 +2657,7 @@
       if (action === "open-inspector") {
         STATE.activeItemId = button.dataset.itemId || "";
         STATE.inspectItemId = STATE.activeItemId;
-        setPanelMode("open");
-        render(container);
+        renderPreservingStageScroll(container);
         return;
       }
       if (action === "open-region-panel") {
@@ -2675,7 +2689,7 @@
       }
       if (action === "close-inspector") {
         STATE.inspectItemId = "";
-        render(container);
+        renderPreservingStageScroll(container);
         return;
       }
       if (action === "panel-mode") {
