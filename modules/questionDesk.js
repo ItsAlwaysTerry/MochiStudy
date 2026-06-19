@@ -1012,25 +1012,32 @@
     }).join("");
   }
 
+  function pdfOpenState(pdfId) {
+    const state = readUi().openPdfIds;
+    return state && typeof state === "object" && state[pdfId] === true;
+  }
+
   function renderPdfGroup(pages, activeImageId) {
     const first = pages[0];
     if (!first) return "";
     const active = pages.some((page) => page.id === activeImageId);
+    const open = pdfOpenState(first.pdfId);
     const counts = fileCountsForImages(pages.map((page) => page.id));
     const pageCount = first.pdfPageCount || pages.length;
     const learned = counts.saved ? `已学${counts.saved}` : counts.asked ? `已问${counts.asked}` : "未学习";
     return `
-      <div class="qd-pdf-group ${active ? "active" : ""}">
-        <button class="qd-file qd-pdf-head ${active ? "active" : ""}" data-qd-action="select-image" data-image-id="${first.id}" type="button">
+      <div class="qd-pdf-group ${active ? "active" : ""} ${open ? "open" : ""}">
+        <button class="qd-file qd-pdf-head ${active ? "active" : ""}" data-qd-action="toggle-pdf" data-pdf-id="${escapeHtml(first.pdfId || "")}" type="button" aria-expanded="${open ? "true" : "false"}">
+          <span class="material-symbols-outlined qd-pdf-caret">${open ? "expand_less" : "expand_more"}</span>
           <span class="material-symbols-outlined qd-pdf-icon">picture_as_pdf</span>
           <span class="qd-file-main">
             <strong>${escapeHtml(first.pdfName || first.name || "PDF试卷")}</strong>
             <small>PDF · ${pages.length}/${pageCount} 页 · ${learned}</small>
           </span>
         </button>
-        <div class="qd-pdf-pages">
+        ${open ? `<div class="qd-pdf-pages">
           ${pages.map((page) => renderFileItem(page, activeImageId === page.id, { nested: true })).join("")}
-        </div>
+        </div>` : ""}
       </div>
     `;
   }
@@ -2680,6 +2687,15 @@
       if (action === "filter") {
         STATE.filter = button.dataset.filter || "all";
         saveUi({ filter: STATE.filter });
+        render(container);
+        return;
+      }
+      if (action === "toggle-pdf") {
+        const pdfId = button.dataset.pdfId || "";
+        if (!pdfId) return;
+        const openPdfIds = readUi().openPdfIds && typeof readUi().openPdfIds === "object" ? { ...readUi().openPdfIds } : {};
+        openPdfIds[pdfId] = !openPdfIds[pdfId];
+        saveUi({ openPdfIds });
         render(container);
         return;
       }
