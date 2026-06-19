@@ -188,12 +188,10 @@ body.desk-mode .question-desk {
 
 .qd-sidebar {
   display: grid;
-  grid-template-rows: auto auto auto auto auto;
-  align-content: start;
+  grid-template-rows: auto auto auto auto minmax(0, 1fr);
   gap: 12px;
   min-height: 0;
-  max-height: calc(100vh - 24px);
-  overflow-y: auto;
+  overflow: hidden;
   padding: 14px;
 }
 
@@ -286,6 +284,9 @@ body.desk-mode .question-desk {
 
 .qd-file-list {
   align-content: start;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
 }
 
 .qd-filter,
