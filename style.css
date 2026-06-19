@@ -188,8 +188,10 @@ body.desk-mode .question-desk {
 
 .qd-sidebar {
   display: grid;
-  grid-template-rows: auto auto auto auto 1fr;
+  grid-template-rows: auto auto auto auto minmax(0, 1fr);
   gap: 12px;
+  min-height: 0;
+  max-height: calc(100vh - 24px);
   padding: 14px;
 }
 
@@ -282,7 +284,9 @@ body.desk-mode .question-desk {
 
 .qd-file-list {
   align-content: start;
-  overflow: auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
 }
 
 .qd-filter,
@@ -313,6 +317,43 @@ body.desk-mode .question-desk {
 .qd-file.active {
   border-color: rgba(37, 99, 235, 0.35);
   background: #eff6ff;
+}
+.qd-pdf-group {
+  display: grid;
+  gap: 5px;
+}
+
+.qd-pdf-group.active {
+  border-radius: 12px;
+  background: rgba(239, 246, 255, 0.58);
+}
+
+.qd-pdf-head {
+  font-weight: 800;
+}
+
+.qd-pdf-icon {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  color: #ef4444;
+  font-size: 19px;
+}
+
+.qd-pdf-pages {
+  display: grid;
+  gap: 4px;
+  margin-left: 16px;
+  padding-left: 10px;
+  border-left: 1px solid #dbe7f5;
+}
+
+.qd-file-page {
+  padding-block: 7px;
+}
+
+.qd-file-page strong {
+  font-size: 12px;
 }
 
 .qd-file {

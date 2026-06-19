@@ -982,23 +982,76 @@
         ${filters.map(([key, label, count]) => renderFilterButton(key, label, count)).join("")}
       </div>
       <div class="qd-file-list" data-qd-file-list>
-        ${visible.length ? visible.map((img) => renderFileItem(img, activeImage?.id === img.id)).join("") : renderEmptyFiles()}
+        ${visible.length ? renderFileList(visible, activeImage?.id || "") : renderEmptyFiles()}
       </div>
     `;
   }
 
-  function renderFileItem(img, active) {
+  function fileCountsForImages(imageIds) {
+    const idSet = new Set(imageIds.filter(Boolean));
+    const related = items().filter((entry) => idSet.has(entry.imageId));
+    return {
+      saved: related.filter((entry) => entry.status === "saved").length,
+      asked: related.filter((entry) => entry.chat?.length).length,
+      total: related.length,
+    };
+  }
+
+  function renderFileList(list, activeImageId) {
+    const consumed = new Set();
+    return list.map((img) => {
+      if (img.pdfId) {
+        if (consumed.has(img.pdfId)) return "";
+        const pages = list
+          .filter((entry) => entry.pdfId === img.pdfId)
+          .sort((a, b) => (Number(a.pdfPage) || 0) - (Number(b.pdfPage) || 0));
+        pages.forEach((page) => consumed.add(page.pdfId));
+        return renderPdfGroup(pages, activeImageId);
+      }
+      return renderFileItem(img, activeImageId === img.id);
+    }).join("");
+  }
+
+  function renderPdfGroup(pages, activeImageId) {
+    const first = pages[0];
+    if (!first) return "";
+    const active = pages.some((page) => page.id === activeImageId);
+    const counts = fileCountsForImages(pages.map((page) => page.id));
+    const pageCount = first.pdfPageCount || pages.length;
+    const learned = counts.saved ? `已学${counts.saved}` : counts.asked ? `已问${counts.asked}` : "未学习";
+    return `
+      <div class="qd-pdf-group ${active ? "active" : ""}">
+        <button class="qd-file qd-pdf-head ${active ? "active" : ""}" data-qd-action="select-image" data-image-id="${first.id}" type="button">
+          <span class="material-symbols-outlined qd-pdf-icon">picture_as_pdf</span>
+          <span class="qd-file-main">
+            <strong>${escapeHtml(first.pdfName || first.name || "PDF试卷")}</strong>
+            <small>PDF · ${pages.length}/${pageCount} 页 · ${learned}</small>
+          </span>
+        </button>
+        <div class="qd-pdf-pages">
+          ${pages.map((page) => renderFileItem(page, activeImageId === page.id, { nested: true })).join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderFileItem(img, active, options = {}) {
     const list = itemsForImage(img.id);
     const item = list[0] || null;
     const savedCount = list.filter((entry) => entry.status === "saved").length;
     const askedCount = list.filter((entry) => entry.chat?.length).length;
     const countLabel = list.length > 1 ? ` · ${list.length}题` : "";
+    const isPdfPage = Boolean(img.pdfId && options.nested);
+    const title = isPdfPage ? `第 ${img.pdfPage || "?"} 页` : (img.shortName || img.name);
+    const meta = isPdfPage
+      ? `${escapeHtml(subjectLabel(img.subject))}${countLabel} · ${savedCount ? `已学${savedCount}` : askedCount ? `已问${askedCount}` : "未学习"}`
+      : `${escapeHtml(subjectLabel(img.subject))}${countLabel} · ${savedCount ? `已学${savedCount}` : askedCount ? `已问${askedCount}` : item?.chat?.length ? "已问 AI" : "未学习"}`;
     return `
-      <button class="qd-file ${active ? "active" : ""}" data-qd-action="select-image" data-image-id="${img.id}" type="button">
+      <button class="qd-file ${options.nested ? "qd-file-page" : ""} ${active ? "active" : ""}" data-qd-action="select-image" data-image-id="${img.id}" type="button">
         <span class="qd-file-status ${img.status || "new"}"></span>
         <span class="qd-file-main">
-          <strong>${escapeHtml(img.shortName || img.name)}</strong>
-          <small>${escapeHtml(subjectLabel(img.subject))}${countLabel} · ${savedCount ? `已学${savedCount}` : askedCount ? `已问${askedCount}` : item?.chat?.length ? "已问 AI" : "未学习"}</small>
+          <strong>${escapeHtml(title)}</strong>
+          <small>${meta}</small>
         </span>
       </button>
     `;
@@ -2211,7 +2264,7 @@
     if (!list) return;
     const activeImage = findActiveImage();
     const visible = filterImages(images(), STATE.filter);
-    list.innerHTML = visible.length ? visible.map((img) => renderFileItem(img, activeImage?.id === img.id)).join("") : renderEmptyFiles();
+    list.innerHTML = visible.length ? renderFileList(visible, activeImage?.id || "") : renderEmptyFiles();
   }
 
   function refreshAfterSearch(container, input) {
