@@ -363,7 +363,9 @@
 
   function fullRender() {
     const view = document.getElementById("view");
-    if (view) window.MochiFarm?.renderFarm?.(view);
+    if (!view) return;
+    const route = (location.hash || "").replace(/^#/, "") || "desk";
+    if (route === "home") window.MochiFarm?.renderFarm?.(view);
   }
 
   function getState() {
