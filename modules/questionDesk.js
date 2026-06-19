@@ -1031,6 +1031,25 @@
     const state = readUi().openPdfIds;
     return state && typeof state === "object" && state[pdfId] === true;
   }
+  function fileMenuOpen(key) {
+    return readUi().openFileMenu === key;
+  }
+
+  function fileMenuButtons(target) {
+    const dataAttrs = target.pdfId
+      ? `data-pdf-id="${escapeHtml(target.pdfId)}"`
+      : `data-image-id="${escapeHtml(target.imageId || "")}"`;
+    return `
+      <div class="qd-file-menu">
+        <button class="btn btn-soft btn-sm" data-qd-action="rename-file" ${dataAttrs} type="button">
+          <span class="material-symbols-outlined">edit</span>重命名
+        </button>
+        <button class="btn btn-soft btn-sm qd-danger-btn" data-qd-action="delete-file" ${dataAttrs} type="button">
+          <span class="material-symbols-outlined">delete</span>删除
+        </button>
+      </div>
+    `;
+  }
 
   function renderPdfGroup(pages, activeImageId) {
     const first = pages[0];
@@ -1040,16 +1059,23 @@
     const counts = fileCountsForImages(pages.map((page) => page.id));
     const pageCount = first.pdfPageCount || pages.length;
     const learned = counts.saved ? `已学${counts.saved}` : counts.asked ? `已问${counts.asked}` : "未学习";
+    const menuKey = `pdf:${first.pdfId || ""}`;
     return `
       <div class="qd-pdf-group ${active ? "active" : ""} ${open ? "open" : ""}">
-        <button class="qd-file qd-pdf-head ${active ? "active" : ""}" data-qd-action="toggle-pdf" data-pdf-id="${escapeHtml(first.pdfId || "")}" type="button" aria-expanded="${open ? "true" : "false"}">
-          <span class="material-symbols-outlined qd-pdf-caret">${open ? "expand_less" : "expand_more"}</span>
-          <span class="material-symbols-outlined qd-pdf-icon">picture_as_pdf</span>
-          <span class="qd-file-main">
-            <strong>${escapeHtml(first.pdfName || first.name || "PDF试卷")}</strong>
-            <small>PDF · ${pages.length}/${pageCount} 页 · ${learned}</small>
-          </span>
-        </button>
+        <div class="qd-file-row">
+          <button class="qd-file qd-pdf-head ${active ? "active" : ""}" data-qd-action="toggle-pdf" data-pdf-id="${escapeHtml(first.pdfId || "")}" type="button" aria-expanded="${open ? "true" : "false"}">
+            <span class="material-symbols-outlined qd-pdf-caret">${open ? "expand_less" : "expand_more"}</span>
+            <span class="material-symbols-outlined qd-pdf-icon">picture_as_pdf</span>
+            <span class="qd-file-main">
+              <strong>${escapeHtml(first.pdfName || first.name || "PDF试卷")}</strong>
+              <small>PDF · ${pages.length}/${pageCount} 页 · ${learned}</small>
+            </span>
+          </button>
+          <button class="qd-file-more" data-qd-action="toggle-file-menu" data-menu-key="${escapeHtml(menuKey)}" type="button" title="更多操作">
+            <span class="material-symbols-outlined">more_horiz</span>
+          </button>
+        </div>
+        ${fileMenuOpen(menuKey) ? fileMenuButtons({ pdfId: first.pdfId }) : ""}
         ${open ? `<div class="qd-pdf-pages">
           ${pages.map((page) => renderFileItem(page, activeImageId === page.id, { nested: true })).join("")}
         </div>` : ""}
@@ -1068,7 +1094,8 @@
     const meta = isPdfPage
       ? `${escapeHtml(subjectLabel(img.subject))}${countLabel} · ${savedCount ? `已学${savedCount}` : askedCount ? `已问${askedCount}` : "未学习"}`
       : `${escapeHtml(subjectLabel(img.subject))}${countLabel} · ${savedCount ? `已学${savedCount}` : askedCount ? `已问${askedCount}` : item?.chat?.length ? "已问 AI" : "未学习"}`;
-    return `
+    const menuKey = `image:${img.id || ""}`;
+    const buttonHtml = `
       <button class="qd-file ${options.nested ? "qd-file-page" : ""} ${active ? "active" : ""}" data-qd-action="select-image" data-image-id="${img.id}" type="button">
         <span class="qd-file-status ${img.status || "new"}"></span>
         <span class="qd-file-main">
@@ -1076,6 +1103,18 @@
           <small>${meta}</small>
         </span>
       </button>
+    `;
+    if (options.nested) return buttonHtml;
+    return `
+      <div class="qd-file-group">
+        <div class="qd-file-row">
+          ${buttonHtml}
+          <button class="qd-file-more" data-qd-action="toggle-file-menu" data-menu-key="${escapeHtml(menuKey)}" type="button" title="更多操作">
+            <span class="material-symbols-outlined">more_horiz</span>
+          </button>
+        </div>
+        ${fileMenuOpen(menuKey) ? fileMenuButtons({ imageId: img.id }) : ""}
+      </div>
     `;
   }
 
@@ -1877,14 +1916,6 @@
             <strong>${escapeHtml(activeImage.name)}</strong>
             <span>${escapeHtml(subjectLabel(activeImage.subject))} · ${activeImage.width || "?"}×${activeImage.height || "?"}</span>
           </div>
-          <div class="qd-viewer-actions">
-            <button class="btn btn-soft btn-sm" data-qd-action="rename" data-image-id="${activeImage.id}" type="button">
-              <span class="material-symbols-outlined">edit</span>重命名
-            </button>
-            <button class="btn btn-soft btn-sm qd-danger-btn" data-qd-action="delete-image" data-image-id="${activeImage.id}" type="button">
-              <span class="material-symbols-outlined">delete</span>删除
-            </button>
-          </div>
         </div>
         <div class="qd-viewer-lasso-row ${lasso ? "active" : ""}">
           <span class="qd-viewer-lasso-hint">${lasso ? "在题图上圈出一道题，松手后可调整" : "一张纸有多道题？点右边「套索」逐题圈出来；只有一道题，直接在右侧问 AI 就行。"}</span>
@@ -2309,6 +2340,7 @@
     if (!img) return;
     if (!confirm(`删除「${img.name || "这张题图"}」？题桌里的图片和对话会删除，已保存到学习档案的卡片不会删除。`)) return;
     await deleteImages([imageId]);
+    saveUi({ openFileMenu: "" });
     window.MochiApp?.toast?.("题图已删除");
     render(STATE.container);
   }
@@ -2713,6 +2745,22 @@
         render(container);
         return;
       }
+      if (action === "toggle-file-menu") {
+        const key = button.dataset.menuKey || "";
+        saveUi({ openFileMenu: readUi().openFileMenu === key ? "" : key });
+        render(container);
+        return;
+      }
+      if (action === "rename-file") {
+        if (button.dataset.pdfId) renamePdf(button.dataset.pdfId);
+        else renameImage(button.dataset.imageId);
+        return;
+      }
+      if (action === "delete-file") {
+        if (button.dataset.pdfId) await deletePdfWithConfirm(button.dataset.pdfId);
+        else await deleteImageWithConfirm(button.dataset.imageId);
+        return;
+      }
       if (action === "open-grind") {
         STATE.grindOpen = true;
         initGrindSourceSelection(true);
@@ -2809,6 +2857,41 @@
     updateImage(imageId, { name: next.trim(), shortName: shortName(next.trim()) });
     const item = itemsForImage(imageId).find((entry) => !entry.rect) || findItem(imageId);
     if (item) updateItem(item.id, { title: shortName(next.trim()) });
+    saveUi({ openFileMenu: "" });
+    render(STATE.container);
+  }
+  function renamePdf(pdfId) {
+    const pages = images().filter((entry) => entry.pdfId === pdfId).sort((a, b) => (Number(a.pdfPage) || 0) - (Number(b.pdfPage) || 0));
+    if (!pages.length) return;
+    const current = pages[0].pdfName || pages[0].name || "PDF试卷";
+    const next = prompt("给这份 PDF 起个名字", current);
+    if (!next || !next.trim()) return;
+    const clean = next.trim().slice(0, 28);
+    saveImages(images().map((img) => {
+      if (img.pdfId !== pdfId) return img;
+      const pageNumber = Number(img.pdfPage) || 1;
+      const pageCount = Number(img.pdfPageCount) || pages.length;
+      const width = String(Math.max(1, pageCount)).length;
+      const name = `${clean}-P${String(pageNumber).padStart(Math.max(2, width), "0")}`;
+      return { ...img, pdfName: clean, name, shortName: shortName(name), updatedAt: nowIso() };
+    }));
+    saveItems(items().map((item) => {
+      const page = pages.find((entry) => entry.id === item.imageId);
+      if (!page || item.rect) return item;
+      const pageNumber = Number(page.pdfPage) || 1;
+      return { ...item, title: `第 ${pageNumber} 页`, updatedAt: nowIso() };
+    }));
+    saveUi({ openFileMenu: "" });
+    render(STATE.container);
+  }
+
+  async function deletePdfWithConfirm(pdfId) {
+    const pages = images().filter((entry) => entry.pdfId === pdfId);
+    if (!pages.length) return;
+    const name = pages[0].pdfName || "这份 PDF";
+    if (!confirm(`确定删除「${name}」吗？这会移除它的 ${pages.length} 页题图，但不会删除已保存到学习档案的记录。`)) return;
+    await deleteImages(pages.map((page) => page.id));
+    saveUi({ openFileMenu: "" });
     render(STATE.container);
   }
 

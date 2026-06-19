@@ -367,6 +367,51 @@ body.desk-mode .question-desk {
 .qd-file {
   padding: 10px;
 }
+.qd-file-group {
+  display: grid;
+  gap: 5px;
+}
+
+.qd-file-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.qd-file-more {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--qd-muted);
+  cursor: pointer;
+}
+
+.qd-file-more:hover,
+.qd-file-more:focus-visible {
+  border-color: rgba(37, 99, 235, 0.22);
+  background: #eff6ff;
+  color: #1d4ed8;
+  outline: none;
+}
+
+.qd-file-more span {
+  font-size: 20px;
+}
+
+.qd-file-menu {
+  display: flex;
+  gap: 6px;
+  padding-left: 4px;
+}
+
+.qd-pdf-group > .qd-file-menu {
+  padding-left: 4px;
+}
 
 .qd-file-status {
   width: 10px;
@@ -667,13 +712,6 @@ body.desk-mode .question-desk {
   font-size: 12px;
 }
 
-.qd-viewer-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
 
 .qd-viewer-lasso-row {
   display: flex;
