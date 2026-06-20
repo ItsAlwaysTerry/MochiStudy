@@ -3726,22 +3726,22 @@
         </section>
         <section class="card" style="grid-column:1 / -1">
           <h3>AI 使用指南</h3>
-          <p class="muted" style="margin-top:4px">五个 AI Prompt，分别用于学新题、复习旧卡点、综合测验、从零重学一章和啃卷子错题。复制后粘贴到 Claude 的「项目说明」里，即可激活对应的 AI 角色。</p>
+          <p class="muted" style="margin-top:4px">四个 AI Prompt，分别用于做题（含拍整张卷排优先级啃卷子）、复习旧卡点、综合测验、从零重学一章。复制后粘贴到 AI（如 Gemini）的智能体设定里，即可激活对应的 AI 角色。</p>
           <div class="ai-guide-prompts" style="margin-top:16px;display:flex;flex-direction:column;gap:12px">
             <details class="ai-prompt-entry">
               <summary class="ai-prompt-summary">
                 <span class="ai-prompt-icon material-symbols-outlined">psychology</span>
                 <div class="ai-prompt-meta">
                   <strong>高中理科 AI 家教</strong>
-                  <span class="muted" style="font-size:12px">学新题时用 · 一道题或整张卷子都行 · 脚手架引导 → 总结套路 → 每题输出 MOCHI-RECORD</span>
+                  <span class="muted" style="font-size:12px">做题就用这一个 · 发一道题直接做，或拍整张卷选「帮我排优先级」(排除已会→排序→逐题带) · 脚手架引导 → 总结套路 → 每题输出 MOCHI-RECORD</span>
                 </div>
                 <button class="btn btn-soft btn-sm ai-prompt-copy-btn" data-action="copy-ai-prompt" data-prompt-path="./skill/gaokao私教.md" type="button">
                   <span class="material-symbols-outlined">content_copy</span>复制 Prompt
                 </button>
               </summary>
               <div class="ai-prompt-steps">
-                <p><strong>使用方法：</strong>在 AI（如 Gemini / Claude）新建一个对话或项目，把 Prompt 粘进去。可以一次拍整张卷子的照片发进来，再说一句「先做第 X 题」；做完一题它会输出一条 MOCHI-RECORD，你复制粘进导入框，再跟它说下一题题号，同一个对话一直做下去。只发一道题也可以。</p>
-                <p class="muted" style="font-size:12px;margin-top:6px">流程：拍整张卷子 → 说题号 → 读题诊断 → 脚手架提问（空白/错误/卡步）→ 引导解题 → 总结3步套路 → 出这道题的记录 → 粘回导入 → 下一题</p>
+                <p><strong>使用方法：</strong>在 AI（如 Gemini）新建一个智能体（Gem）或对话，把 Prompt 粘进去，以后做题一直用它。发一道题就直接带你做；拍整张卷子时它会问你「想自己定顺序，还是我帮你排个优先级」——选排序它就读图列题、让你报掉已经会的、给剩下的题排序，再一道一道带。每搞定一道输出一条 MOCHI-RECORD，你复制粘进导入框，再做下一道。</p>
+                <p class="muted" style="font-size:12px;margin-top:6px">两种用法一个智能体：① 自由做题（你说题号）② 啃卷子（拍整张卷→排除已会→排序→逐题带）· 都是做一道粘一条</p>
               </div>
             </details>
             <details class="ai-prompt-entry">
@@ -3790,21 +3790,6 @@
               <div class="ai-prompt-steps">
                 <p><strong>使用方法：</strong>在「学习 → 学习档案」点「从零重学」，选一个想重学的知识点，会自动复制讲解材料；粘给这个 AI 跟着一步步学，把它输出的记录粘回面板导入。</p>
                 <p class="muted" style="font-size:12px;margin-top:6px">流程：先用大白话讲这章在解决什么 → 拆成最小台阶一步步教 → 每步出超简单题确认 → 学会一步输出一条记录</p>
-              </div>
-            </details>
-            <details class="ai-prompt-entry">
-              <summary class="ai-prompt-summary">
-                <div>
-                  <strong>啃卷子 AI 私教</strong>
-                  <span class="muted" style="font-size:12px">时间紧、一张卷大半不会时用 · 拍整张卷 → 排除你会的 → 按高考考频 × 短期提分空间排序 → 逐题带 → 每题输出 MOCHI-RECORD</span>
-                </div>
-                <button class="btn btn-soft btn-sm ai-prompt-copy-btn" data-action="copy-ai-prompt" data-prompt-path="./skill/gaokao啃卷子.md" type="button">
-                  <span class="material-symbols-outlined">content_copy</span>复制 Prompt
-                </button>
-              </summary>
-              <div class="ai-prompt-steps">
-                <p><strong>使用方法：</strong>复制这个 Prompt 粘到 AI（如 Gemini）的对话里，然后一次拍整张卷子的照片发进去。AI 会先把看到的题列出来、让你报掉「已经会的」，再给剩下的题按高考考频 × 短期提分空间排序，列一张「先学哪几道」的表，然后一道一道带你啃；每搞定一道输出一条记录，你复制粘回 MochiStudy，再说下一道。</p>
-                <p class="muted" style="font-size:12px;margin-top:6px">广东省全国卷理科 · 读图列题 → 排除会的 → 排序 → 逐题带 · 做一道粘一条说下一题</p>
               </div>
             </details>
           </div>
