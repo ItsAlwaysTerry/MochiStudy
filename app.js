@@ -3796,15 +3796,15 @@
               <summary class="ai-prompt-summary">
                 <div>
                   <strong>啃卷子 AI 私教</strong>
-                  <span class="muted" style="font-size:12px">拿到考卷错题时用 · 按高考考频 × 短期提分空间排优先级 → 一道一道带啃 → 输出 MOCHI-RECORD</span>
+                  <span class="muted" style="font-size:12px">时间紧、一张卷大半不会时用 · 拍整张卷 → 排除你会的 → 按高考考频 × 短期提分空间排序 → 逐题带 → 每题输出 MOCHI-RECORD</span>
                 </div>
                 <button class="btn btn-soft btn-sm ai-prompt-copy-btn" data-action="copy-ai-prompt" data-prompt-path="./skill/gaokao啃卷子.md" type="button">
                   <span class="material-symbols-outlined">content_copy</span>复制 Prompt
                 </button>
               </summary>
               <div class="ai-prompt-steps">
-                <p><strong>使用方法：</strong>复制这个 Prompt 粘到 AI 的系统设定里，然后告诉 AI 卷子上哪些题做错了或者不会——AI 会先排优先级（高考考频 × 短期提分空间），再一道一道带你啃，每道搞定后输出一条记录，最后整段粘回 MochiStudy 批量导入。</p>
-                <p class="muted" style="font-size:12px;margin-top:6px">广东省全国卷理科 · 先排序再逐题 · 学会一道输出一条记录</p>
+                <p><strong>使用方法：</strong>复制这个 Prompt 粘到 AI（如 Gemini）的对话里，然后一次拍整张卷子的照片发进去。AI 会先把看到的题列出来、让你报掉「已经会的」，再给剩下的题按高考考频 × 短期提分空间排序，列一张「先学哪几道」的表，然后一道一道带你啃；每搞定一道输出一条记录，你复制粘回 MochiStudy，再说下一道。</p>
+                <p class="muted" style="font-size:12px;margin-top:6px">广东省全国卷理科 · 读图列题 → 排除会的 → 排序 → 逐题带 · 做一道粘一条说下一题</p>
               </div>
             </details>
           </div>
