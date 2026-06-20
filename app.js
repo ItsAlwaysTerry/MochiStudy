@@ -3733,15 +3733,15 @@
                 <span class="ai-prompt-icon material-symbols-outlined">psychology</span>
                 <div class="ai-prompt-meta">
                   <strong>高中理科 AI 家教</strong>
-                  <span class="muted" style="font-size:12px">学新题时用 · 诊断学生状态 → 脚手架引导 → 总结套路 → 输出 MOCHI-RECORD</span>
+                  <span class="muted" style="font-size:12px">学新题时用 · 一道题或整张卷子都行 · 脚手架引导 → 总结套路 → 每题输出 MOCHI-RECORD</span>
                 </div>
                 <button class="btn btn-soft btn-sm ai-prompt-copy-btn" data-action="copy-ai-prompt" data-prompt-path="./skill/gaokao私教.md" type="button">
                   <span class="material-symbols-outlined">content_copy</span>复制 Prompt
                 </button>
               </summary>
               <div class="ai-prompt-steps">
-                <p><strong>使用方法：</strong>在 Claude 新建一个项目，把 Prompt 粘贴进「项目说明」。之后在项目里发题目图片，AI 会自动按流程引导做题，最后输出可粘贴进导入框的 MOCHI-RECORD。</p>
-                <p class="muted" style="font-size:12px;margin-top:6px">流程：读题诊断 → 脚手架提问（空白/错误/卡步三种模式）→ 引导解题 → 总结3步套路 → 出变式题检验 → 输出记录</p>
+                <p><strong>使用方法：</strong>在 AI（如 Gemini / Claude）新建一个对话或项目，把 Prompt 粘进去。可以一次拍整张卷子的照片发进来，再说一句「先做第 X 题」；做完一题它会输出一条 MOCHI-RECORD，你复制粘进导入框，再跟它说下一题题号，同一个对话一直做下去。只发一道题也可以。</p>
+                <p class="muted" style="font-size:12px;margin-top:6px">流程：拍整张卷子 → 说题号 → 读题诊断 → 脚手架提问（空白/错误/卡步）→ 引导解题 → 总结3步套路 → 出这道题的记录 → 粘回导入 → 下一题</p>
               </div>
             </details>
             <details class="ai-prompt-entry">
