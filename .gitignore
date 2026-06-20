@@ -31,3 +31,12 @@ backup*.json
 # Skill tooling artifacts (not part of the website)
 .agents/
 skills-lock.json
+
+# Personal / family planning docs — local only, never push to the public repo
+docs/summer-study-loop-design.md
+docs/lottery-rewards.md
+
+# Textbook PDFs and extracted text — local only, big binaries / personal materials
+教材pdf/
+docs/教材*/
+*.pdf
