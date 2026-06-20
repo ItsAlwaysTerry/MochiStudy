@@ -86,18 +86,19 @@
       pityThreshold: 5,
     },
   };
+  // 抽奖默认配置：以零花钱为核心（学生最硬的动力），小额常中、大额稀有、无惩罚。
+  // 金额和权重都可在管理后台(?admin=1 → 抽奖转盘内容)或 docs/lottery-rewards.md 里改。
+  // 权重是相对的：某项概率 = 它的权重 ÷ 所有权重之和（下面 8 项之和=100，所以权重≈百分比）。
   const LOTTERY_CONFIG_DEFAULTS = {
     items: [
-      { id: 1, label: "妈妈做一顿好吃的", type: "reward", weight: 15, color: "#f5c518" },
-      { id: 2, label: "买一个喜欢的文具", type: "reward", weight: 15, color: "#f5c518" },
-      { id: 3, label: "看一集喜欢的综艺", type: "reward", weight: 10, color: "#50b070" },
-      { id: 4, label: "和朋友出去玩一下午", type: "bigReward", weight: 5, color: "#e07020" },
-      { id: 5, label: "买一本喜欢的书", type: "reward", weight: 10, color: "#f5c518" },
-      { id: 6, label: "今天可以晚睡1小时", type: "reward", weight: 10, color: "#50b070" },
-      { id: 7, label: "抄写课文一篇", type: "punish", weight: 10, color: "#9c27b0" },
-      { id: 8, label: "做30个深蹲", type: "punish", weight: 10, color: "#9c27b0" },
-      { id: 9, label: "给妈妈洗碗三天", type: "punish", weight: 10, color: "#9c27b0" },
-      { id: 10, label: "早起背10个单词", type: "punish", weight: 5, color: "#2196f3" },
+      { id: 1, label: "零花钱 ¥20", type: "reward", weight: 28, color: "#f5c518" },
+      { id: 2, label: "零花钱 ¥30", type: "reward", weight: 20, color: "#f5c518" },
+      { id: 3, label: "一份你爱吃的零食 / 饮料", type: "reward", weight: 12, color: "#50b070" },
+      { id: 4, label: "零花钱 ¥50", type: "reward", weight: 14, color: "#f5c518" },
+      { id: 5, label: "晚睡 / 多玩手机 30 分钟", type: "reward", weight: 8, color: "#50b070" },
+      { id: 6, label: "和朋友出去玩一下午", type: "bigReward", weight: 7, color: "#e07020" },
+      { id: 7, label: "零花钱 ¥100", type: "bigReward", weight: 7, color: "#e07020" },
+      { id: 8, label: "超级大奖 ¥200", type: "bigReward", weight: 4, color: "#e07020" },
     ],
   };
   const view = document.getElementById("view");
@@ -3009,6 +3010,7 @@
     return `
       <section class="admin-section">
         <h3>抽奖转盘内容</h3>
+        <p style="font-size:12px;color:var(--muted);margin:0 0 10px">权重是相对的：某项中奖概率 = 它的权重 ÷ 所有权重之和。右侧「概率」会随你改权重实时更新。想让某个奖更常中就调高它的权重，想让大奖更稀有就调低。</p>
         <div class="admin-row">
           <label>每次翻牌张数</label>
           <input type="number" min="1" max="10" class="admin-input admin-input-sm" id="admin-lottery-pick-count" value="${pickCount}" />
@@ -3034,6 +3036,7 @@
           <option value="punish" ${item.type === "punish" ? "selected" : ""}>惩罚</option>
         </select>
         <input type="number" min="1" max="100" class="admin-input admin-input-sm" placeholder="权重" data-field="weight" value="${Number(item.weight || 10)}" />
+        <span class="admin-lottery-prob" data-prob title="当前中奖概率" style="min-width:46px;text-align:right;font-weight:700;color:var(--muted)">—</span>
         <button class="btn-icon" data-admin-action="remove-lottery-item" type="button" aria-label="删除项目">删除</button>
       </div>
     `;
@@ -3499,7 +3502,21 @@
     return dates.length;
   }
 
+  function refreshLotteryProbs(overlay) {
+    const rows = [...overlay.querySelectorAll(".admin-lottery-item")];
+    const weights = rows.map((row) => Math.max(0, Number(row.querySelector('[data-field="weight"]')?.value || 0)));
+    const total = weights.reduce((sum, w) => sum + w, 0);
+    rows.forEach((row, i) => {
+      const span = row.querySelector("[data-prob]");
+      if (span) span.textContent = total ? `${Math.round((weights[i] / total) * 100)}%` : "—";
+    });
+  }
+
   function bindAdminPanel(overlay) {
+    overlay.addEventListener("input", (event) => {
+      if (event.target.matches('#admin-lottery-items [data-field="weight"]')) refreshLotteryProbs(overlay);
+    });
+    refreshLotteryProbs(overlay);
     overlay.addEventListener("click", (event) => {
       const actionEl = event.target.closest("[data-admin-action]");
       if (!actionEl) return;
@@ -3527,10 +3544,12 @@
       if (action === "add-lottery-item") {
         const list = overlay.querySelector("#admin-lottery-items");
         if (list) list.insertAdjacentHTML("beforeend", renderAdminLotteryItem({ label: "", type: "reward", weight: 10 }, list.children.length));
+        refreshLotteryProbs(overlay);
         return;
       }
       if (action === "remove-lottery-item") {
         actionEl.closest(".admin-lottery-item")?.remove();
+        refreshLotteryProbs(overlay);
         return;
       }
       if (action === "save-lottery-cfg") {
