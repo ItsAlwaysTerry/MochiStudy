@@ -507,6 +507,10 @@
             </div>
             <div class="card-head-actions">
               <div class="card-stars-badge ${starClass}">${stars(starCount)}</div>
+              ${window.MochiQuestionDesk?.hasImageForLog?.(log.id) ? `
+              <button class="card-action-btn" data-card-action="open-original" type="button" title="看原题图" aria-label="看原题图">
+                <span class="material-symbols-outlined">image</span>
+              </button>` : ""}
               <button class="card-action-btn${quizSelected ? " active" : ""}" data-card-action="quiz-card" type="button" title="选中测验" aria-label="选这张测验">
                 <span class="material-symbols-outlined">${quizSelected ? "check_circle" : "add_task"}</span>
               </button>
@@ -1064,6 +1068,12 @@
       if (card) {
         const id = card.dataset.cardId;
         const action = event.target.closest("[data-card-action]")?.dataset.cardAction;
+        if (action === "open-original") {
+          event.stopPropagation();
+          const logId = findLogByCardEl(card).log?.id || id;
+          window.MochiQuestionDesk?.openByLogId?.(logId);
+          return;
+        }
         if (action === "quiz-card") {
           event.stopPropagation();
           if (STATE.quizSelected.has(id)) STATE.quizSelected.delete(id);

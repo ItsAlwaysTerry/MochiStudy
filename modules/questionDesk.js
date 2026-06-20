@@ -38,7 +38,38 @@
     editingRegion: null,
     adjustingItemId: "",
     imageUrls: new Map(),
+    floatPos: null,
+    floatMinimized: false,
+    draggingFloat: null,
+    scrollToRect: null,
   };
+
+  const Float = window.MochiQuestionDeskFloat || {};
+  const ZOOM_MIN = 0.5;
+  const ZOOM_MAX = 2.5;
+  const ZOOM_STEP = 0.25;
+
+  function clampZoom(value) {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return 1;
+    return Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.round(num * 100) / 100));
+  }
+
+  function currentZoom() {
+    return clampZoom(readUi().zoom ?? 1);
+  }
+
+  function setZoom(value) {
+    saveUi({ zoom: clampZoom(value) });
+  }
+
+  function drawerOpen() {
+    return readUi().drawerOpen === true;
+  }
+
+  function setDrawerOpen(open) {
+    saveUi({ drawerOpen: Boolean(open) });
+  }
 
   function normalizePanelMode(value) {
     return ["open", "collapsed", "expanded"].includes(value) ? value : "open";
@@ -916,6 +947,13 @@
     window.requestAnimationFrame?.(restore);
     window.setTimeout(restore, 80);
   }
+  function renderPreservingDrawerScroll(container) {
+    const scroller = container?.querySelector("[data-qd-drawer-scroll]");
+    const top = scroller?.scrollTop || 0;
+    render(container);
+    const nextScroller = container?.querySelector("[data-qd-drawer-scroll]");
+    if (nextScroller) nextScroller.scrollTop = top;
+  }
   function render(container) {
     if (!container) return;
     STATE.container = container;
@@ -924,7 +962,6 @@
     STATE.filter = ui.filter || STATE.filter || "all";
     STATE.search = ui.search || STATE.search || "";
     const activeImage = findActiveImage();
-    const mode = panelMode();
     if (activeImage) {
       STATE.activeImageId = activeImage.id;
       saveUi({ activeImageId: activeImage.id });
@@ -932,21 +969,72 @@
       if (activeItem) STATE.activeItemId = activeItem.id;
     }
     const activeItem = activeImage ? activeItemForImage(activeImage.id) : null;
+    const zoom = currentZoom();
+    const open = drawerOpen();
     container.innerHTML = `
-      <div class="question-desk qd-panel-${mode}">
-        <aside class="qd-sidebar">
-          ${renderSidebar(activeImage)}
+      <div class="question-desk qd-canvas-mode">
+        ${renderToolbar(activeImage, zoom)}
+        <div class="qd-stage-area" data-qd-stage-area>
+          <main class="qd-canvas">
+            ${renderViewer(activeImage, activeItem, zoom)}
+          </main>
+          ${renderFloatLayer(activeImage, activeItem)}
+        </div>
+        <aside class="qd-drawer ${open ? "open" : ""}" data-qd-drawer>
+          <div class="qd-drawer-inner" data-qd-drawer-scroll>
+            ${renderSidebar(activeImage)}
+          </div>
         </aside>
-        <main class="qd-canvas">
-          ${renderViewer(activeImage, activeItem)}
-        </main>
-        <aside class="qd-panel">
-          ${renderPanel(activeImage, activeItem, mode)}
-        </aside>
+        <div class="qd-drawer-scrim ${open ? "open" : ""}" data-qd-action="close-drawer"></div>
       </div>
       ${STATE.grindOpen ? renderGrindSheet() : ""}
     `;
     hydrateImage(activeImage);
+  }
+
+  function renderToolbar(activeImage, zoom) {
+    const lasso = lassoMode();
+    const pct = Math.round((zoom || 1) * 100);
+    const title = activeImage ? (activeImage.shortName || activeImage.name) : "题桌";
+    return `
+      <header class="qd-toolbar">
+        <div class="qd-toolbar-group">
+          <button class="qd-tool-btn" data-qd-action="toggle-drawer" type="button" title="题目文件">
+            <span class="material-symbols-outlined">menu</span>
+          </button>
+          <span class="qd-toolbar-title" title="${escapeHtml(activeImage ? activeImage.name : "题桌")}">${escapeHtml(title)}</span>
+        </div>
+        <div class="qd-toolbar-group qd-toolbar-center">
+          <label class="qd-tool-btn qd-tool-import" title="导入题图 / PDF">
+            <span class="material-symbols-outlined">add_photo_alternate</span>
+            <input data-qd-file type="file" accept="image/*,.pdf,application/pdf" multiple hidden />
+          </label>
+          <button class="qd-tool-btn ${lasso ? "active" : ""}" data-qd-action="toggle-lasso" type="button" title="${lasso ? "退出套索" : "套索框题"}" aria-pressed="${lasso ? "true" : "false"}" ${activeImage ? "" : "disabled"}>
+            <span class="material-symbols-outlined">gesture</span>
+          </button>
+          <div class="qd-zoom">
+            <button class="qd-tool-btn" data-qd-action="zoom-out" type="button" title="缩小" ${zoom <= ZOOM_MIN ? "disabled" : ""}>
+              <span class="material-symbols-outlined">remove</span>
+            </button>
+            <button class="qd-zoom-label" data-qd-action="zoom-reset" type="button" title="恢复 100%">${pct}%</button>
+            <button class="qd-tool-btn" data-qd-action="zoom-in" type="button" title="放大" ${zoom >= ZOOM_MAX ? "disabled" : ""}>
+              <span class="material-symbols-outlined">add</span>
+            </button>
+          </div>
+          <button class="qd-tool-btn" data-qd-action="focus-search" type="button" title="搜索题图">
+            <span class="material-symbols-outlined">search</span>
+          </button>
+        </div>
+        <div class="qd-toolbar-group">
+          <button class="qd-tool-btn qd-tool-grind" data-qd-action="open-grind" type="button" title="啃卷子">
+            <span class="material-symbols-outlined">format_list_numbered</span>
+          </button>
+          <button class="qd-tool-btn qd-tool-growth" data-route="home" type="button" title="我的成长">
+            <span class="material-symbols-outlined">psychiatry</span>
+          </button>
+        </div>
+      </header>
+    `;
   }
 
   function renderFilterButton(key, label, count) {
@@ -970,25 +1058,18 @@
     return `
       <div class="qd-head">
         <div>
-          <h2>题桌</h2>
+          <h2>题目文件</h2>
           <p>粘题、命名，按科目找回来。</p>
         </div>
-        <button class="btn btn-soft btn-sm qd-growth-btn" data-route="home" type="button">
-          <span class="material-symbols-outlined">psychiatry</span>我的成长
+        <button class="qd-tool-btn qd-drawer-close" data-qd-action="close-drawer" type="button" title="收起">
+          <span class="material-symbols-outlined">close</span>
         </button>
       </div>
-      <div class="qd-actions">
-        <div class="qd-action-row">
-          <label class="btn btn-primary btn-sm qd-upload">
-            <span class="material-symbols-outlined">add_photo_alternate</span>上传题图/PDF
-            <input data-qd-file type="file" accept="image/*,.pdf,application/pdf" multiple hidden />
-          </label>
-          <button class="btn btn-soft btn-sm qd-grind-btn" data-qd-action="open-grind" type="button">
-            <span class="material-symbols-outlined">format_list_numbered</span>啃卷子
-          </button>
-        </div>
-        <p class="qd-hint">也可以复制截图后在题桌按 Ctrl+V；PDF 会自动拆成页。</p>
-      </div>
+      <label class="qd-upload qd-drawer-upload">
+        <span class="material-symbols-outlined">add_photo_alternate</span>导入题图 / PDF
+        <input data-qd-file type="file" accept="image/*,.pdf,application/pdf" multiple hidden />
+      </label>
+      <p class="qd-hint">也可以复制截图后在题桌按 Ctrl+V；PDF 会自动拆成页。</p>
       <label class="qd-search">
         <span class="material-symbols-outlined">search</span>
         <input data-qd-search value="${escapeHtml(STATE.search)}" placeholder="搜名字、知识点、题干" />
@@ -1540,6 +1621,14 @@
       items: session.items.map((item, idx) => idx === currentIndex && activated?.itemId ? { ...item, itemId: activated.itemId } : item),
     };
     saveGrindSession(nextSession);
+    // 切到每一题都把题目滚到视野中央，并复位浮窗状态，让题旁「问 AI」气泡贴着这道题出现，
+    // 避免只剩一个框、找不到 AI 入口。
+    const focusItemId = activated?.itemId || wholeImageItem(activated?.imageId || planItem?.imageId)?.id || "";
+    STATE.inspectItemId = "";
+    STATE.floatPos = null;
+    STATE.floatMinimized = false;
+    const focusItem = focusItemId ? items().find((entry) => entry.id === focusItemId) : null;
+    STATE.scrollToRect = focusItem?.rect || planItem?.rect || null;
     render(STATE.container);
   }
 
@@ -1824,10 +1913,11 @@
         return `
           <div class="qd-region-box ${active ? "active" : ""} ${finalized ? "adjusting" : ""}" data-qd-region-box data-item-id="${item.id}" style="${Selection.rectStyle(rect)}" title="拖动调整选区">
             <span class="qd-region-box-badge">${finalized ? "调整中" : "待确认"}</span>
-            <button class="qd-region-box-action" data-qd-action="${finalized ? "finish-region-adjust" : "open-region-panel"}" data-item-id="${item.id}" type="button" title="${finalized ? "完成调整" : "用这个选区提问"}">
-              <span class="material-symbols-outlined">${finalized ? "done" : "psychology_alt"}</span>
-            </button>
-            ${finalized ? "" : `
+            ${finalized ? `
+              <button class="qd-region-box-action" data-qd-action="finish-region-adjust" data-item-id="${item.id}" type="button" title="完成调整">
+                <span class="material-symbols-outlined">done</span>
+              </button>
+            ` : `
               <button class="qd-region-box-delete" data-qd-action="delete-region" data-item-id="${item.id}" type="button" title="删除这个选区">
                 <span class="material-symbols-outlined">close</span>
               </button>
@@ -1837,173 +1927,95 @@
         `;
       }
       const pos = Selection.markerPosition(item);
+      const saved = Boolean(item.savedLogId);
       return `
-        <button class="qd-region ${item.id === activeItem?.id ? "active" : ""} ${item.status || "new"}"
+        <button class="qd-region ${item.id === STATE.inspectItemId ? "active" : ""} ${saved ? "saved" : (item.status || "new")}"
           style="left:${pos.x * 100}%;top:${pos.y * 100}%"
-          data-qd-action="open-inspector" data-item-id="${item.id}" type="button" title="${escapeHtml(itemLabel(item, index))}">
-          <span class="material-symbols-outlined">psychology_alt</span>
+          data-qd-action="open-float" data-item-id="${item.id}" type="button" title="${escapeHtml(itemLabel(item, index))}">
+          <span class="material-symbols-outlined">${saved ? "bookmark" : "psychology_alt"}</span>
         </button>
       `;
     }).join("");
   }
 
-  function renderInspector(activeImage) {
-    const item = items().find((entry) => entry.id === STATE.inspectItemId && entry.imageId === activeImage?.id);
+  // 题旁小气泡：只有当前选区还没问过 AI、且它的浮窗没打开时才浮出。
+  // 啃卷子模式下，当前题目固定浮出「问 AI」气泡（贴着题目、随图滚动），保证每一题都有 AI 入口。
+  function renderBubbleLayer(activeImage) {
+    if (grindSession()) {
+      const current = currentGrindSessionItem();
+      const item = current?.itemId
+        ? items().find((entry) => entry.id === current.itemId)
+        : wholeImageItem(activeImage?.id);
+      if (!item || item.imageId !== activeImage?.id) return "";
+      if (STATE.inspectItemId === item.id) return "";
+      return Float.renderBubble ? Float.renderBubble({ item, busy: STATE.busy }) : "";
+    }
+    const pending = pendingRegionForImage(activeImage?.id);
+    if (!pending) return "";
+    if (STATE.inspectItemId === pending.id) return "";
+    return Float.renderBubble ? Float.renderBubble({ item: pending, busy: STATE.busy }) : "";
+  }
+
+  // 整张题图（未套索）的 AI 入口：一道题直接问，不必先圈。
+  function wholeImageItem(imageId) {
+    const list = itemsForImage(imageId);
+    return list.find((entry) => !entry.rect) || list[0] || null;
+  }
+
+  function renderCanvasAsk(activeImage) {
+    if (!activeImage || lassoMode() || grindSession()) return "";
+    if (STATE.inspectItemId && !STATE.floatMinimized) return "";
+    const item = wholeImageItem(activeImage.id);
     if (!item) return "";
-    const pos = Selection.markerPosition(item);
-    const alignRight = pos.x > 0.62;
-    const left = alignRight ? Math.max(2, pos.x * 100 - 3) : Math.min(76, pos.x * 100 + 3);
-    const top = Math.min(72, Math.max(2, pos.y * 100 + 3));
-    const shift = alignRight ? "-100%" : "0";
-    const log = item.savedLogId ? (window.MochiApp?.readStudyLogs?.() || []).find((entry) => entry.id === item.savedLogId) : null;
-    const { active: activeChat, archived: archivedChat } = splitChatByContext(item);
     return `
-      <aside class="qd-inspector" style="--qi-left:${left}%;--qi-top:${top}%;--qi-x-shift:${shift}">
-        <div class="qd-inspector-head">
-          <div>
-            <strong>${escapeHtml(itemLabel(item))}</strong>
-            <span>${escapeHtml(subjectLabel(item.subject))}${item.nodeLabel ? ` · ${escapeHtml(item.nodeLabel)}` : ""}</span>
-          </div>
-          <button class="qd-icon-btn" data-qd-action="close-inspector" type="button" title="关闭">
-            <span class="material-symbols-outlined">close</span>
-          </button>
-        </div>
-        <div class="qd-inspector-body">
-          <section>
-            <h4>学习档案卡片</h4>
-            ${log ? `
-              <article class="qd-study-mini-card">
-                <div><b>${escapeHtml(log.nodeLabel || item.nodeLabel || "未归档")}</b><span>${"★".repeat(Number(log.stars || 0))}</span></div>
-                <p>${escapeHtml(log.painPoint || "暂无卡点")}</p>
-                <small>${escapeHtml(log.routine || "暂无套路")}</small>
-              </article>
-            ` : `<p class="qd-inspector-empty">保存到学习档案后，这里会显示卡点和套路。</p>`}
-          </section>
-          <section>
-            <h4>AI 对话</h4>
-            ${activeChat.length ? activeChat.slice(-4).map((msg) => `
-              <p class="qd-inspector-chat ${msg.role}"><b>${msg.role === "assistant" ? "AI" : "我"}：</b>${escapeHtml(String(msg.content || "").slice(0, 180))}</p>
-            `).join("") : `<p class="qd-inspector-empty">${archivedChat.length ? "当前框还没有新对话，旧对话在右栏可展开。" : "还没有问过 AI。"}</p>`}
-          </section>
-          ${item.rect ? `
-            <button class="btn btn-soft btn-sm qd-inspector-adjust" data-qd-action="adjust-region" data-item-id="${item.id}" type="button">
-              <span class="material-symbols-outlined">crop</span>重新调整选区
-            </button>
-          ` : ""}
-        </div>
-      </aside>
+      <button class="qd-canvas-ask" data-qd-action="open-float" data-item-id="${item.id}" type="button" title="问 AI 学这张题">
+        <span class="material-symbols-outlined">psychology_alt</span>
+        <span>问 AI 学这道题</span>
+      </button>
     `;
   }
 
-  function renderViewer(activeImage, activeItem) {
-    if (!activeImage) {
-      return `
-        <section class="qd-dropzone">
-          <span class="material-symbols-outlined">content_paste</span>
-          <h2>${escapeHtml(emptyFilterText())}</h2>
-          <p>复制截图后按 Ctrl+V，或从左侧上传图片。题图会先进入「未整理」，识别或保存后再自动归到对应科目。</p>
-        </section>
-      `;
-    }
-    const lasso = lassoMode();
-    const pendingRegion = pendingRegionForImage(activeImage.id);
-    const lassoLabel = pendingRegion && lasso ? "取消选区" : lasso ? "套索中" : "套索";
-    const lassoIcon = pendingRegion && lasso ? "close" : "gesture";
-    return `
-      <div class="qd-viewer-head-stack">
-        <div class="qd-viewer-top">
-          <div>
-            <strong>${escapeHtml(activeImage.name)}</strong>
-            <span>${escapeHtml(subjectLabel(activeImage.subject))} · ${activeImage.width || "?"}×${activeImage.height || "?"}</span>
-          </div>
-        </div>
-        <div class="qd-viewer-lasso-row ${lasso ? "active" : ""}">
-          <span class="qd-viewer-lasso-hint">${lasso ? "在题图上圈出一道题，松手后可调整" : "一张纸有多道题？点右边「套索」逐题圈出来；只有一道题，直接在右侧问 AI 就行。"}</span>
-          <button class="btn btn-soft btn-sm qd-lasso-btn ${lasso ? "active" : ""}" data-qd-action="toggle-lasso" type="button" aria-pressed="${lasso ? "true" : "false"}">
-            <span class="material-symbols-outlined">${lassoIcon}</span>${lassoLabel}
-          </button>
-        </div>
-        ${renderGrindSessionBar()}
-      </div>
-      <div class="qd-image-stage" data-qd-image-stage>
-        <div class="qd-image-loading" data-qd-image-loading>读取题图中...</div>
-        <div class="qd-image-wrap ${lasso ? "qd-lasso-enabled" : ""}" data-qd-image-wrap>
-          <img data-qd-image alt="${escapeHtml(activeImage.name)}" hidden />
-          <div class="qd-region-layer">
-            ${renderRegions(activeImage, activeItem)}
-          </div>
-        </div>
-        ${renderInspector(activeImage)}
-      </div>
-      <p class="qd-local-note">题图保存在本机浏览器，普通 MochiStudy 备份暂不包含题图；题桌图片包会在后续阶段补齐。</p>
-    `;
-  }
-
-  function renderPanelControls(mode) {
-    if (mode === "expanded") {
-      return `
-        <div class="qd-panel-controls">
-          <button class="qd-icon-btn" data-qd-action="panel-mode" data-panel-mode="open" type="button" title="回到题图">
-            <span class="material-symbols-outlined">close_fullscreen</span>
-          </button>
-          <button class="qd-icon-btn" data-qd-action="panel-mode" data-panel-mode="collapsed" type="button" title="收起 AI 面板">
-            <span class="material-symbols-outlined">right_panel_close</span>
-          </button>
-        </div>
-      `;
-    }
-    return `
-      <div class="qd-panel-controls">
-        <button class="qd-icon-btn" data-qd-action="panel-mode" data-panel-mode="collapsed" type="button" title="收起 AI 面板">
-          <span class="material-symbols-outlined">right_panel_close</span>
-        </button>
-        <button class="qd-icon-btn" data-qd-action="panel-mode" data-panel-mode="expanded" type="button" title="展开 AI 面板">
-          <span class="material-symbols-outlined">open_in_full</span>
-        </button>
-      </div>
-    `;
-  }
-
-  function renderPanel(activeImage, activeItem, mode = "open") {
-    if (mode === "collapsed") {
-      return `
-        <button class="qd-rail-btn" data-qd-action="panel-mode" data-panel-mode="open" type="button" title="展开 AI 面板">
-          <span class="material-symbols-outlined">psychology_alt</span>
-          <strong>AI</strong>
-        </button>
-      `;
-    }
-    if (!activeImage) {
-      return `
-        <section class="qd-panel-empty">
-          <div class="qd-panel-empty-head">
-            <h3>AI 学习面板</h3>
-            ${renderPanelControls(mode)}
-          </div>
-          <p>${escapeHtml(emptyFilterText())}</p>
-        </section>
-      `;
-    }
-    const item = activeItem || findItem(activeImage.id);
-    if (!item) return `<section class="qd-panel-empty"><h3>这张题图缺少记录</h3><p>请重新上传。</p></section>`;
+  // 可拖动浮窗 / 回看橱窗：inspectItemId 即「当前打开的浮窗」。
+  function renderFloatLayer(activeImage, activeItem) {
+    const item = items().find((entry) => entry.id === STATE.inspectItemId && entry.imageId === activeImage?.id);
+    if (!item || !Float.renderWindow) return "";
     const imageItems = itemsForImage(activeImage.id);
     const itemIndex = Math.max(0, imageItems.findIndex((entry) => entry.id === item.id));
+    const saved = Boolean(item.savedLogId);
+    const slots = floatSlots(item, activeImage, itemIndex);
+    return Float.renderWindow({
+      item,
+      slots,
+      pos: STATE.floatPos,
+      minimized: STATE.floatMinimized,
+      busy: STATE.busy,
+      saved,
+    });
+  }
+
+  function savedStudyCardHtml(item) {
+    if (!item.savedLogId) return "";
+    const log = (window.MochiApp?.readStudyLogs?.() || []).find((entry) => entry.id === item.savedLogId);
+    if (!log) return "";
     return `
-      <div class="qd-panel-head">
-        <div>
-          <h3>${escapeHtml(itemLabel(item, itemIndex))}</h3>
-          <p>${escapeHtml(activeImage.shortName || activeImage.name)}</p>
-        </div>
-        <div class="qd-panel-head-actions">
-          <span class="qd-status-pill ${item.status}">${statusLabel(item.status)}</span>
-          ${renderPanelControls(mode)}
-        </div>
-      </div>
-      ${STATE.message ? `<div class="qd-message">${escapeHtml(STATE.message)}</div>` : ""}
-      ${item.rect ? renderRecognitionCard(item) : ""}
-      ${renderChatHistory(item)}
+      <section class="qd-float-saved">
+        <h4><span class="material-symbols-outlined">bookmark</span>已收进学习档案</h4>
+        <article class="qd-study-mini-card">
+          <div><b>${escapeHtml(log.nodeLabel || item.nodeLabel || "未归档")}</b><span>${"★".repeat(Number(log.stars || 0))}</span></div>
+          <p>${escapeHtml(log.painPoint || "暂无卡点")}</p>
+          <small>${escapeHtml(log.routine || "暂无套路")}</small>
+        </article>
+      </section>
+    `;
+  }
+
+  function floatSlots(item, activeImage, itemIndex) {
+    const subtitleParts = [subjectLabel(item.subject)];
+    if (item.nodeLabel) subtitleParts.push(item.nodeLabel);
+    else if (activeImage) subtitleParts.push(activeImage.shortName || activeImage.name);
+    const askBoxHtml = `
       <div class="qd-question-box">
-        <textarea data-qd-question rows="3" placeholder="问这道题，例如：这题第一步怎么想？"></textarea>
+        <textarea data-qd-question data-item-id="${item.id}" rows="2" placeholder="继续问这道题，例如：这一步为什么这样？"></textarea>
         <div class="qd-panel-actions">
           <button class="btn btn-primary btn-sm" data-qd-action="ask-ai" data-item-id="${item.id}" type="button" ${STATE.busy ? "disabled" : ""}>
             <span class="material-symbols-outlined">send</span>问 AI
@@ -2012,9 +2024,46 @@
             <span class="material-symbols-outlined">edit_note</span>学懂了，整理成记录
           </button>
         </div>
-        <p class="qd-panel-flow-hint">先问 AI 把这道题弄懂，弄懂后点「整理成记录」存进学习档案。</p>
+        <p class="qd-panel-flow-hint">先问 AI 把这道题弄懂，弄懂后点「整理成记录」收进学习档案。</p>
       </div>
-      ${renderDraftForm(item)}
+    `;
+    return {
+      title: itemLabel(item, itemIndex),
+      subtitle: subtitleParts.filter(Boolean).join(" · "),
+      thumbHtml: "",
+      savedCardHtml: savedStudyCardHtml(item),
+      recognitionHtml: item.rect ? renderRecognitionCard(item) : "",
+      chatHtml: `${STATE.message ? `<div class="qd-message">${escapeHtml(STATE.message)}</div>` : ""}${renderChatHistory(item)}`,
+      askBoxHtml,
+      draftHtml: renderDraftForm(item),
+    };
+  }
+
+  function renderViewer(activeImage, activeItem, zoom = 1) {
+    if (!activeImage) {
+      return `
+        <section class="qd-dropzone">
+          <span class="material-symbols-outlined">content_paste</span>
+          <h2>${escapeHtml(emptyFilterText())}</h2>
+          <p>复制截图后按 Ctrl+V，或点顶部「导入」上传图片/PDF。题图会先进入「未整理」，识别或保存后再自动归到对应科目。</p>
+        </section>
+      `;
+    }
+    const lasso = lassoMode();
+    const wrapWidth = `${Math.round(clampZoom(zoom) * 100)}%`;
+    return `
+      ${renderGrindSessionBar()}
+      <div class="qd-image-stage" data-qd-image-stage>
+        <div class="qd-image-loading" data-qd-image-loading>读取题图中...</div>
+        <div class="qd-image-wrap ${lasso ? "qd-lasso-enabled" : ""}" data-qd-image-wrap style="width:${wrapWidth}">
+          <img data-qd-image alt="${escapeHtml(activeImage.name)}" hidden />
+          <div class="qd-region-layer">
+            ${renderRegions(activeImage, activeItem)}
+            ${renderBubbleLayer(activeImage)}
+          </div>
+        </div>
+      </div>
+      ${renderCanvasAsk(activeImage)}
     `;
   }
 
@@ -2230,6 +2279,20 @@
     `;
   }
 
+  // 把指定选区滚到题图查看区中央（啃卷子上一题/下一题时定位到题目所在位置）。
+  function scrollStageToRect(rect) {
+    const stage = STATE.container?.querySelector("[data-qd-image-stage]");
+    const wrap = STATE.container?.querySelector("[data-qd-image-wrap]");
+    if (!stage || !wrap || !rect) return;
+    const wrapW = wrap.offsetWidth || wrap.getBoundingClientRect().width;
+    const wrapH = wrap.offsetHeight || wrap.getBoundingClientRect().height;
+    if (!wrapW || !wrapH) return;
+    const cx = (Number(rect.x) || 0) + (Number(rect.w) || 0) / 2;
+    const cy = (Number(rect.y) || 0) + (Number(rect.h) || 0) / 2;
+    stage.scrollLeft = Math.max(0, cx * wrapW - stage.clientWidth / 2);
+    stage.scrollTop = Math.max(0, cy * wrapH - stage.clientHeight / 2);
+  }
+
   async function hydrateImage(activeImage) {
     if (!activeImage || !STATE.container) return;
     const img = STATE.container.querySelector("[data-qd-image]");
@@ -2240,11 +2303,23 @@
       if (loading) loading.textContent = "题图读取失败";
       return;
     }
+    const applyPendingScroll = () => {
+      if (!STATE.scrollToRect) return;
+      const rect = STATE.scrollToRect;
+      STATE.scrollToRect = null;
+      window.requestAnimationFrame?.(() => scrollStageToRect(rect));
+    };
     img.onload = () => {
       img.hidden = false;
       if (loading) loading.hidden = true;
+      applyPendingScroll();
     };
     img.src = url;
+    if (img.complete && img.naturalWidth) {
+      img.hidden = false;
+      if (loading) loading.hidden = true;
+      applyPendingScroll();
+    }
   }
 
   function pointerRect(event, wrap) {
@@ -2528,13 +2603,26 @@
     }
     STATE.activeImageId = nextImageId;
     STATE.activeItemId = nextItemId || "";
-    STATE.inspectItemId = "";
+    STATE.inspectItemId = nextItemId || "";
+    STATE.floatPos = null;
+    STATE.floatMinimized = false;
     STATE.filter = "all";
     STATE.search = "";
     STATE.grindOpen = false;
-    setPanelMode("open");
     saveUi({ activeImageId: nextImageId, filter: "all", search: "" });
     render(STATE.container);
+  }
+
+  function openFloat(itemId) {
+    if (!itemId) return;
+    const item = items().find((entry) => entry.id === itemId);
+    if (!item) return;
+    STATE.activeItemId = itemId;
+    STATE.inspectItemId = itemId;
+    STATE.activeImageId = item.imageId || STATE.activeImageId;
+    STATE.floatPos = null;
+    STATE.floatMinimized = false;
+    STATE.message = "";
   }
 
   function bind(container) {
@@ -2596,6 +2684,28 @@
       render(container);
     });
     container.addEventListener("pointerdown", (event) => {
+      const floatDrag = event.target.closest("[data-qd-float-drag]");
+      if (floatDrag && !event.target.closest("[data-qd-action]")) {
+        const floatEl = floatDrag.closest("[data-qd-float]");
+        const stage = container.querySelector("[data-qd-stage-area]");
+        if (!floatEl || !stage) return;
+        event.preventDefault();
+        floatDrag.setPointerCapture?.(event.pointerId);
+        const floatBox = floatEl.getBoundingClientRect();
+        const stageBox = stage.getBoundingClientRect();
+        STATE.draggingFloat = {
+          pointerId: event.pointerId,
+          offsetX: event.clientX - floatBox.left,
+          offsetY: event.clientY - floatBox.top,
+          stageLeft: stageBox.left,
+          stageTop: stageBox.top,
+          maxLeft: Math.max(0, stageBox.width - 60),
+          maxTop: Math.max(0, stageBox.height - 40),
+          width: floatBox.width,
+          el: floatEl,
+        };
+        return;
+      }
       const handle = event.target.closest("[data-qd-region-handle]");
       const regionBox = event.target.closest("[data-qd-region-box]");
       if (handle || (regionBox && !event.target.closest("[data-qd-action]"))) {
@@ -2616,7 +2726,7 @@
         return;
       }
       const wrap = event.target.closest("[data-qd-image-wrap]");
-      if (!wrap || event.target.closest("[data-qd-action]")) return;
+      if (!wrap || event.target.closest("[data-qd-action]") || event.target.closest("[data-qd-bubble]")) return;
       if (!lassoMode()) return;
       const img = wrap.querySelector("[data-qd-image]");
       if (!img || img.hidden) return;
@@ -2627,6 +2737,17 @@
       updateLassoPreview(wrap, STATE.selecting.points);
     });
     container.addEventListener("pointermove", (event) => {
+      if (STATE.draggingFloat && STATE.draggingFloat.pointerId === event.pointerId) {
+        const d = STATE.draggingFloat;
+        const left = Math.max(0, Math.min(d.maxLeft, event.clientX - d.stageLeft - d.offsetX));
+        const top = Math.max(0, Math.min(d.maxTop, event.clientY - d.stageTop - d.offsetY));
+        STATE.floatPos = { left, top };
+        if (d.el) {
+          d.el.style.left = `${left}px`;
+          d.el.style.top = `${top}px`;
+        }
+        return;
+      }
       if (STATE.editingRegion && STATE.editingRegion.pointerId === event.pointerId) {
         const wrap = container.querySelector("[data-qd-image-wrap]");
         if (!wrap) return;
@@ -2642,6 +2763,10 @@
       updateLassoPreview(wrap, STATE.selecting.points);
     });
     container.addEventListener("pointerup", (event) => {
+      if (STATE.draggingFloat && STATE.draggingFloat.pointerId === event.pointerId) {
+        STATE.draggingFloat = null;
+        return;
+      }
       if (STATE.editingRegion && STATE.editingRegion.pointerId === event.pointerId) {
         const edit = STATE.editingRegion;
         STATE.editingRegion = null;
@@ -2662,6 +2787,10 @@
       render(container);
     });
     container.addEventListener("pointercancel", (event) => {
+      if (STATE.draggingFloat && STATE.draggingFloat.pointerId === event.pointerId) {
+        STATE.draggingFloat = null;
+        return;
+      }
       if (STATE.editingRegion && STATE.editingRegion.pointerId === event.pointerId) {
         STATE.editingRegion = null;
         render(container);
@@ -2686,17 +2815,23 @@
         render(container);
         return;
       }
-      if (action === "open-inspector") {
-        STATE.activeItemId = button.dataset.itemId || "";
-        STATE.inspectItemId = STATE.activeItemId;
+      if (action === "open-float" || action === "open-inspector" || action === "open-region-panel" || action === "restore-float") {
+        openFloat(button.dataset.itemId || "");
         renderPreservingStageScroll(container);
         return;
       }
-      if (action === "open-region-panel") {
-        STATE.activeItemId = button.dataset.itemId || "";
+      if (action === "close-float" || action === "close-inspector") {
+        persistDraftFromCurrentForm();
         STATE.inspectItemId = "";
-        setPanelMode("open");
-        render(container);
+        STATE.floatPos = null;
+        STATE.floatMinimized = false;
+        renderPreservingStageScroll(container);
+        return;
+      }
+      if (action === "minimize-float") {
+        persistDraftFromCurrentForm();
+        STATE.floatMinimized = true;
+        renderPreservingStageScroll(container);
         return;
       }
       if (action === "delete-region") {
@@ -2709,8 +2844,6 @@
       if (action === "adjust-region") {
         STATE.adjustingItemId = button.dataset.itemId || "";
         STATE.activeItemId = STATE.adjustingItemId;
-        STATE.inspectItemId = "";
-        setPanelMode("open");
         render(container);
         return;
       }
@@ -2719,15 +2852,36 @@
         render(container);
         return;
       }
-      if (action === "close-inspector") {
-        STATE.inspectItemId = "";
+      if (action === "toggle-drawer") {
+        setDrawerOpen(!drawerOpen());
+        render(container);
+        return;
+      }
+      if (action === "close-drawer") {
+        setDrawerOpen(false);
+        render(container);
+        return;
+      }
+      if (action === "focus-search") {
+        setDrawerOpen(true);
+        render(container);
+        const input = container.querySelector("[data-qd-search]");
+        input?.focus();
+        return;
+      }
+      if (action === "zoom-in") {
+        setZoom(currentZoom() + ZOOM_STEP);
         renderPreservingStageScroll(container);
         return;
       }
-      if (action === "panel-mode") {
-        persistDraftFromCurrentForm();
-        setPanelMode(button.dataset.panelMode || "open");
-        render(container);
+      if (action === "zoom-out") {
+        setZoom(currentZoom() - ZOOM_STEP);
+        renderPreservingStageScroll(container);
+        return;
+      }
+      if (action === "zoom-reset") {
+        setZoom(1);
+        renderPreservingStageScroll(container);
         return;
       }
       if (action === "filter") {
@@ -2748,7 +2902,7 @@
       if (action === "toggle-file-menu") {
         const key = button.dataset.menuKey || "";
         saveUi({ openFileMenu: readUi().openFileMenu === key ? "" : key });
-        render(container);
+        renderPreservingDrawerScroll(container);
         return;
       }
       if (action === "rename-file") {
@@ -2820,6 +2974,10 @@
         STATE.activeImageId = button.dataset.imageId || "";
         saveUi({ activeImageId: STATE.activeImageId });
         STATE.message = "";
+        STATE.inspectItemId = "";
+        STATE.floatPos = null;
+        STATE.floatMinimized = false;
+        setDrawerOpen(false);
         render(container);
         return;
       }
@@ -2984,7 +3142,8 @@
       render(STATE.container);
       return;
     }
-    const textarea = STATE.container?.querySelector("[data-qd-question]");
+    const textarea = STATE.container?.querySelector(`[data-qd-question][data-item-id="${itemId}"]`)
+      || STATE.container?.querySelector("[data-qd-question]");
     const question = String(textarea?.value || "").trim();
     if (!question) {
       window.MochiApp?.toast?.("先写一句你想问的问题");
@@ -2995,6 +3154,9 @@
       window.MochiApp?.toast?.("题图读取失败");
       return;
     }
+    // 从题旁气泡发问后，把这道题的浮窗打开，气泡顺势展开成浮窗。
+    STATE.inspectItemId = itemId;
+    STATE.floatMinimized = false;
     STATE.busy = true;
     STATE.message = "AI 正在看题...";
     render(STATE.container);
@@ -3151,6 +3313,37 @@
     render(STATE.container);
   }
 
-  window.MochiQuestionDesk = { render, parseDraft, clearStorage, exportPackage, importPackage };
+  // ── Phase 6：从学习档案/复习等旧站卡片反向跳回题桌原题图 ──
+  function imageItemForLog(logId) {
+    if (!logId) return null;
+    const item = items().find((entry) => entry.savedLogId === logId);
+    if (!item) return null;
+    const image = images().find((img) => img.id === item.imageId);
+    if (!image) return null;
+    return { item, image };
+  }
+
+  function hasImageForLog(logId) {
+    return Boolean(imageItemForLog(logId));
+  }
+
+  function openByLogId(logId) {
+    const found = imageItemForLog(logId);
+    if (!found) return false;
+    STATE.activeImageId = found.image.id;
+    STATE.filter = "all";
+    STATE.search = "";
+    STATE.inspectItemId = found.item.id;
+    STATE.activeItemId = found.item.id;
+    STATE.floatPos = null;
+    STATE.floatMinimized = false;
+    setDrawerOpen(false);
+    saveUi({ activeImageId: found.image.id, filter: "all", search: "" });
+    if (window.MochiApp?.navigate) window.MochiApp.navigate("desk");
+    else location.hash = "desk";
+    return true;
+  }
+
+  window.MochiQuestionDesk = { render, parseDraft, clearStorage, exportPackage, importPackage, hasImageForLog, openByLogId };
 })();
 

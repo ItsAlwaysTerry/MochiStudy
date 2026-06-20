@@ -125,16 +125,17 @@ button {
 .question-desk {
   --qd-blue: #2563eb;
   --qd-blue-soft: #dbeafe;
-  --qd-line: #dfe6ef;
+  --qd-line: #e6eaf0;
   --qd-muted: #64748b;
+  --qd-ink: #1c1c1e;
   --qd-paper: #ffffff;
+  --qd-canvas-bg: #f4f6f9;
   --qd-panel-bg: #f8fafc;
-  display: grid;
-  grid-template-columns: 260px minmax(0, 1fr) 360px;
-  gap: 12px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
   min-height: calc(100vh - 150px);
-  color: #172033;
-  transition: grid-template-columns 0.2s ease;
+  color: var(--qd-ink);
 }
 
 body.desk-mode .side-nav,
@@ -152,47 +153,185 @@ body.desk-mode .content {
 
 body.desk-mode .question-desk {
   min-height: 100vh;
-  padding: 12px;
-  background: #eef2f7;
+  height: 100vh;
+  background: var(--qd-canvas-bg);
   box-sizing: border-box;
 }
 
-.question-desk.qd-panel-collapsed {
-  grid-template-columns: 260px minmax(0, 1fr) 58px;
-}
-
-.question-desk.qd-panel-expanded {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.question-desk.qd-panel-expanded .qd-sidebar,
-.question-desk.qd-panel-expanded .qd-canvas {
-  display: none;
-}
-
-.question-desk.qd-panel-expanded .qd-panel {
-  width: min(1080px, 100%);
-  min-height: calc(100vh - 24px);
-  justify-self: center;
-}
-
-.qd-sidebar,
-.qd-canvas,
-.qd-panel {
-  min-width: 0;
-  border: 1px solid var(--qd-line);
-  border-radius: 16px;
-  background: var(--qd-panel-bg);
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
-}
-
-.qd-sidebar {
-  display: grid;
-  grid-template-rows: auto auto auto auto minmax(0, 1fr);
+/* ── 顶部纯图标工具栏 ── */
+.qd-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 12px;
+  height: 52px;
+  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--qd-line);
+  z-index: 6;
+}
+
+.qd-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.qd-toolbar-center {
+  gap: 6px;
+}
+
+.qd-toolbar-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--qd-ink);
+  max-width: 26vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qd-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--qd-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.qd-tool-btn:hover {
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--qd-ink);
+}
+
+.qd-tool-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+  background: transparent;
+}
+
+.qd-tool-btn .material-symbols-outlined {
+  font-size: 22px;
+}
+
+.qd-tool-btn.active,
+.qd-tool-btn.active:hover {
+  background: var(--qd-blue);
+  color: #fff;
+}
+
+.qd-tool-import {
+  position: relative;
+  overflow: hidden;
+}
+
+.qd-tool-growth:hover {
+  color: var(--qd-blue);
+}
+
+.qd-zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.qd-zoom-label {
+  min-width: 46px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: var(--qd-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.qd-zoom-label:hover {
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--qd-ink);
+}
+
+/* ── 画布区（铺满，文档为主角） ── */
+.qd-stage-area {
+  position: relative;
+  flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
+}
+
+.qd-canvas {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--qd-canvas-bg);
+}
+
+/* ── 左侧滑出文件抽屉 ── */
+.qd-drawer {
+  position: absolute;
+  top: 52px;
+  left: 0;
+  bottom: 0;
+  width: min(300px, 86vw);
+  background: var(--qd-paper);
+  border-right: 1px solid var(--qd-line);
+  box-shadow: 18px 0 48px rgba(15, 23, 42, 0.14);
+  transform: translateX(-104%);
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: 60;
+}
+
+.qd-drawer.open {
+  transform: translateX(0);
+}
+
+.qd-drawer-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
   padding: 14px;
+  box-sizing: border-box;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.qd-drawer-scrim {
+  position: absolute;
+  inset: 52px 0 0 0;
+  background: rgba(15, 23, 42, 0.28);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.28s ease;
+  z-index: 55;
+}
+
+.qd-drawer-scrim.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.qd-drawer-close {
+  margin: -4px -4px 0 0;
+}
+
+.qd-drawer-upload {
+  justify-content: center;
+  width: 100%;
 }
 
 .qd-head {
@@ -284,8 +423,6 @@ body.desk-mode .question-desk {
 
 .qd-file-list {
   align-content: start;
-  min-height: 0;
-  overflow-y: auto;
   padding-right: 2px;
 }
 
@@ -321,6 +458,7 @@ body.desk-mode .question-desk {
 .qd-pdf-group {
   display: grid;
   gap: 5px;
+  position: relative;
 }
 
 .qd-pdf-group.active {
@@ -370,6 +508,7 @@ body.desk-mode .question-desk {
 .qd-file-group {
   display: grid;
   gap: 5px;
+  position: relative;
 }
 
 .qd-file-row {
@@ -404,13 +543,29 @@ body.desk-mode .question-desk {
 }
 
 .qd-file-menu {
+  position: absolute;
+  top: 4px;
+  right: 38px;
+  z-index: 8;
   display: flex;
-  gap: 6px;
-  padding-left: 4px;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid var(--qd-line);
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.2);
+  animation: qd-file-menu-pop 0.14s ease;
 }
 
-.qd-pdf-group > .qd-file-menu {
-  padding-left: 4px;
+.qd-file-menu .btn {
+  justify-content: flex-start;
+  white-space: nowrap;
+}
+
+@keyframes qd-file-menu-pop {
+  from { opacity: 0; transform: translateY(-3px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .qd-file-status {
@@ -676,13 +831,9 @@ body.desk-mode .question-desk {
   text-align: center;
 }
 
-.qd-canvas {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 12px;
-  min-height: 0;
-  padding: 14px;
-  background: #eef2f7;
+.qd-canvas > .qd-grind-session-bar {
+  flex: 0 0 auto;
+  margin: 10px 14px 0;
 }
 
 .qd-viewer-head-stack {
@@ -796,24 +947,39 @@ body.desk-mode .question-desk {
   color: #1d4ed8;
 }
 
-.qd-image-stage,
+.qd-image-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  justify-content: safe center;
+  align-items: safe center;
+  padding: 28px;
+  background: var(--qd-canvas-bg);
+  overflow: auto;
+}
+
 .qd-dropzone {
   position: relative;
+  flex: 1 1 auto;
   display: grid;
   place-items: center;
-  min-height: 420px;
-  border: 1px solid var(--qd-line);
-  border-radius: 12px;
-  background: #fff;
-  overflow: auto;
+  min-height: 0;
+  text-align: center;
+  padding: 32px;
+  background: var(--qd-canvas-bg);
 }
 
 .qd-image-wrap {
   position: relative;
-  display: inline-block;
-  max-width: 100%;
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: none;
   line-height: 0;
   user-select: none;
+  background: var(--qd-paper);
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08), 0 14px 40px rgba(15, 23, 42, 0.12);
 }
 
 .qd-image-wrap.qd-lasso-enabled {
@@ -823,9 +989,9 @@ body.desk-mode .question-desk {
 
 .qd-image-stage img {
   display: block;
-  max-width: 100%;
+  width: 100%;
   height: auto;
-  margin: auto;
+  border-radius: 6px;
 }
 
 .qd-region-layer {
@@ -1023,12 +1189,289 @@ body.desk-mode .question-desk {
 }
 
 .qd-region.saved span {
-  background: #16a34a;
+  background: linear-gradient(135deg, #f6c343, #e0a90b);
+  box-shadow: 0 8px 18px rgba(224, 169, 11, 0.34);
+}
+
+.qd-region.saved span.material-symbols-outlined {
+  font-variation-settings: "FILL" 1, "wght" 600, "GRAD" 0, "opsz" 24;
 }
 
 .qd-region.asked span,
 .qd-region.drafted span {
   background: #0ea5e9;
+}
+
+/* ── 题旁小气泡：套索定形后浮出 ── */
+.qd-bubble {
+  position: absolute;
+  left: var(--qb-left, 50%);
+  top: var(--qb-top, 50%);
+  transform: translate(var(--qb-x-shift, 0), var(--qb-y-shift, 0));
+  z-index: 14;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 5px 5px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid var(--qd-line);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.18);
+  pointer-events: auto;
+  line-height: normal;
+  animation: qd-bubble-in 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes qd-bubble-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.qd-bubble-input {
+  width: clamp(150px, 22vw, 230px);
+  border: 0;
+  background: transparent;
+  font-size: 13px;
+  color: var(--qd-ink);
+  outline: none;
+}
+
+.qd-bubble-send,
+.qd-bubble-expand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.qd-bubble-send {
+  background: var(--qd-blue);
+  color: #fff;
+}
+
+.qd-bubble-send:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.qd-bubble-expand {
+  background: transparent;
+  color: var(--qd-muted);
+}
+
+.qd-bubble-expand:hover {
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--qd-blue);
+}
+
+.qd-bubble .material-symbols-outlined {
+  font-size: 18px;
+}
+
+/* ── 可拖动浮窗 / 回看橱窗 ── */
+.qd-float {
+  position: absolute;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  width: min(420px, calc(100% - 28px));
+  max-height: calc(100% - 28px);
+  border: 1px solid var(--qd-line);
+  border-radius: 16px;
+  background: var(--qd-paper);
+  box-shadow: 0 26px 70px rgba(15, 23, 42, 0.22);
+  overflow: hidden;
+  animation: qd-float-in 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes qd-float-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.qd-float.saved {
+  border-color: rgba(224, 169, 11, 0.5);
+}
+
+.qd-float-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 12px 12px 14px;
+  border-bottom: 1px solid var(--qd-line);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.qd-float-head:active {
+  cursor: grabbing;
+}
+
+.qd-float-head-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.qd-float-head-text strong {
+  display: block;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qd-float-head-text span {
+  display: block;
+  margin-top: 1px;
+  color: var(--qd-muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qd-float-head-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 2px;
+}
+
+.qd-float-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--qd-muted);
+  cursor: pointer;
+}
+
+.qd-float-icon:hover {
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--qd-ink);
+}
+
+.qd-float-icon .material-symbols-outlined {
+  font-size: 20px;
+}
+
+.qd-float-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  padding: 12px 14px 14px;
+  overflow: auto;
+}
+
+.qd-float.minimized {
+  width: auto;
+  max-width: 260px;
+  flex-direction: row;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 6px 4px 4px;
+}
+
+.qd-float-restore {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 200px;
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: transparent;
+  color: var(--qd-ink);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.qd-float-restore span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qd-float-restore .material-symbols-outlined {
+  font-size: 18px;
+  color: var(--qd-blue);
+}
+
+.qd-float.saved .qd-float-restore .material-symbols-outlined {
+  color: #e0a90b;
+  font-variation-settings: "FILL" 1;
+}
+
+.qd-float-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--qd-muted);
+  cursor: pointer;
+}
+
+.qd-float-close:hover {
+  background: rgba(15, 23, 42, 0.06);
+}
+
+.qd-float-saved h4 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.qd-float-saved h4 .material-symbols-outlined {
+  font-size: 18px;
+  color: #e0a90b;
+  font-variation-settings: "FILL" 1;
+}
+
+/* 整张题图 AI 入口（画布右下角浮起按钮） */
+.qd-canvas-ask {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  z-index: 16;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--qd-blue);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 14px 34px rgba(37, 99, 235, 0.34);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.qd-canvas-ask:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 40px rgba(37, 99, 235, 0.4);
+}
+
+.qd-canvas-ask .material-symbols-outlined {
+  font-size: 20px;
 }
 
 .qd-inspector {
@@ -1761,62 +2204,56 @@ details.qd-recognition-card[open] > summary.qd-recognition-row::after {
   gap: 8px;
 }
 
-@media (max-width: 1100px) {
-  .question-desk {
-    grid-template-columns: 220px minmax(0, 1fr);
-  }
-
-  .question-desk:not(.qd-panel-collapsed):not(.qd-panel-expanded) .qd-panel {
-    grid-column: 1 / -1;
-  }
-
-  .question-desk.qd-panel-collapsed {
-    grid-template-columns: 220px minmax(0, 1fr) 58px;
-  }
+@keyframes qd-sheet-in {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
 }
 
 @media (max-width: 760px) {
-  .question-desk {
-    grid-template-columns: 1fr;
+  .qd-toolbar-title {
+    max-width: 34vw;
   }
 
-  .question-desk.qd-panel-collapsed,
-  .question-desk.qd-panel-expanded {
-    grid-template-columns: 1fr;
+  .qd-drawer {
+    width: min(360px, 94vw);
   }
 
-  .question-desk.qd-panel-collapsed .qd-panel {
-    min-height: 70px;
-  }
-
-  .question-desk.qd-panel-collapsed .qd-rail-btn {
+  /* 浮窗退化为底部弹层 */
+  .qd-float {
+    left: 0 !important;
+    top: auto !important;
+    right: 0;
+    bottom: 0;
     width: 100%;
-    min-height: 48px;
-    grid-auto-flow: column;
-    justify-content: center;
+    max-width: none;
+    max-height: 80vh;
+    border-radius: 18px 18px 0 0;
+    animation: qd-sheet-in 0.26s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
-  .qd-sidebar,
-  .qd-canvas,
-  .qd-panel {
-    border-radius: 10px;
+  .qd-float-head {
+    cursor: default;
+  }
+
+  .qd-float.minimized {
+    left: auto !important;
+    top: auto !important;
+    right: 12px;
+    bottom: 12px;
+    width: auto;
+    border-radius: 999px;
+  }
+
+  .qd-bubble-input {
+    width: clamp(120px, 42vw, 200px);
+  }
+
+  .qd-canvas-ask {
+    right: 14px;
+    bottom: 14px;
   }
 
   .qd-draft-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .qd-head {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .qd-growth-btn {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .qd-action-row {
     grid-template-columns: 1fr;
   }
 
@@ -1860,16 +2297,6 @@ details.qd-recognition-card[open] > summary.qd-recognition-row::after {
   .qd-grind-session-actions .btn {
     flex: 1 1 0;
     justify-content: center;
-  }
-
-  .qd-inspector {
-    left: 10px;
-    top: auto;
-    right: auto;
-    bottom: 10px;
-    transform: none;
-    width: calc(100% - 20px);
-    max-height: 70vh;
   }
 }
 
