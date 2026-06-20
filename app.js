@@ -1811,25 +1811,14 @@
     });
   }
 
-  function renderDesk(container) {
-    window.MochiQuestionDesk?.render?.(container);
-  }
-
-  function normalizeRoute(routeId) {
-    const mapped = routeId === "schedule" ? "season" : routeId;
-    return ["desk", "home", "learn", "today", "review", "map", "achievements", "season", "settings"].includes(mapped) ? mapped : "desk";
-  }
-
   function route(routeName) {
-    const rawRouteId = routeName || location.hash.replace("#", "") || "desk";
-    const routeId = normalizeRoute(rawRouteId);
+    const rawRouteId = routeName || location.hash.replace("#", "") || "home";
+    const routeId = rawRouteId === "schedule" ? "season" : rawRouteId;
     if (rawRouteId === "schedule" && location.hash === "#schedule") {
       history.replaceState(null, "", "#season");
     }
-    document.body.classList.toggle("desk-mode", routeId === "desk");
     setActive(routeId);
-    if (routeId === "desk") renderDesk(view);
-    else if (routeId === "home") window.MochiFarm?.renderFarm?.(view);
+    if (routeId === "home") window.MochiFarm?.renderFarm?.(view);
     else if (routeId === "schedule") renderSeason(view);
     else if (routeId === "learn") renderLearn(view);
     else if (routeId === "today") renderLearn(view, "today");
@@ -1838,14 +1827,14 @@
     else if (routeId === "achievements") renderAchievements(view);
     else if (routeId === "season") renderSeason(view);
     else if (routeId === "settings") renderSettings(view);
-    else renderDesk(view);
+    else window.MochiFarm?.renderFarm?.(view);
     window.MochiPet.renderMiniState();
     // 切换页面后回到顶部，避免继承上一个页面的滚动位置（如档案下滑后跳复习页看不到顶部面板）。
     window.scrollTo(0, 0);
   }
 
   function currentRoute() {
-    return normalizeRoute(location.hash.replace("#", "") || "desk");
+    return location.hash.replace("#", "") || "home";
   }
 
   function updateNavBadge() {
@@ -1880,7 +1869,7 @@
       route(routeId);
       return;
     }
-    const current = currentRoute();
+    const current = location.hash.replace("#", "") || "home";
     if (current === routeId) route(routeId);
     else location.hash = routeId;
   }
@@ -2928,7 +2917,6 @@
     if (routeId === "settings") renderSettings(view);
     if (routeId === "home") window.MochiFarm?.renderFarm?.(view);
     if (routeId === "learn") renderLearn(view);
-    if (routeId === "desk") renderDesk(view);
     if (routeId === "today") renderLearn(view, "today");
     if (routeId === "review") renderLearn(view, "review");
     if (routeId === "map") renderLearn(view, "map");
@@ -3738,7 +3726,7 @@
         </section>
         <section class="card" style="grid-column:1 / -1">
           <h3>AI 使用指南</h3>
-          <p class="muted" style="margin-top:4px">这些 AI Prompt 分别用于学新题、复习旧卡点、综合测验、从零重学一章、题桌单题讲解和啃卷子错题。复制后粘贴到 Claude 的「项目说明」里，即可激活对应的 AI 角色。</p>
+          <p class="muted" style="margin-top:4px">五个 AI Prompt，分别用于学新题、复习旧卡点、综合测验、从零重学一章和啃卷子错题。复制后粘贴到 Claude 的「项目说明」里，即可激活对应的 AI 角色。</p>
           <div class="ai-guide-prompts" style="margin-top:16px;display:flex;flex-direction:column;gap:12px">
             <details class="ai-prompt-entry">
               <summary class="ai-prompt-summary">
@@ -3807,21 +3795,6 @@
             <details class="ai-prompt-entry">
               <summary class="ai-prompt-summary">
                 <div>
-                  <strong>题桌 AI 私教</strong>
-                  <span class="muted" style="font-size:12px">题桌内置 · 读取单张题图 → 逐步提示讲题 → 生成学习记录草稿</span>
-                </div>
-                <button class="btn btn-soft btn-sm ai-prompt-copy-btn" data-action="copy-ai-prompt" data-prompt-path="./skill/gaokao题桌.md" type="button">
-                  <span class="material-symbols-outlined">content_copy</span>复制 Prompt
-                </button>
-              </summary>
-              <div class="ai-prompt-steps">
-                <p><strong>使用方法：</strong>这是题桌 Phase 1 的站内单题视觉讲解 Prompt。它不负责多题排序，只负责看一张题图、一步步带学生讲通，并生成学习记录草稿。</p>
-                <p class="muted" style="font-size:12px;margin-top:6px">流程：读图定位 → 先问卡点 → 脚手架提示 → 总结3步套路 → 生成记录草稿</p>
-              </div>
-            </details>
-            <details class="ai-prompt-entry">
-              <summary class="ai-prompt-summary">
-                <div>
                   <strong>啃卷子 AI 私教</strong>
                   <span class="muted" style="font-size:12px">拿到考卷错题时用 · 按高考考频 × 短期提分空间排优先级 → 一道一道带啃 → 输出 MOCHI-RECORD</span>
                 </div>
@@ -3846,28 +3819,8 @@
             </div>
             <div class="field"><label>API Key</label><input type="password" name="apiKey" value="${config.apiKey || ""}" placeholder="sk-..." /></div>
             <div class="field"><label>模型名称</label><input name="model" value="${config.model || ""}" placeholder="deepseek-chat / moonshot-v1-8k / qwen-plus" /></div>
-            <div class="field">
-              <label>最大输出 tokens</label>
-              <input name="maxTokens" type="number" min="256" step="256" value="${config.maxTokens || 2200}" placeholder="2200" />
-              <p class="field-hint">题桌讲题建议 2000 以上；原来的 1000 容易讲到一半截断。</p>
-            </div>
             <button class="btn btn-primary" type="submit"><span class="material-symbols-outlined">save</span>保存配置</button>
           </form>
-        </section>
-        <section class="card">
-          <h3>视觉 AI 验证</h3>
-          <p class="muted">Phase 0 的 go/no-go：用当前 API 配置测试模型是否真的能读题图。读不了图片，就先换支持视觉的模型，不进入题桌 UI 开发。</p>
-          <div class="form-grid" style="margin-top:18px">
-            <div class="field">
-              <label>测试题图</label>
-              <input id="vision-ai-test-image" type="file" accept="image/*" />
-              <p class="field-hint">选一张包含题干的截图或拍照图。系统只做读图验证，不保存这张图片。</p>
-            </div>
-            <button class="btn btn-primary" data-action="test-vision-ai" type="button">
-              <span class="material-symbols-outlined">visibility</span>测试视觉 AI
-            </button>
-            <div id="vision-ai-test-result" class="review-import-result" hidden></div>
-          </div>
         </section>
         <section class="card">
           <h3>数据备份与恢复</h3>
@@ -3875,9 +3828,6 @@
           <div class="settings-list" style="margin-top:18px">
             <button class="btn btn-outline" data-action="export-data"><span class="material-symbols-outlined">download</span>导出备份</button>
             <label class="btn btn-outline" style="cursor:pointer"><span class="material-symbols-outlined">upload</span>导入恢复<input id="backup-import" type="file" accept="application/json" hidden /></label>
-            <button class="btn btn-outline" data-action="export-question-desk"><span class="material-symbols-outlined">inventory_2</span>导出题桌图片包</button>
-            <label class="btn btn-outline" style="cursor:pointer"><span class="material-symbols-outlined">unarchive</span>导入题桌图片包<input id="question-desk-import" type="file" accept="application/json" hidden /></label>
-            <p class="field-hint">普通备份保存学习档案、专注和设置；题桌图片包额外保存题桌原图、框选区域和对话现场，换设备前建议一起导出。</p>
           </div>
         </section>
         <section class="card">
@@ -4779,52 +4729,22 @@ ${record.originalQuestion || "暂无原题描述。"}
   }
   // ── end 专注承诺门 ────────────────────────────────────────────────────────
 
-  let focusOverlayMinimized = false;
-  let focusMiniDrag = null;
-
   function enterFocusMode() {
-    focusOverlayMinimized = false;
     document.body.classList.add("focus-mode");
-    document.body.classList.remove("focus-mini-mode");
     const overlay = document.getElementById("focus-overlay");
     if (!overlay) return;
-    overlay.classList.remove("mini");
     overlay.hidden = false;
     overlay.innerHTML = renderFocusOverlay();
     bindFocusOverlay(overlay);
   }
 
   function exitFocusMode() {
-    if (!document.body.classList.contains("focus-mode") && !document.body.classList.contains("focus-mini-mode")) return;
+    if (!document.body.classList.contains("focus-mode")) return;
     document.body.classList.remove("focus-mode");
-    document.body.classList.remove("focus-mini-mode");
-    focusOverlayMinimized = false;
     const overlay = document.getElementById("focus-overlay");
-    if (overlay) {
-      overlay.classList.remove("mini");
-      overlay.hidden = true;
-    }
+    if (overlay) overlay.hidden = true;
     const viewEl = document.getElementById("view");
     if (viewEl && currentRoute() === "home") window.MochiFarm?.renderFarm?.(viewEl);
-  }
-
-  function focusMiniPosition() {
-    return readJson("focus_mini_position", { right: 18, bottom: 18 });
-  }
-
-  function writeFocusMiniPosition(pos) {
-    writeJson("focus_mini_position", {
-      right: Math.max(8, Math.round(Number(pos?.right) || 18)),
-      bottom: Math.max(8, Math.round(Number(pos?.bottom) || 18)),
-    });
-  }
-
-  function setFocusOverlayMinimized(minimized) {
-    const timer = window.MochiTimer?.getState?.() || {};
-    focusOverlayMinimized = Boolean(minimized && timer.phase === "focusing");
-    document.body.classList.toggle("focus-mode", !focusOverlayMinimized);
-    document.body.classList.toggle("focus-mini-mode", focusOverlayMinimized);
-    refreshFocusOverlay();
   }
 
   function getFocusEncouragement(mins) {
@@ -4836,11 +4756,7 @@ ${record.originalQuestion || "暂无原题描述。"}
 
   function renderFocusOverlay() {
     const timer = window.MochiTimer?.getState?.() || {};
-    if (focusOverlayMinimized && timer.phase === "focusing") return renderFocusMiniOverlay(timer);
     if (timer.phase === "deciding") {
-      focusOverlayMinimized = false;
-      document.body.classList.add("focus-mode");
-      document.body.classList.remove("focus-mini-mode");
       const actualMins = timer.pendingActualMins || 0;
       const restMins = timer.pendingRestMins || 5;
       const c = activeCommitment();
@@ -4924,9 +4840,6 @@ ${record.originalQuestion || "暂无原题描述。"}
             <span class="material-symbols-outlined">stop_circle</span>
             结束这一轮
           </button>
-          <button class="btn btn-ghost btn-sm" data-action="minimize-focus-overlay" type="button">
-            最小化计时
-          </button>
           <button class="btn btn-ghost btn-sm" data-action="give-up" type="button" style="color:rgba(255,255,255,0.35);margin-top:4px">
             放弃本轮
           </button>
@@ -4946,20 +4859,6 @@ ${record.originalQuestion || "暂无原题描述。"}
     `;
   }
 
-  function renderFocusMiniOverlay(timer) {
-    const elapsedSecs = Number(timer.elapsedSecs || 0);
-    const mins = String(Math.floor(elapsedSecs / 60)).padStart(2, "0");
-    const secs = String(elapsedSecs % 60).padStart(2, "0");
-    const pos = focusMiniPosition();
-    return `
-      <button class="focus-mini-card" data-action="restore-focus-overlay" data-focus-mini style="right:${pos.right}px;bottom:${pos.bottom}px" type="button" title="返回专注页">
-        <span class="material-symbols-outlined">timer</span>
-        <strong class="focus-time">${mins}:${secs}</strong>
-        <small>${timer.microGoal ? escapeHtml(timer.microGoal) : "专注中"}</small>
-      </button>
-    `;
-  }
-
   function bindFocusOverlay(overlay) {
     overlay.onclick = (event) => {
       const button = event.target.closest("[data-action]");
@@ -4968,18 +4867,7 @@ ${record.originalQuestion || "暂无原题描述。"}
       event.preventDefault();
       event.stopPropagation();
       if (action === "stop-and-rest") {
-        focusOverlayMinimized = false;
-        document.body.classList.remove("focus-mini-mode");
         window.MochiTimer?.stopAndRest?.();
-        return;
-      }
-      if (action === "minimize-focus-overlay") {
-        setFocusOverlayMinimized(true);
-        return;
-      }
-      if (action === "restore-focus-overlay") {
-        if (focusMiniDrag?.moved) return;
-        setFocusOverlayMinimized(false);
         return;
       }
       if (action === "confirm-rest") {
@@ -4991,8 +4879,6 @@ ${record.originalQuestion || "暂无原题描述。"}
         return;
       }
       if (action === "give-up") {
-        focusOverlayMinimized = false;
-        document.body.classList.remove("focus-mini-mode");
         window.MochiTimer?.giveUp?.();
         return;
       }
@@ -5013,47 +4899,6 @@ ${record.originalQuestion || "暂无原题描述。"}
           overlay.querySelector("#focus-record-paste"),
           overlay.querySelector("#focus-upload-result")
         );
-      }
-    };
-    overlay.onpointerdown = (event) => {
-      const mini = event.target.closest("[data-focus-mini]");
-      if (!mini || event.button !== 0) return;
-      const pos = focusMiniPosition();
-      focusMiniDrag = {
-        pointerId: event.pointerId,
-        startX: event.clientX,
-        startY: event.clientY,
-        startRight: pos.right,
-        startBottom: pos.bottom,
-        moved: false,
-      };
-      mini.setPointerCapture?.(event.pointerId);
-    };
-    overlay.onpointermove = (event) => {
-      if (!focusMiniDrag || focusMiniDrag.pointerId !== event.pointerId) return;
-      const dx = event.clientX - focusMiniDrag.startX;
-      const dy = event.clientY - focusMiniDrag.startY;
-      if (Math.abs(dx) + Math.abs(dy) > 4) focusMiniDrag.moved = true;
-      const next = {
-        right: Math.min(window.innerWidth - 80, Math.max(8, focusMiniDrag.startRight - dx)),
-        bottom: Math.min(window.innerHeight - 54, Math.max(8, focusMiniDrag.startBottom - dy)),
-      };
-      const mini = overlay.querySelector("[data-focus-mini]");
-      if (mini) {
-        mini.style.right = `${next.right}px`;
-        mini.style.bottom = `${next.bottom}px`;
-      }
-      focusMiniDrag.next = next;
-    };
-    overlay.onpointerup = (event) => {
-      if (!focusMiniDrag || focusMiniDrag.pointerId !== event.pointerId) return;
-      if (focusMiniDrag.next) writeFocusMiniPosition(focusMiniDrag.next);
-      const moved = focusMiniDrag.moved;
-      focusMiniDrag = moved ? { moved: true } : null;
-      if (moved) {
-        event.preventDefault();
-        event.stopPropagation();
-        setTimeout(() => { if (focusMiniDrag?.moved) focusMiniDrag = null; }, 0);
       }
     };
     const focusPaste = overlay.querySelector("#focus-record-paste");
@@ -5084,9 +4929,7 @@ ${record.originalQuestion || "暂无原题描述。"}
   function refreshFocusOverlay() {
     const overlay = document.getElementById("focus-overlay");
     if (!overlay || overlay.hidden) return;
-    overlay.classList.toggle("mini", focusOverlayMinimized);
-    const importBody = overlay.querySelector(".focus-import-body");
-    const importOpen = importBody ? !importBody.hidden : false;
+    const importOpen = !overlay.querySelector(".focus-import-body")?.hidden;
     const importValue = overlay.querySelector("#focus-record-paste")?.value || "";
     overlay.innerHTML = renderFocusOverlay();
     const body = overlay.querySelector(".focus-import-body");
@@ -5142,18 +4985,11 @@ ${record.originalQuestion || "暂无原题描述。"}
       || key.startsWith("daily_tasks_");
   }
 
-  function isQuestionDeskStorageKey(key) {
-    return key === "question_desk_images"
-      || key === "question_desk_items"
-      || key === "question_desk_ui_state"
-      || key === "question_desk_notebooks";
-  }
-
   function rawLocalStorageSnapshot() {
     return Object.fromEntries(Array.from({ length: localStorage.length }, (_, index) => {
       const key = localStorage.key(index);
       return key ? [key, localStorage.getItem(key)] : null;
-    }).filter((entry) => entry && !isRetiredStorageKey(entry[0]) && !isQuestionDeskStorageKey(entry[0])));
+    }).filter((entry) => entry && !isRetiredStorageKey(entry[0])));
   }
 
   function createBackupPayload() {
@@ -5212,56 +5048,6 @@ ${record.originalQuestion || "暂无原题描述。"}
     }
   }
 
-  async function testVisionAI(btn) {
-    const input = document.getElementById("vision-ai-test-image");
-    const result = document.getElementById("vision-ai-test-result");
-    const file = input?.files?.[0];
-    if (!result) return;
-    result.hidden = false;
-    if (!file) {
-      result.innerHTML = `<strong>还没有选择题图</strong><p class="muted">先选一张包含题干的图片，再测试当前模型是否能读图。</p>`;
-      return;
-    }
-
-    const form = document.getElementById("api-form");
-    if (form) window.MochiAI.saveConfig(Object.fromEntries(new FormData(form)));
-    const config = window.MochiAI.readConfig();
-    if (!config.apiKey || !config.baseUrl || !config.model) {
-      result.innerHTML = `<strong>AI 配置不完整</strong><p class="muted">请先填写 Base URL、API Key 和模型名称。</p>`;
-      return;
-    }
-
-    const originalHtml = btn?.innerHTML || "";
-    if (btn) {
-      btn.disabled = true;
-      btn.innerHTML = `<span class="material-symbols-outlined">hourglass_top</span>正在测试`;
-    }
-    result.innerHTML = `<strong>正在请求模型读图...</strong><p class="muted">如果模型不支持视觉，这里通常会直接报错，或者回复看不到图片。</p>`;
-
-    try {
-      const text = await window.MochiAI.testVisionAI(file);
-      const cannotSee = /看不到图片|无法查看图片|不能查看图片|无法读取图片|can't see|cannot see|unable to view/i.test(text || "");
-      result.innerHTML = `
-        <strong>${cannotSee ? "疑似未通过：模型说看不到图片" : "请求成功：请人工确认它是否真的读到了题图"}</strong>
-        <p class="muted">${cannotSee ? "这通常表示当前模型或 endpoint 不支持图片输入。" : "请先核对下面【图中原文】后的片段是否真的出现在图片里；只有抄得对，Phase 0 才算基本通过。"}</p>
-        <pre class="vision-test-output">${escapeHtml(text || "模型没有返回文本。")}</pre>
-      `;
-      toast(cannotSee ? "模型可能不支持读图" : "视觉 AI 测试完成");
-    } catch (error) {
-      result.innerHTML = `
-        <strong>测试失败</strong>
-        <p class="muted">${escapeHtml(error.message || "AI 连接失败")}</p>
-        <p class="field-hint">如果错误提到 image、content array、unsupported 或 invalid type，通常说明当前 endpoint/model 不支持视觉输入。</p>
-      `;
-      toast("视觉 AI 测试失败");
-    } finally {
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = originalHtml;
-      }
-    }
-  }
-
   async function copyCmd(btn) {
     const text = btn?.dataset?.copyText;
     if (!text) return;
@@ -5288,44 +5074,6 @@ ${record.originalQuestion || "暂无原题描述。"}
     toast("备份文件已导出");
   }
 
-  async function exportQuestionDeskPackage() {
-    try {
-      const payload = await window.MochiQuestionDesk?.exportPackage?.();
-      if (!payload) throw new Error("题桌模块还没加载完成");
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `mochistudy-question-desk-${todayKey()}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      const count = payload.data?.images?.length || 0;
-      toast(`题桌图片包已导出：${count} 张题图`);
-    } catch (error) {
-      toast(error.message || "题桌图片包导出失败");
-    }
-  }
-
-  function importQuestionDeskPackage(file, inputEl) {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        const payload = JSON.parse(String(reader.result || "{}"));
-        if (!confirm("导入题桌图片包会替换当前题桌里的题图、框选和对话现场。已保存到学习档案的记录不会被删除。继续吗？")) return;
-        const result = await window.MochiQuestionDesk?.importPackage?.(payload);
-        toast(`题桌图片包已导入：${result?.imageCount || 0} 张题图`);
-        navigate("desk");
-      } catch (error) {
-        toast(error.message || "题桌图片包导入失败");
-      }
-    };
-    reader.onerror = () => toast("题桌图片包读取失败");
-    reader.onloadend = () => {
-      if (inputEl) inputEl.value = "";
-    };
-    reader.readAsText(file);
-  }
   function validateBackupPayload(payload) {
     if (!payload || typeof payload !== "object") return "备份文件格式不正确";
     if (!payload.version) return "备份文件缺少 version 字段";
@@ -5398,9 +5146,7 @@ ${record.originalQuestion || "暂无原题描述。"}
     const raw = payload.data.localStorage;
     if (raw && typeof raw === "object" && !Array.isArray(raw)) {
       Object.entries(raw).forEach(([key, value]) => {
-        if (typeof key === "string" && !isRetiredStorageKey(key) && !isQuestionDeskStorageKey(key)) {
-          localStorage.setItem(key, String(value ?? ""));
-        }
+        if (typeof key === "string" && !isRetiredStorageKey(key)) localStorage.setItem(key, String(value ?? ""));
       });
     } else {
       restoreKnownBackupData(payload.data);
@@ -5430,38 +5176,28 @@ ${record.originalQuestion || "暂无原题描述。"}
   }
 
   function progressDataKeys() {
-    const fixed = [STUDY_LOG_KEY, "focus_log", "farm_state", "mochi_state", "achievement_state", CURRENT_SEASON_KEY, CARD_ORDER_KEY, CARD_META_KEY, NODE_SUMMARY_KEY, "question_desk_images", "question_desk_items", "question_desk_ui_state", "question_desk_notebooks", "mochi_study_points", "mochi_hearts", "daily_task_settings"];
+    const fixed = [STUDY_LOG_KEY, "focus_log", "farm_state", "mochi_state", "achievement_state", CURRENT_SEASON_KEY, CARD_ORDER_KEY, CARD_META_KEY, NODE_SUMMARY_KEY, "mochi_study_points", "mochi_hearts", "daily_task_settings"];
     const dynamic = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
       .filter((key) => key && key.startsWith("daily_tasks_"));
     return [...new Set([...fixed, ...dynamic])];
   }
 
-  async function clearQuestionDeskData() {
-    try {
-      await window.MochiQuestionDesk?.clearStorage?.();
-    } catch {
-      // LocalStorage keys are still removed by the caller; IndexedDB cleanup can be retried by factory reset.
-    }
-  }
-
-  async function clearProgressData() {
+  function clearProgressData() {
     if (!confirm("清空前建议先导出备份。此操作会删除学习记录、专注记录、农场进度和学习状态，无法撤销。确认继续吗？")) return;
     progressDataKeys().forEach((key) => localStorage.removeItem(key));
-    await clearQuestionDeskData();
     toast("学习进度已清空，正在刷新页面");
     location.reload();
   }
 
-  async function factoryResetData() {
+  function factoryResetData() {
     if (!confirm("这会删除 Mochii 在当前浏览器里的全部数据和设置。请先导出备份。确认恢复出厂设置吗？")) return;
     allDataKeys().forEach((key) => localStorage.removeItem(key));
-    await clearQuestionDeskData();
     toast("本地数据和设置已清空，正在刷新页面");
     location.reload();
   }
 
   function allDataKeys() {
-    const fixed = ["mochi_state", "farm_state", STUDY_LOG_KEY, "focus_log", "achievement_state", "achievement_config", "lottery_config", "lottery_history", CURRENT_SEASON_KEY, SEASON_ARCHIVES_KEY, CARD_ORDER_KEY, CARD_META_KEY, NODE_SUMMARY_KEY, "question_desk_images", "question_desk_items", "question_desk_ui_state", "question_desk_notebooks", "admin_password", "api_config", HOLIDAYS_KEY, HOLIDAY_MODE_KEY, "mochi_debug_panel_open", "mochi_debug_float_collapsed", "mochi_debug_tab", "game_config", "sound_reminder_enabled", "focus_end_sound", "rest_reminder_sound", "focus_mini_position", READING_FONT_KEY, READING_SIZE_KEY];
+    const fixed = ["mochi_state", "farm_state", STUDY_LOG_KEY, "focus_log", "achievement_state", "achievement_config", "lottery_config", "lottery_history", CURRENT_SEASON_KEY, SEASON_ARCHIVES_KEY, CARD_ORDER_KEY, CARD_META_KEY, NODE_SUMMARY_KEY, "admin_password", "api_config", HOLIDAYS_KEY, HOLIDAY_MODE_KEY, "mochi_debug_panel_open", "mochi_debug_float_collapsed", "mochi_debug_tab", "game_config", "sound_reminder_enabled", "focus_end_sound", "rest_reminder_sound", READING_FONT_KEY, READING_SIZE_KEY];
     const dynamic = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
       .filter((key) => key && isRetiredStorageKey(key));
     return [...new Set([...fixed, ...dynamic])];
@@ -5652,7 +5388,7 @@ ${record.originalQuestion || "暂无原题描述。"}
   function debugRefreshFarm() {
     renderDebugPanel();
     window.MochiPet?.renderMiniState?.();
-    const routeId = currentRoute();
+    const routeId = location.hash.replace("#", "") || "home";
     if (view && routeId === "home") window.MochiFarm?.renderFarm?.(view);
     if (view && routeId === "season") renderSeason(view);
   }
@@ -5739,7 +5475,7 @@ ${record.originalQuestion || "暂无原题描述。"}
       }, 1000);
     }
     window.MochiPet?.renderMiniState?.();
-    const routeId = currentRoute();
+    const routeId = location.hash.replace("#", "") || "home";
     if (routeId === "home") window.MochiFarm?.renderFarm?.(view);
     if ((routeId === "today" || routeId === "learn") && learnActiveTab === "today") window.MochiTodayStudy?.render?.(document.getElementById("learn-content-pane"));
     if ((routeId === "map" || routeId === "learn") && learnActiveTab === "map") window.MochiCards?.refresh?.();
@@ -5876,9 +5612,7 @@ ${record.originalQuestion || "暂无原题描述。"}
       }
       if (name === "copy-ai-prompt") { copyAiPromptFile(action); return; }
       if (name === "copy-cmd") { copyCmd(action); return; }
-      if (name === "test-vision-ai") { testVisionAI(action); return; }
       if (name === "export-data") exportData();
-      if (name === "export-question-desk") exportQuestionDeskPackage();
       if (name === "clear-progress") clearProgressData();
       if (name === "factory-reset" || name === "clear-data") factoryResetData();
       if (name === "open-holiday-form") openHolidayForm();
@@ -5946,7 +5680,6 @@ ${record.originalQuestion || "暂无原题描述。"}
 
   function handleChange(event) {
     if (event.target.id === "backup-import") importData(event.target.files?.[0]);
-    if (event.target.id === "question-desk-import") importQuestionDeskPackage(event.target.files?.[0], event.target);
     if (event.target.id === "focus-end-sound-select") {
       localStorage.setItem("focus_end_sound", event.target.value || "soft");
       playFocusEndSound(event.target.value || "soft");
@@ -6172,4 +5905,3 @@ ${record.originalQuestion || "暂无原题描述。"}
 
   init();
 })();
-

@@ -272,7 +272,7 @@
     }
 
     updateTimerDom();
-    if (document.body.classList.contains("focus-mode") || document.body.classList.contains("focus-mini-mode")) {
+    if (document.body.classList.contains("focus-mode")) {
       window.MochiApp?.tickFocusOverlay?.();
     } else {
       window.MochiPet?.renderMiniState?.();
@@ -363,9 +363,7 @@
 
   function fullRender() {
     const view = document.getElementById("view");
-    if (!view) return;
-    const route = (location.hash || "").replace(/^#/, "") || "desk";
-    if (route === "home") window.MochiFarm?.renderFarm?.(view);
+    if (view) window.MochiFarm?.renderFarm?.(view);
   }
 
   function getState() {
@@ -404,7 +402,7 @@
     }
     if (state.phase !== "focusing" && state.phase !== "resting") return;
     updateTimerDom();
-    if (document.body.classList.contains("focus-mode") || document.body.classList.contains("focus-mini-mode")) {
+    if (document.body.classList.contains("focus-mode")) {
       window.MochiApp?.tickFocusOverlay?.();
     }
   });

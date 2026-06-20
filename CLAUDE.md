@@ -208,16 +208,131 @@ commitment_history            — 专注承诺历史，每轮一条 {id,date,goa
 
 ## 当前版本状态
 
-v34 → V3.2 改动摘要（已稳定，详见 git 历史）：
+v34 之后的改动：
 
-- 农场固定三块地按科目，recordCount 驱动生长；知识地图替换为卡片收藏册
-- 勋章/抽奖（DOM 卡牌玩法，非 Canvas 转盘）/赛季/管理后台全部建立
-- 首页单列 `.home-flow` 布局；四 tab 导航（首页/学习/勋章/设置）
-- 沉浸模式专注 + deciding 阶段；`parsePastedRecordEl()` 供首页和沉浸复用
-- 番茄钟默认自由专注；提醒改用 Web Audio API；旧通知 key 废弃
-- 抽奖为全屏两栏布局（`.lottery-body` flex row），木鱼在左侧 `.lottery-sidebar`
-- 设置页支持 AI Prompt 复制（`copyAiPromptFile()`，`file://` 下 fallback `window.open()`）
-- 今日学习报告：`renderTodayReport()` + `exportTodayReportImage()`
+- 农场重设计：固定三块地，按科目，recordCount 驱动生长
+- 知识地图替换为卡片收藏册
+- 导出学习档案功能
+- 数据备份与恢复功能（设置页）
+- 设置页“数据管理”：`clearProgressData()` 清空学习进度但保留设置；`factoryResetData()` 恢复出厂设置并清空全部已知数据和设置
+- 学习档案导出新增“详细记录”：逐张卡片完整输出日期/星级/题数/卡点/原题/套路；三种格式为摘要（宏观分析用）/ 详细记录（出题复习用）/ JSON（开发用）
+- MOCHI-RECORD 新增 `原题` 字段，导入后保存为 `study_log[].originalQuestion`；旧记录缺少该字段时按空字符串处理
+- `questionsCompleted` 已固定为 1，不再从 MOCHI-RECORD 的完成题数字段读取
+- Obsidian 笔记生成和相关可见文案已删除，导入只保存 MochiStudy 学习记录
+- 专注 deciding 界面只有两个按钮：开始休息 / 结束今天的学习
+- 调试面板（?debug=1）
+- 开发者参数配置面板（?debug=1 的参数配置 Tab，写入 game_config）
+- 每日目标改为按当天导入记录自动完成，删除手动每日任务 localStorage
+- 学习点/爱心/喂食系统删除，`MochiPet` 仅保留为学习状态内部模块
+- 勋章系统完全重写：小勋章/大勋章可重复获得，达到阈值倍数自动累计，并按配置兑换抽奖次数
+- 勋章页新增抽奖转盘：消耗抽奖次数，Canvas 转盘按权重抽取奖励/任务，并记录抽奖历史
+- 新增赛季制系统：`current_season` 保存当前赛季，`season_archives` 保存历史快照；赛季页展示称号、热力图、趋势图，并可导出文字版/JSON 报告
+- 新增管理后台：`?admin=1` 输入管理员密码进入，可维护赛季、勋章参数、称号阈值、转盘内容、学年日历和后台密码
+- 首页导入框默认展开，无折叠逻辑
+- 勋章页显示抽奖入口、勋章总览、大勋章列表和小勋章列表
+- 日历页改名“学习日历”，删除硬编码“萌芽阶段” pill，右上角显示今日题数
+- 学习档案知识点行删掉日期列，只保留状态、知识点名、张数和最近星级
+- 首页布局改为 `farm-layout-v2`：左侧番茄钟主区，右侧迷你农场、今日目标和导入框
+- 三块地改为 `mini-farm-row` 一行迷你显示
+- 专注开始触发沉浸模式：`body.focus-mode` + `focus-overlay`
+- 沉浸模式保留导入记录小入口 `focus-import-area`
+- `parsePastedRecord` 已抽出为 `parsePastedRecordEl(textarea, resultEl)`，供首页和沉浸模式复用
+- 番茄钟有自由专注/设定时间两种模式，`timer.state.freeMode` 控制
+- 专注结束先进入 `deciding` 阶段，显示“开始休息 / 结束今天的学习”选择
+- 沉浸模式无暂停按钮；`tick()` 调用 `tickFocusOverlay()` 只更新数字和圆环，不重建 DOM，避免导入框 textarea 失焦
+- `deciding` 阶段有两个可见出口：开始休息 / 结束今天的学习
+- `pet.js` 的 `renderTimer()` 在 `deciding` 阶段返回占位卡片，不退出沉浸模式
+- 休息倒计时结束时 `tick()` 显式调用 `exitFocusMode()`
+- 沉浸模式 overlay 里有低调的“放弃本轮”按钮
+- 系统通知（Notification API）已删除，提醒改用 Web Audio API 合成音效，`file://` 下可用
+- 休息结束调用 `startRestReminder()`：显示 `rest-reminder-overlay` 半透明遮罩（z-index 600），每 30 秒播放一次所选铃声，点击页面停止，最多提醒 5 分钟
+- 默认温柔旋律由 `playReminderMelody()` 控制，8 个音符，约 6-7 秒；遮罩和提醒音同步开始/停止
+- `sound_reminder_enabled` 存在 localStorage，由设置页“休息结束提醒音”开关控制
+- 休息结束铃声调用 `playRestReminderSound()`，由设置页 `rest_reminder_sound` 选择：温柔旋律 / 小风铃 / 低柔三音 / 清亮提示
+- 专注结束提示音调用 `playFocusEndSound()`，由设置页 `focus_end_sound` 选择：不响 / 轻柔双音 / 小风铃 / 清脆短音；设定时间到点会提醒，自由专注没有到点提醒
+- 最终打磨版：休息卡片提示文字已修正，`pet.js` 的 deciding 占位卡片已删除，`exitFocusMode()` 加防重入保护，deciding 阶段根据专注时长显示鼓励语，休息提示文字字号已放大
+- 旧通知 key `notif_rest_enabled`、`notif_focus_enabled` 已废弃，不再使用
+
+### V1.5 连续学习 Streak + 复习行重设计
+
+- `app.js` 新增 `calcStudyStreak()`：倒序遍历有效学习日计算连续打卡天数；新增 `getTodayRecordCount()`：统计今天已导入记录条数；均暴露到 `window.MochiApp`。
+- `modules/farm.js` 新增 `renderStreakBanner()`：streak ≥ 1 时渲染连续学习横幅（火焰图标、天数、当日条数、鼓励语）。
+- `modules/reviewPage.js` 复习行从七列 grid 重构为 flex 布局；section 副标题文案改为低压力措辞。
+
+### V1.6 导入反馈增强 + 复习卡简化 + sparkle 接通
+
+- `parsePastedRecordEl`（`app.js`）：导入成功卡新增地块进度条（recordCount/harvestTarget）、按 stars 的鼓励语（1★→"能找到卡点就是进步。"，3★→"完全做对，继续保持。"）、今日累计次数，并调用 `sparkle(result, "★")`——sparkle 此前定义但从未调用。
+- `modules/reviewPage.js` `renderTodayTask()`：删除"状态"第三列，grid 改为两列。
+- `modules/reviewPage.js` `importReviewResult()`：`STATE.message` 按 stars 区分；re-render 后调用 `window.MochiApp.sparkle(container, "✓")`。
+
+### V1.7 首页体验补全 + escapeHtml 统一
+
+- `modules/farm.js` `renderStreakBanner()`：streak = 0 且为有效学习日无记录时显示"今天还没开始，打一张就够了"（月亮图标，subdued 样式），不再返回空白。
+- `modules/farm.js` `renderTodayReviewCard()`：新增 `mainPainPoint` 作为主体文字（`.home-review-pain`），用户在首页即可看到卡点；`primaryReason` 降为辅助灰色。
+- `app.js` 将 `escapeHtml` 加入 `window.MochiApp` 导出；`farm.js` 的 `escapeAttr` 改为优先调用 `window.MochiApp.escapeHtml`，消除重复。
+
+### V2.0 80/20 大刀阔斧简化
+
+- `index.html` 底部导航：将「日历」替换为「勋章」——日历是回顾功能（低频），勋章/抽奖是每日激励循环（高频），移动端现可直接进入。
+- `modules/farm.js` + `style.css`：删除首页 `daily-goal-compact` 区块（三个学科圆圈打卡点），该信息已被迷你农场的 `N/15` 数字完全覆盖，纯冗余。同时删除 `.daily-goal-row`、`.goal-dot` 等相关 CSS。
+- `modules/farm.js` + `style.css`：赛季横幅从多行 flex 卡片压缩为单行徽章（`.season-badge`），保留名称和倒计时，去掉日期范围——首页顶部视觉负担降低约 70%。
+- `modules/farm.js`：导入框 `rows="2"→"3"`，placeholder 从 40 字缩短为 18 字——导入框是首页核心操作，更大的输入区域配合简洁提示减少认知摩擦。
+
+### V3.0 80/20 学习体验优化
+
+- `modules/farm.js`：首页「今日复习」卡的 `mainPainPoint` 改为 `<details>/<summary>` 翻转，默认隐藏卡点，用户主动点击才展开，强制主动回忆。
+- `modules/farm.js`：赛季徽章（`.season-badge`）从 `<div>` 改为 `<button data-route="season">`，点击直接跳转赛季页。
+- `modules/farm.js`：删除 `renderDailyGoalDots` 死代码（V2.0 起无调用）。
+- `modules/reviewPage.js`：`filterItems()` 新增 `todaySuggestions` 参数，「待处理」列表不再重复显示今日建议里的条目。
+- `modules/reviewPage.js`：`renderTodayTask()` 删掉 `.review-task-grid` 两列，改为单行 `.review-task-pain`，「为什么今天」列下线。
+- `style.css`：新增 `.home-review-spoiler` 系列样式、`.review-task-pain`，删除无用 `.review-task-grid` 声明。
+
+### V3.1 激进简化：布局重构 + 页面下架 + 交互整合
+
+- `modules/farm.js`：`renderFarm()` 改为单列 `.home-flow` 布局，删除 `farm-layout-v2` 两列结构；导入框升至第一位，迷你农场移至第三位，番茄钟折叠进 `<details class="home-focus-details">`。
+- `modules/farm.js`：`refreshFarmSummary()` 选择器从 `.farm-layout-v2` 改为 `.home-flow`。
+- `modules/reviewPage.js`：整页扁平化，删除 filter bar、删除三分区（今日建议/待处理/冷却）、删除展开/折叠逻辑；改为单一 `renderFlatList()` 函数，今日优先条目用绿色左边框 + 「今日」徽章区分。
+- `modules/reviewPage.js`：删除 `renderTodayTask()`、`renderTodayEmpty()`、`renderPendingList()`、`renderFilters()` 四个函数；删除 `STATE.subjectFilter`、`STATE.pendingExpanded`。
+- `modules/reviewPage.js`：`renderImportPanel()` 从 4步+回忆卡 简化为 2行提示文字 + textarea（rows=3）。
+- `app.js`：新增 `updateNavBadge()` 函数；在 `setActive()` 末尾和 `checkAndGrantAchievements()` 末尾调用；抽奖结束后同步刷新；`lotteryTickets > 0` 时在「勋章」导航按钮右上角显示数字红色徽章。
+- `app.js`：路由 `#schedule` 重定向到赛季页。
+- `index.html`：删除侧边栏日历导航按钮。
+- `style.css`：新增 `.home-flow`、`.home-focus-details`、`.home-focus-summary`、`.nav-lottery-badge`、`.review-today-badge`、`.review-row-today`、`.review-panel-hint`；删除旧 `.farm-layout-v2` / `.farm-focus-area` / `.farm-side-area` 相关规则。
+
+### V3.2 导航革命 + 首页闭环 + 档案瘦身
+
+- `modules/farm.js`：`renderTodayReviewCard()` 无建议时显示下一到期项（nodeLabel + 天数）。
+- `modules/farm.js`：新增 `HOME_REVIEW_STATE`；复习卡「复制材料」后展开内联 textarea，导入全程在首页完成，不跳页；三个 action：start / import / dismiss。
+- `modules/reviewPage.js`：新增导出函数 `copyItemPack(key)` 和 `importItemByKey(key, text, callbacks)`，供 `farm.js` 调用。
+- `modules/knowledgeMap.js`：删除 STATE 中 `organizing`/`draggingCardId`/`sourceFilter`/`editingSummaryKey`；删除 `SOURCE_FILTERS` 常量；`filterEntriesBySource()` 改为直通函数；删除整理按钮、来源筛选器、拖拽事件、`reorderCards()`、拖拽手柄按钮、内联编辑按钮；`refresh()` 加 `document.contains` 守卫。
+- `app.js`：新增 `learnActiveTab` 状态 + `renderLearn(container, tab)` 函数；`route()` 让 learn/review/map 都走 `renderLearn`；`setActive()` 让 `data-route="learn"` 在 review/map 路由时高亮。
+- `app.js`：`renderNoSeason()` 改为显示累计记录、学习天数、专注小时、三科记录数；无数据时显示引导语。
+- `index.html`：侧边栏「复习」+「学习档案」合并为「学习」；底部导航从 5 tab（首页/复习/档案/勋章/设置）缩减为 4 tab（首页/学习/勋章/设置）。
+- `style.css`：新增 `.learn-tab-bar`/`.learn-tab-btn`、`.home-review-import` 系列、`.home-review-msg`、`.home-review-next-due`、`.season-empty-stats`/`.stat-mini` 系列。
+
+### V1.9 自我迭代修复：readJSON bug + 导入动线 + 主动回忆前缀
+
+- `app.js` `parsePastedRecordEl()`：修复 `readJSON` 拼写错误（应为 `readJson`），该 bug 导致打卡成功卡不显示、sparkle 不触发、textarea 不清空，记录本身正常保存不受影响。
+- `modules/farm.js` `renderStreakBanner()`：streak=0 兜底卡（"今天还没开始"）新增「去导入」按钮，点击滚动并 focus 导入框，解决死区问题。
+- `modules/farm.js` `renderTodayReviewCard()`：首页今日复习卡的 `mainPainPoint` 前加「还记得吗？」前缀（`.home-review-recall-hint`），从被动展示答案改为主动提取引导。
+- `modules/reviewPage.js` `startItem()`：从首页触发复习时的 message 补充「先自己回想 20 秒，再去 AI 那里粘贴」，与 `startReview()` 保持一致。
+
+### V1.8 主动回忆提示 + 导入反馈补强
+
+- `modules/reviewPage.js` `startReview()`：复制复习材料后的 inline message 和 toast 明确提示”可以粘贴给复习 AI”，并提醒先自己回想 20 秒，避免点击”开始复习”被误解为已经完成复习。
+- `modules/reviewPage.js` `renderImportPanel()`：复习步骤从 3 步调整为 4 步，新增主动回忆提示卡（`.review-recall-card`），在打开 AI 前先让学生尝试说出卡点。
+- `modules/reviewPage.js` 与 `app.js` 的导入失败提示补充说明必须同时包含 `---MOCHI-RECORD-START---` 和 `---MOCHI-RECORD-END---`，并指出缺失记录段时应让 AI 补上。
+- `modules/farm.js` 首页”今日复习”按钮文案由”开始复习”改为”复制材料”，更符合实际行为；`app.js` 打卡成功卡补充”已保存到学习档案，可以继续粘贴下一条”。
+
+### 当前实际状态（截至 2026-05-24）
+
+以下是版本历史之外、目前实际存在但上方未记录的功能：
+
+- **抽奖系统**：现为全屏两栏布局（`.lottery-body` flex row）。左侧 `.lottery-sidebar`（260px）放厌倦进度条 pity bar 和木鱼；右侧 `.lottery-stage` 放各阶段 UI（spread → pick → result）。已删除旧的可拖拽浮窗 `.lottery-muyu-float`，木鱼移入 sidebar 固定位置。`initMuyuFloat()` 已不调用。
+- **今日学习报告**：`app.js` 中有 `renderTodayReport()` 和 `exportTodayReportImage()`，支持生成今日学习汇总图并复制到剪贴板。入口在首页或设置页（具体看路由）。
+- **首页 AI 工作流指南**：`modules/farm.js` 中 `renderAiGuideCard()` 在首页渲染一张可折叠卡（`<details class=”card home-ai-guide”>`），展示三步使用流程，并提供跳转设置页按钮。
+- **设置页 AI Prompt 复制**：`app.js` 中 `renderSettings()` 在”AI 使用指南”section 放置两个 `<details>` 条目（高考 AI 私教 / 高考复习私教），各有”复制 Prompt”按钮；`copyAiPromptFile(btn)` 用 `fetch()` 读取 `skill/` 目录下的 `.md` 文件，剥离 YAML frontmatter 后写入剪贴板；`file://` 协议下 fallback 为 `window.open()`。
+- **番茄钟默认自由专注**：`modules/timer.js` 的 `state.freeMode` 初始值为 `true`，打开页面时默认选中”自由专注”，时间输入行隐藏。
 
 ### V3.3 代码债治理 + 首页减负 + 本周趋势（2026-06-14）
 
@@ -268,7 +383,10 @@ v34 → V3.2 改动摘要（已稳定，详见 git 历史）：
 - **骰子区。** `.lottery-dice-panel` 加绿绒径向渐变 + 内阴影；`.lottery-die` 加大到 88px、金边、双高光。
 - 注：CLAUDE.md「勋章系统」里旧描述「转盘用 Canvas 绘制…easeOutCubic」已过时，抽奖实为 DOM 卡牌玩法，非 Canvas 转盘。
 
-第二轮（build `20260614i`）：奖池 `showcase-deal` 发牌入场动效（逐张 55ms delay）；`showBigWinCelebration()` 在大奖/保底时撒金光花；`.pick-card-front` 加斜纹+金边牌背质感。
+第二轮追加（build `20260614i`）：
+- **奖池发牌入场。** `.showcase-card` 加 `showcase-deal` 入场关键帧（从下方 + 缩放 + 微旋转淡入），`renderLotteryWheel` 给每张卡 `animation-delay:${i*55}ms` 逐张"发牌"。hover 改为只动阴影/边框（不再 translateY，避开和入场动画 transform 收尾的冲突）。
+- **中大奖/保底金光庆祝。** 新增 `showBigWinCelebration()`：往 body 插 `.lottery-bigwin-burst`（金色径向闪光 `.bigwin-flash` + 16 个随机下落撒花 `.bigwin-sparkles span`），2.4s 后自动移除；在 `showLotteryResult` 里当 `chosenPrize.type==="bigReward" || pityActive` 时触发。
+- **牌背质感。** `.pick-card-front` 加 45° 重复斜纹 + 金边 + 内描边，`.pick-card-mark` 的 `?` 改金色发光，翻牌前的牌堆更像真卡。翻牌本身已是 3D（preserve-3d + backface-hidden），未改。
 
 ### V3.9 主动出测验：学习档案就地选范围（build `20260614j`）
 
@@ -374,150 +492,14 @@ v34 → V3.2 改动摘要（已稳定，详见 git 历史）：
 
 换电脑/同步最新版本时方便操作，把 git 拉取指南直接放进设置页（「更新到最新版本」section，在「关于」之前）。三步可折叠：① 常规 `git checkout main` + `git pull origin main`；② 报错时强制同步 `git reset --hard origin/main`（带丢改动警告）；③ 首次 `git clone`。每步有「复制命令」按钮——新 action `copy-cmd` + `copyCmd(btn)` 读 `data-copy-text`（多行用 `&#10;` 编码）写剪贴板。`style.css` 新增 `.update-step`/`.update-step-head`/`.update-step-summary`/`.update-cmd`（深色等宽代码块）。
 
-### V5.0 题桌 Phase 0：视觉 AI go/no-go 验证（build `20260618a`）
+### 决策记录：移除题桌，回退到题桌之前的版本（build `20260620e`）
 
-先验证站内视觉 AI 再做题桌 UI。`modules/ai.js` 保持旧 `callAI()` 兼容，新增多模态链：`callMessages()`/`callAIWithImage()`/`testVisionAI()`（OpenAI 用 content array + `image_url`，Anthropic 用 `image` base64 block）；`max_tokens` 改可配置（默认 2200）。设置页加「最大输出 tokens」和「视觉 AI 验证」卡片。新增 `skill/gaokao题桌.md`（一图一题视觉讲解 prompt，区别于 `gaokao啃卷子.md` 跨题排序）。验证 prompt 强制模型先抄图中数字/题号/公式原文，避免文本模型胡编 false pass；`原题` 须尽力转写题干核心，不能写「见原图」。
+题桌（站内拍题 + 视觉 AI 浮窗问答，曾经的 V5.0–V6.4）已**整体移除**，代码回退到本条上方的 V4.9 状态。
 
-### V5.1 题桌 Phase 1 MVP：一图一题站内学习闭环（build `20260618b`）
+**为什么**：真实用户反馈题桌**不如题桌之前的「学习网站 + 站外 Gemini 问答」顺手**——站内 AI 浮窗太小、注意力噪声多、视觉 API 慢且识别不确定、识别题目这步累赘、出不了表格/SVG 等（Gemini 能）、题桌与学习网站两套界面互相增加负担。复盘后确认：题桌想解决的两个初衷（拍题碎片化、切 app 生成记录分心）本身摩擦不大，而老版本其实已经能解决——老网站的导入支持 `parseAllMochiRecords` **一次粘贴多条 MOCHI-RECORD 批量导入**，缺的只是一段「一次拍多题→让 Gemini 逐题带→一次性输出所有记录块→整段粘回」的 prompt/指引。
 
-在「学习」页新增「题桌」子 tab，并设为学习页默认入口；不新增第 5 个底部导航。新增 `modules/questionDesk.js`：支持复制截图后在题桌 `Ctrl+V`、或上传图片；图片 Blob 存 IndexedDB（`mochi_question_desk/question_images_blob`），索引存 localStorage（`question_desk_images` / `question_desk_items` / `question_desk_ui_state`）；默认命名 `未分类-拍题-YYYY-MM-DD-编号`，左侧文件栏按收件箱/三科/已学习/未学习过滤，中间单图查看器，右侧 AI 学习面板。
+**架构教训**：把最难的事（看题/讲题/出图）交给世界级且免费的 Gemini，自己的网站只做记录/收藏/激励这些轻活。不要自己重做一遍已经有世界级实现的东西。
 
-题桌右侧使用 `window.MochiAI.callAIWithImage()` 把当前题图发给视觉模型，支持多轮提问和“生成学习记录草稿”。草稿 parser 按 PRD 8.6 中文字段契约解析，`meta.source` 由题桌固定注入 `lesson`；知识点必须精确命中预设列表，否则要求学生在表单里手动选择，绝不静默 fallback。保存时复用现有 `applyMochiRecord()` 写入 `study_log` / `study_card_meta`，并刷新农场、学习档案、复习队列和侧边栏状态。Phase 1 暂不做框选、裁剪、题旁小圆标、PDF 和题桌图片包导出；页面提示题图目前保存在本机浏览器，普通 MochiStudy 备份暂不包含题桌图片/索引，清空进度和恢复出厂会清理题桌 IndexedDB。`index.html` 静态资源版本号更新到 `20260618b`。
+**回退方式**：用一个 revert commit 把工作树还原到 `1cc50d6`（V4.9），**没有改写历史**——题桌全部提交仍在 git 里，将来要找回随时可恢复。仅保留了与网站无关的 `AGENTS.md`（工具文件）。用户数据全程未动（纯前端，存浏览器 localStorage）。
 
-### V5.2 题桌外壳化：题桌成为默认主界面（build `20260618d`）
-
-按 `docs/prd/question-desk-prd.md` 的 2026-06-18 方向修订，题桌从「学习页子 tab」升级为应用默认主外壳。空 hash 默认渲染 `#desk`，`#desk` 不再经过 `renderLearn()`，而是直接调用 `MochiQuestionDesk.render(view)`；`body.desk-mode` 隐藏旧 MochiStudy 的侧边栏、顶栏和移动端底部导航，并让题桌三栏占满视口。旧 MochiStudy 仍保留原有首页/学习/勋章/赛季/设置结构，作为次级“成长世界”通过题桌左上角「我的成长」进入；旧站侧边栏和顶栏新增「返回题桌」入口。
-
-「学习」页子 tab 恢复为 今日学习 / 复习队列 / 学习档案，默认回到复习队列；题桌不再出现在学习 tab 内。V5.1 中“题桌是学习页默认子 tab”的表述仅作为历史记录，不代表当前架构。`body` 默认预置 `desk-mode`，避免首屏闪现旧外壳；侧边栏「返回题桌」使用独立样式区分于普通导航。`index.html` 静态资源版本号更新到 `20260618d`。
-
-### V5.3 题桌 Phase 1.5 清爽化（build `20260618e`）
-
-按 `docs/prd/question-desk-prd.md` Phase 1.5 打磨题桌内部体验，不做框选、小标、浮窗，不改 `study_log` / `study_card_meta` / 备份结构和保存闭环。`modules/questionDesk.js` 的 AI 面板新增三态 UI 偏好：常规 `open`、收起 `collapsed`、全屏 `expanded`，状态写入既有 `question_desk_ui_state.panelMode`；切换前会先把当前草稿表单内容回写到题桌 item，避免开合时丢未保存编辑。收起后题图区铺满、右侧只留 AI 小入口；全屏时隐藏题图和文件栏，专注读对话和草稿。
-
-学习记录草稿从密集表单改为清新卡片：科目用 chip，星级用星星选择，关键字段（卡点记录、原题、今日套路）放在主体卡片，错误类型/卡住步骤/关键突破/标签/信心分/耗时等 meta 字段默认折叠到「更多归档细节」。`style.css` 统一题桌卡片、按钮、空状态、面板和移动端收起态的浅灰/白纸/蓝色强调风格。`index.html` 静态资源版本号更新到 `20260618e`。
-
-### V5.4 题桌 Phase 2 起步：套索选区、小标与学习浮窗（build `20260618p`）
-
-按 `docs/prd/question-desk-prd.md` Phase 2 的最小闭环起步，不做 PDF、复杂缩放工具或反向跳转。题桌中间题图新增显式「套索」工具：开启后可在题图上圈/划题目区域，拖动过程只更新轻量 SVG 预览线，不重绘整页，避免题图闪白和多选卡顿。松手后将套索轨迹转为扩边后的相对坐标 `rect: {x,y,w,h}` 写入既有 `question_desk_items`；旧的一图一题 item 继续兼容。同一张题图只允许一个未问 AI 的待确认选区：重新圈选会替换旧待确认框，套索开启且已有待确认框时按钮文案变为「取消选区」，再次点击会取消当前待确认框并退出套索，题桌非输入控件按 Esc 也可取消当前套索/待确认框/重新调整态。未问 AI 的区域题保留为可调整虚线框并显示「待确认」状态，可拖动、拖四角缩放、删除误框；右侧面板新增一行式「题目识别」确认条，调用视觉模型只识别题号、科目、题干摘要、核心转写和选区是否完整，结果写入 `question_desk_items[].recognition`，不写入 `study_log`，核心转写只放在 title 悬浮提示里，不常驻挤占聊天区。聊天记录改为可折叠历史：无消息时只显示一行轻提示，有消息时按内容自然长高，超过 280px 后内部滚动，不再由右侧面板 grid 强制占用 180px 空间。真正问过 AI 或生成草稿后才收起为无编号小图标。AI 请求失败不会写入 chat 或触发定型，选区仍保持可编辑。已定型小标的浮窗提供「重新调整选区」，可临时展开为可拖拽框并正常拖动/缩放，完成后再收回小标。点击小标打开贴近该标记的题桌内浮窗，浮窗先显示学习档案卡片，再显示 AI 对话摘要。为控制主模块体量，新增 `modules/questionDeskAI.js` 承载题桌 prompt 与识别解析，新增 `modules/questionDeskSelection.js` 承载套索/矩形几何纯函数，`modules/questionDesk.js` 保留渲染、事件编排和存储调用。
-
-AI 问答和生成草稿仍走原 `callAIWithImage()` 链路，但区域题会先在浏览器中按 rect 裁剪题图 Blob，再把裁剪图作为上下文发给视觉模型。保存逻辑仍复用 `applyMochiRecord()`，不改 `study_log` / `study_card_meta` 字段和备份结构。`index.html` 静态资源版本号更新到 `20260618p`。
-
-### V5.5 题桌 Phase 3（build `20260618q`，已被 V5.6 收敛）
-
-曾加 `question_desk_notebooks` + 资料柜式题本/归档/批量操作，后因心智过重被 V5.6 简化为轻量题盒；仅作历史。
-
-### V5.6 题桌 Phase 3 简化：轻量题盒替代文件系统（build `20260619a`）
-
-根据产品反馈，V5.5 的自定义题本、归档、批量操作与科目筛选并列，形成了过重的文件系统心智，学生需要额外学习“题本/归档/批量管理”，违背题桌要低认知负担的原则。本版把 Phase 3 收敛为轻量题盒：左侧只保留搜索、全部、未整理、数学、物理、化学；去掉显性题本、新建题本、归档/恢复、批量归档/批量删除、知识点筛选和题本移动下拉。题图的“题本感”改由命名承担，例如 `数学-第3周周测-01`，搜索负责找回。
-
-新粘贴题图默认进入「未整理」；当 AI 识别、生成草稿或保存记录确认科目后，题图自动归到对应科目，并在当前界面切到该科目，避免从「未整理」中消失造成困惑。点击空分类时，中间题图区和右侧 AI 面板显示该分类空态，不再继续显示上一张题。保留单张题图的重命名与删除；删除只清理题桌图片、题桌 item 和 IndexedDB blob，不删除已保存到 `study_log` 的学习档案卡片。`question_desk_notebooks` 仅作为历史试验/清理兼容 key，不再是当前主 UI 模型。`index.html` 静态资源版本号更新到 `20260619a`。
-
-### V5.7 题桌 Phase 4 起步：啃卷子批量排序（build `20260619b`）
-
-按 `docs/prd/question-desk-prd.md` Phase 4 做最小闭环，不新增批量文件管理、不恢复题本/归档心智。题桌左侧上传区新增「啃卷子」入口，打开轻量排序面板；面板列出未保存到学习档案的题图，学生勾选 2-8 张后，浏览器把这些题图合成一张 A/B/C 编号总览图，继续复用现有 `window.MochiAI.callAIWithImage()` 单图视觉调用。新增 `PAPER_GRIND_PROMPT` 与 `parsePaperGrind()`，让 AI 按高考考频、短期提分空间和基础薄弱学生 ROI 输出排序 JSON。
-
-排序结果保存到 `question_desk_ui_state.grindPlan`，只作为学习顺序建议，不写入 `study_log` / `study_card_meta`。结果列表展示推荐顺序、考频/提分/优先级和一句原因；点「开始学」会关闭排序面板、切到对应题图，并继续走原有一图一题 AI 问答与保存闭环。`index.html` 静态资源版本号更新到 `20260619b`。
-
-后续打磨（builds `20260619c`–`20260619m`，最终状态）：
-- 候选逻辑：全部素材参与；已套索卷子按题目区域为候选，未套索按整张图；默认勾选前 12 道（视为”不会”），学生取消已会题。
-- 流程改为题目级排序：新增 `PAPER_SCAN_PROMPT`/`parsePaperScan()`，AI 拆题后展示题目清单 → 排序 → 结果写 `grindSession`。
-- 弹窗阶段式视图（选素材 → 题目清单 → 排序结果），局部刷新勾选态不重绘整列表。
-- 啃卷子进入学习模式：题桌上方模式条（第 N/M 题）+ 上一题/下一题/退出，学习态只显示蓝色定位框，「调整框」入口临时进编辑态。
-- 「题目识别」升级为信息卡，常驻显示题号/科目/摘要/题干转写；选区编辑框确认/删除按钮移至框外上方，四角保留缩放控制点。
-
-上下文补丁：框选题新增轻量 `contextVersion`，当已问过/已识别的选区被明显调整时，当前题上下文版本自动递增，旧识别标记为「需要重识别」，旧聊天折叠为「调整前旧对话」。新的 AI 提问和学习记录草稿只携带当前版本聊天，并优先把已识别题号、科目、题干摘要和题干转写作为稳定上下文传给 AI，避免调整框后旧题对话污染新题。`study_log`、`study_card_meta` 和备份结构不变；静态资源版本号更新到 `20260619n`。
-
-公式渲染补丁：题桌聊天记录、识别转写和草稿预览统一走 `window.MochiApp.formatRichText()`，并在题桌层兼容 AI 常见的 `\(...\)`、`\[...\]` LaTeX 写法，避免对话区把科学公式显示成原始代码。静态资源版本号更新到 `20260619o`。
-
-题桌与旧学习站协作补丁：专注沉浸页新增「最小化计时」入口，专注中可收成右下角可拖动计时浮窗，题桌和“我的成长”页面恢复可操作；点击浮窗回到完整专注页。结束这一轮、放弃本轮、进入休息决策时自动退出最小化，保留原有专注记录、自评和休息流程。浮窗位置存在 `focus_mini_position`，纳入恢复出厂清理；`study_log`、`focus_log` 和备份结构不变。静态资源版本号更新到 `20260619p`。
-
-题干修正与专注最小化修复：题桌右侧已识别题目卡片改为可编辑题干卡，学生可直接修正题号、科目、题干摘要和题干原文并保存到本地 `question_desk_items[].recognition`，下一次问 AI 会优先使用手动修正后的题干，不需要重新调用视觉识别 API。专注最小化从“保留 focus-mode 再抵消隐藏”改为真正移除 `focus-mode`、只保留 `focus-mini-mode` 浮窗；`exitFocusMode()` 同时识别两种状态，修复从题桌/我的成长页面结束专注后外壳残留隐藏的问题。静态资源版本号更新到 `20260619q`。
-
-紧急修复：重建 `index.html` 静态应用外壳，恢复侧边栏/顶部栏/底部导航的中文文案和合法 HTML 属性，修复“我的成长”页面导航消失、右上角「返回题桌」乱码的问题。静态资源版本号更新到 `20260619r`。
-
-### V5.8 题桌一图一题操作流减负（build `20260619v`）
-
-按用户反馈打磨题桌操作流，不改数据结构/保存闭环（`study_log`/`study_card_meta`/备份不变）。
-
-- **识别卡降级为可折叠核对条**：`renderRecognitionCard` 从常驻 `<section>` 改为 `<details class="qd-recognition-card">` + `summary.qd-recognition-row`。未识别时折叠成「核对题号/题干（可选）」一行入口；已识别且完整时折叠，仅在「需要重识别」或「可能没截全」时默认 `open`。识别本身是可选步骤——`generateDraft` 已会读图把转写写进草稿 `originalQuestion`，直接问 AI / 整理记录即可。
-- **主操作按钮人话化**：`renderPanel` 主动作改为「问 AI」+「学懂了，整理成记录」，下方 `.qd-panel-flow-hint` 一句引导。
-- **套索降级为说明行（不再消失）**：套索从与「重命名/删除」并列移到题图下方独立 `.qd-viewer-lasso-row`，左侧说明「多题才圈、单题直接问 AI」。**修复**：套索行曾被 `${grindSession() ? "" : …}` 隐藏，残留啃卷子状态会让套索永久消失；已去掉该条件，套索始终可见。
-- `style.css`：`.qd-recognition-card` 由 `grid` 改 `block`（grid 干扰 `<details>` 折叠）；新增 `summary.qd-recognition-row`（隐 marker + 旋转箭头）/`.qd-recognition-state`/`.qd-recognition-edit-actions`/`.qd-panel-flow-hint`/`.qd-viewer-lasso-row`/`.qd-viewer-lasso-hint`。旧 `.qd-recognition-head` 已无引用、暂留。
-
-### V5.9 题桌图片包导出导入（build `20260619v`）
-
-- **题桌数据保命补丁**：设置页「数据备份与恢复」新增「导出题桌图片包 / 导入题桌图片包」。题桌包为独立 JSON，包含 `question_desk_images`、`question_desk_items`、`question_desk_ui_state`、历史兼容 `question_desk_notebooks` 以及 IndexedDB 里的题图 Blob（base64 data URL）。
-- **导入边界清晰**：导入题桌包会替换当前题桌现场，但不删除已保存到 `study_log` / `study_card_meta` 的学习档案记录。普通 Mochii 备份继续负责学习档案、专注、农场和设置；换设备前建议同时导出普通备份和题桌图片包。
-
-### V5.10 题桌 Phase 5 起步：PDF 多页题图容器（build `20260619w`）
-
-- **PDF 最小可用版**：题桌上传入口支持 `image/*` 和 `.pdf`。PDF 不进入新的数据模型，上传时通过浏览器端 PDF.js 把每一页渲染成普通题图 Blob，写入既有 `question_desk_images` + IndexedDB；每页自动命名为 `文件名-P01/P02...`。
-- **复用现有学习闭环**：PDF 页作为普通题图参与左侧列表、搜索、套索框题、站内 AI 问答、保存到学习档案和啃卷子排序。`study_log` / `study_card_meta` / 普通备份主结构不变；题桌图片包导出/导入会自然包含这些 PDF 页图片。
-- **运行边界**：PDF.js 从 CDN 动态加载，加载失败时提示 PDF 导入失败；失败后允许再次上传重试。第一版不保存原始 PDF 文件、不做 PDF 批注层、不做 PDF 页缩略目录，只先解决“整份 PDF 试卷不用手动截图”的输入摩擦。
-### V5.11 PDF 左栏分组与滚动修复（build `20260619x`）
-
-- **PDF 不再平铺挤爆左栏**：PDF 渲染出的页面仍沿用既有题图数据，但左侧列表按 `pdfId` 聚合成一个 PDF 主条目，页面缩进显示在该 PDF 下方，避免 12 页 PDF 把普通题图全部挤走。
-- **左栏可滚动**：题桌左侧文件列表改为在剩余高度内滚动，`qd-sidebar` 限制到视口高度，题图/PDF 页再多也不会消失在屏幕外。
-- **保持学习链路不变**：点击 PDF 主条目打开第 1 页；点击某一页打开对应页，套索、问 AI、保存学习档案、啃卷子排序继续复用普通题图逻辑。
-
-### V5.12 PDF 文件单位折叠修正（build `20260619y`）
-
-- **PDF 主条目只作为一个文件单位**：左侧 PDF 主条目点击后只展开/折叠页列表，不再直接打开第 1 页；具体学习哪一页由学生点击展开后的「第 N 页」进入。
-- **取消文件列表小滚动框**：左侧不再把所有题图/PDF 页塞进一个小滚动区域，改为整条左侧栏在视口内滚动；普通题图仍像原来一样自然排在左栏，PDF 只占一个可折叠单位。
-
-### V5.13 题桌左栏滚动边界修正（build `20260619z`）
-
-- **只滚题目列表**：左侧栏顶部、上传入口、搜索和科目分类不进入滚动容器；只有下方题图/PDF 文件列表独立滚动。
-- **不再截在首屏高度**：取消整条 `qd-sidebar` 的视口滚动限制，让左栏跟随题桌实际高度展开，文件列表吃剩余空间后滚动，避免下面明明还有空间却只显示首屏高度。
-
-### V5.14 题旁小标浮窗不挪动题图（build `20260619aa`）
-
-- **小标浮窗不再改布局**：点击题旁小标打开学习卡片浮窗时，不再强制把右侧 AI 面板切回 open，避免三栏宽度变化导致题图横向挪动。
-- **保留题图区滚动位置**：打开/关闭小标浮窗时，重渲染后恢复题图区 `scrollLeft/scrollTop`，避免已放大或滚动查看卷子时画面跳一下。
-
-### V5.15 题图文件操作移入左栏（build `20260619ab`）
-
-- **文件操作回到文件条目**：中间题图区顶部不再显示「重命名/删除」；普通题图和 PDF 主条目右侧新增更多按钮，展开后可重命名或删除，操作位置和学生看到的文件列表保持一致。
-- **PDF 按整份文件处理**：PDF 主条目的重命名会同步更新该 PDF 所有页的 `pdfName/name/shortName`；删除 PDF 会删除这份 PDF 的全部页题图和题桌现场，但不删除已保存到学习档案的记录。
-
-### V6.0 题桌 Phase 6 起步：学习档案卡片反跳回原题图（build `20260619ac`）
-
-按 `docs/prd/question-desk-prd.md` Phase 6「学习橱窗与反向跳转」做最小闭环，只接通「旧站学习档案卡片 → 题桌原题图」这条反向通路，不改 `study_log` / `study_card_meta` / 备份结构，不动保存闭环。
-
-- **反查能力（`modules/questionDesk.js`）**：题桌 item 保存时已记 `savedLogId === study_log 条目 id`，但此前没有从 logId 反查题图的入口。新增内部 `imageItemForLog(logId)`（按 `savedLogId` 找到 item 再取 image，校验 image 仍存在），并导出两个公开方法到 `window.MochiQuestionDesk`：`hasImageForLog(logId)`（判断是否有可跳转的原题图）、`openByLogId(logId)`（置 `activeImageId` + `inspectItemId`、把 filter 复位为 `all`、清搜索并 `saveUi`，再 `window.MochiApp.navigate("desk")` 跳回题桌并自动打开该题的小标浮窗）。复用既有 Phase 2 浮窗（题图 + 学习卡片），无新 UI。
-- **学习档案卡片入口（`modules/knowledgeMap.js`）**：`renderStudyCard` 的 `card-head-actions` 里，当 `window.MochiQuestionDesk?.hasImageForLog?.(log.id)` 为真时多渲染一个 `image` 图标按钮「看原题图」（`data-card-action="open-original"`）。点击 handler 走 `findLogByCardEl(card).log?.id` 取真实 logId，调用 `openByLogId`。题桌脚本在 `knowledgeMap.js` 之后加载，但判断和点击都是运行时、且全程可选链保护，无加载顺序问题。
-- **范围说明**：本轮只做学习档案这一处（每张卡一道题，反跳目标明确）。复习队列按知识点分组、一行多条 entry，反跳目标不唯一，暂不接；今日学习报告题图缩略图（canvas 长图）成本更高，留作 Phase 6 后续。`index.html` 静态资源版本号更新到 `20260619ac`。
-
-### V6.1 题桌画布化重做：GoodNotes 式干净外壳（build `20260620a`）
-
-按 `docs/superpowers/specs/2026-06-19-question-desk-canvas-redesign-design.md` 把题桌外壳从「左中右三栏固定盒子」彻底重做为 **canvas-first 浮层式体验**。**只重写表现层**，底层数据模型、套索几何、AI 调用、保存闭环、反向跳转全部复用，未改 `study_log` / `study_card_meta` / 备份结构 / 知识点预设 / 农场勋章复习。
-
-- **画布优先外壳（`render` 重写）**：`.question-desk` 由三栏 grid 改为纵向 flex——顶部 `.qd-toolbar` 纯图标细工具栏（☰ 抽屉 / 导入 / 套索 / 缩放 ⊖%⊕ / 搜索 / 啃卷子 / 我的成长）+ `.qd-stage-area` 铺满画布（浅灰底 `#f4f6f9`、白纸题图居中、可缩放可滚动）。删除常驻右侧 `.qd-panel` 与 `panelMode` 三态（open/collapsed/expanded 不再需要）。`renderPanel`/`renderPanelControls`/`renderInspector` 已删除。
-- **缩放**：`ui_state.zoom`（0.5–2.5，步进 0.25），作用于 `.qd-image-wrap` 的 `width:N%`（>100% 溢出滚动）；region/marker 用百分比定位天然跟随，套索 `pointerRect` 基于 `getBoundingClientRect()` 比例不变。工具栏 `zoom-in/zoom-out/zoom-reset`。
-- **左侧滑出抽屉**：文件列表默认收起，点 ☰（`toggle-drawer`）从左滑出 `.qd-drawer` + 半透明遮罩 `.qd-drawer-scrim`，选中题图/PDF 页（`select-image`）自动收起。内容 = 既有 `renderSidebar`（搜索/科目过滤/题图列表/PDF 折叠分组）原样复用，只换容器；抽屉 z-index 高于浮窗，作为模态。
-- **浮层化 AI（新模块 `modules/questionDeskFloat.js`，导出 `window.MochiQuestionDeskFloat`）**：承载浮层「外壳」（`renderBubble` 题旁小气泡 + `renderWindow` 可拖动浮窗/橱窗 + `anchorPercent` 锚点几何）；对话/草稿/识别等内容仍由 `questionDesk.js` 用既有 helper 计算成 HTML 通过 slots 注入。加载顺序在 `questionDeskSelection.js` 之后、`questionDesk.js` 之前。
-- **核心交互链**：套索定形 → 题旁浮 `.qd-bubble`（输入框「问 AI 关于这道题…」+发送+展开）→ 发送 `ask-ai` 后气泡展开为 `.qd-float` 浮窗（顶部题号/科目/知识点+关闭/最小化，可拖标题栏；body 含识别核对条 + Chat 折叠历史 + 继续问框 + 学习记录草稿卡 + 收进学习档案）。浮窗可拖动（`data-qd-float-drag`，位置存内存 `STATE.floatPos`，不持久化）/最小化（`minimize-float`→胶囊小条）/关闭（`close-float`）。
-- **小标 + 橱窗 + 金点**：问过 AI / 已存的题在选区留 `.qd-region` 小圆标（`open-float` 重开橱窗）；`item.savedLogId` 存在时小标变**实心金点**（bookmark 图标），橱窗顶部展示已存学习卡片（读 `study_log` by `savedLogId`，复用 `.qd-study-mini-card`）。`STATE.inspectItemId` 复用为「当前打开的浮窗 item」，故 `openByLogId` 反向跳转直接打开对应橱窗。
-- **单题无套索入口**：一张图一道题不必先圈——画布右下角 `.qd-canvas-ask` FAB「问 AI 学这道题」打开整张题图 item（无 rect 的默认 item）的浮窗；套索中/啃卷子中/浮窗已开时隐藏。
-- **视觉系统**：配色 token 收口（画布灰/纸白/近黑 `#1c1c1e`/次灰/单一蓝 `--qd-blue #2563eb`/发丝描边 `#e6eaf0`）；**阴影只给浮层**（气泡/浮窗/抽屉/小标/FAB）；工具栏纯图标 hover 才出淡底；气泡弹入、浮窗弹性展开、抽屉滑出、移动端底部弹层（`qd-sheet-in`）等动效。
-- **移动端**：浮窗退化为底部弹层（`!important` 覆盖拖动 inline 定位）、最小化态固定右下、抽屉加宽；保留啃卷子 overlay 的移动端规则。
-- **遗留**：`.qd-sidebar`/`.qd-panel*`/`.qd-rail-btn`/`.qd-inspector*`/`.qd-viewer-top`/`.qd-viewer-lasso-row` 等旧三栏 CSS 已无引用、暂留；`panelMode`/`setPanelMode`/`statusLabel` 函数保留无害。CLAUDE.md「勋章系统」里旧「Canvas 转盘」描述仍为历史误述（实为 DOM 卡牌）。`index.html` 新增 `questionDeskFloat.js`，全部题桌 `?v=` → `20260620a`，顶部标记 `build-CR`。
-
-### V6.2 题桌抽屉/文件菜单/啃卷子导航打磨（build `20260620b`）
-
-按用户反馈修四处题桌操作流，不改数据结构/保存闭环。
-
-- **抽屉分类不再与文件列表重叠**：`.qd-drawer-inner` grid 实际有 6 个子元素（head/上传/提示/搜索/科目分类/文件列表），但 `grid-template-rows` 只定义了 5 行（最后一行 `minmax(0,1fr)` 被科目分类占走、文件列表落到隐式 auto 行并溢出/重叠）。补一行 → `auto auto auto auto auto minmax(0,1fr)`，让文件列表拿到可滚动弹性行。
-- **文件「更多」菜单改浮层、不再顶布局/不再跳滚动**：`.qd-file-menu`（重命名/删除）从 `.qd-file-group`/`.qd-pdf-group` 内的内联块改为 `position:absolute` 浮层（`top:4px;right:38px` 贴着「⋯」按钮左侧的横向小卡 + 阴影 + 弹入动效），不再多出一栏挤压文件列表；`.qd-file-group`/`.qd-pdf-group` 加 `position:relative`。`toggle-file-menu` 由 `render()` 改 `renderPreservingDrawerScroll()`（新 helper，渲染前后保留 `[data-qd-file-list]` 的 `scrollTop`），点开/关菜单不再把列表弹回顶部。
-- **啃卷子上一题/下一题自动定位到题目**：`activateGrindSessionIndex` 记录当前题选区到 `STATE.scrollToRect`；`hydrateImage` 题图 load 后（`requestAnimationFrame`）调用新 `scrollStageToRect(rect)` 把该选区滚到题图查看区中央。不再每次跳到滚动条最上面、手动找题。
-- **啃卷子每一题都有「问 AI」入口**：原来当前题若是已问/已存的选区，`renderRegions` 只画 `qd-region-focus` 高亮框、`renderBubbleLayer` 又只对未问过的 pending 选区出气泡 → 大多数时候只剩一个框、没有 AI 入口。改为 `grindSession()` 时 `renderBubbleLayer` 固定对「当前题目 item」（区域题取 `current.itemId`，整图题取 `wholeImageItem`）浮出题旁「问 AI」气泡（贴着题、随图滚动），从气泡发问会经 `askAi` 顺势展开成完整浮窗。导航时复位 `floatPos`/`floatMinimized`。
-- `index.html` 全部题桌 `?v=` → `20260620b`，顶部标记 `build-CR2`。
-
-### V6.3 题桌左栏整列滚动 + 文件菜单竖排 + AI 气泡移出题框（build `20260620c`）
-
-接 V6.2 继续按反馈打磨，不改数据结构/保存闭环。
-
-- **整个左栏一个大滚动条**：原来只有 `.qd-file-list` 自己滚、上方 head/上传/提示/搜索/科目分类占掉大半高度，留给文件列表的可视区只剩底部约 1/6。改为 `.qd-drawer-inner` 自身 `display:flex;flex-direction:column;overflow-y:auto` 整列滚动；`.qd-file-list` 去掉 `overflow-y:auto`/`min-height:0` 让其自然撑高随整列滚动。`renderPreservingDrawerScroll` 与渲染容器的 `data-` 锚点从 `[data-qd-file-list]` 改为 `[data-qd-drawer-scroll]`（drawer-inner）。
-- **文件「更多」菜单竖排**：`.qd-file-menu` 从横向 `flex` 改为 `flex-direction:column`，重命名/删除上下排列；`.btn` 加 `justify-content:flex-start` 左对齐。仍是贴着「⋯」按钮的绝对定位浮层、不顶布局。
-- **AI 气泡移出题框**：原来题旁「问 AI」气泡锚在选区左上角（`markerPosition`）压在题目上挡字。`questionDeskFloat.js` `renderBubble` 改为按 `item.rect` 定位到选区**外面**——默认贴选区下方（`boxBottom+1.5%`、左对齐），选区贴近底部（`boxBottom>88%`）时改到选区上方（`--qb-y-shift:-100%`）。整张题图（无 rect）沿用左上角锚点。`style.css` `.qd-bubble` transform 增加 `--qb-y-shift`，入场动效简化为纯 opacity 淡入（避免和 y-shift 冲突）。
-- `index.html` 全部题桌 `?v=` → `20260620c`，顶部标记 `build-CR3`。
+**后续方向**：在老版本基础上，把「批量拍题 → 站外 AI 逐题带 → 批量粘回导入」这条外部流程的 prompt/指引做顺，而不是再做站内 AI。
