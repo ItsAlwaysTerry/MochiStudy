@@ -4357,6 +4357,7 @@ git reset --hard origin/main</pre>
     if (!text) return "lesson";
     if (["lesson", "new", "新题", "新题讲解"].some((item) => text.includes(item))) return "lesson";
     if (["复习", "复习测验", "复习卡", "review"].some((item) => text.includes(item))) return "review";
+    if (["辅导书", "教辅", "试题调研", "textbook"].some((item) => text.includes(item))) return "textbook";
     if (["测验", "小测", "quiz", "test"].some((item) => text.includes(item))) return "quiz";
     if (["复盘", "阶段复盘", "summary", "archive", "reflection"].some((item) => text.includes(item))) return "reflection";
     return "lesson";

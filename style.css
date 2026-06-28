@@ -4942,6 +4942,11 @@ body.lottery-mode .bottom-nav {
   background: rgba(124, 111, 205, 0.16);
 }
 
+.card-source-pill.source-textbook {
+  color: #b4571d;
+  background: rgba(232, 122, 44, 0.16);
+}
+
 .card-meta-summary {
   display: flex;
   flex-wrap: wrap;

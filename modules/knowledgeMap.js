@@ -842,6 +842,7 @@
   function sourceDisplayInfo(source) {
     const normalized = source || "lesson";
     if (normalized === "lesson") return { label: "新学", className: "source-lesson" };
+    if (normalized === "textbook") return { label: "辅导书", className: "source-textbook" };
     return { label: "复习", className: "source-review" };
   }
 
