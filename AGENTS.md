@@ -61,6 +61,7 @@ mochi_debug_panel_open        — 调试面板展开状态
 mochi_debug_float_collapsed   — 右下角调试浮窗收起状态
 mochi_debug_tab               — 调试浮窗当前 Tab
 commitment_history            — 专注承诺历史，每轮一条 {id,date,goal,plannedMins,actualMins,outcome,ts}；最多 50 条；用于首页"说到做到"回看
+summer_task_state             — 暑假任务区状态，保存 1天/2天计划选择、每个视频任务的 watched/completed、当前展开任务 activeTaskId、待关联任务 pendingTaskId 和已关联学习记录 id；不改 study_log 字段
 ```
 
 注意：当前代码没有单独的 `pet_state`、`achievements`、`calendar_state` 这三个 localStorage key。
@@ -495,3 +496,34 @@ v34 之后的改动：
 ### V5.0 题桌 Phase 0：视觉 AI go/no-go 验证（build `20260618a`）
 
 按 `docs/prd/question-desk-prd.md` 的 Phase 0 先验证站内视觉 AI，而不是先做题桌 UI。`modules/ai.js` 保持旧 `callAI(systemPrompt, text)` 兼容，同时新增多模态调用链：`callMessages()`、`callAIWithImage()`、`testVisionAI()`；OpenAI-compatible endpoint 使用 content array + `image_url`，Anthropic endpoint 转为 `image` base64 block；`max_tokens` 从硬编码 1000 改为可配置，默认 2200。设置页 AI 配置新增“最大输出 tokens”和“视觉 AI 验证”卡片，可选一张题图直接测试当前 `api_config` 的 endpoint/model 是否真能读图，并展示原始返回或失败原因。新增 `skill/gaokao题桌.md` 作为一图一题的单题视觉讲解 prompt，区别于 `gaokao啃卷子.md` 的跨题排序。`index.html` 静态资源版本号更新到 `20260618a`。
+
+### V5.1 暑假任务区：视频输入 + 出口题 + MOCHI-RECORD 闭环（build `20260713a`）
+
+面向暑假 28 天补基础，首页新增轻量“暑假物理补基础 / 今日任务”区。当前先接入已整理出的 5 个物理视频任务（匀变速、牛顿第二定律、力的合成与分解、功与功率、闭合电路欧姆定律），提供“两天推荐版 / 一天压缩版”切换。
+
+- `modules/summerTasks.js`：新增独立任务模块，保存到 `summer_task_state`，不改 `study_log`。每条任务包含 B 站资源链接、建议专注分钟、出口题、提示和可复制给 AI 的做题 prompt。
+- `modules/farm.js`：首页在有效学习日渲染暑假任务区；绑定“打开资源 / 开始专注 / 看完了 / 导入记录 / 复制给 AI”。任务区放在导入框之前，先给学生明确目标。
+- `app.js`：`applyMochiRecord()` 导入成功后调用 `MochiSummerTasks.attachImportedRecord(logEntry)`；当任务处于 pending 导入状态，粘回 MOCHI-RECORD 会自动把该任务标记完成并记录关联 log id。新增 `startCommittedFocus(goal, durationMins)`，让任务按钮直接启动带目标和时限的专注轮，仍进入原有 deciding 反思链路。
+- `style.css`：新增 `.summer-task-*` 样式，做成紧凑清单而非新页面；移动端任务按钮自动两列换行。
+- `index.html`：新增 `modules/summerTasks.js` 脚本并把静态资源版本号更新为 `20260713a`。
+
+### V5.2 暑假任务入口修正 + 已看视频直接做题（build `20260713b`）
+
+- **入口常驻首页**：`farm.js` 暑假任务区不再受 `holiday` 条件控制，避免系统没识别成假期时首页完全看不到新功能。非学习日点任务的“导入记录”会自动调用 `setHolidayMode("holiday")`，打开当天学习模式并跳到导入框。
+- **已看过视频路径**：`summerTasks.js` 每条任务新增“做出口题”按钮。学生如果已经看过视频，可以跳过“打开资源/看完了”，直接展开出口题；系统会把该任务标记为 watched，并等待后续 MOCHI-RECORD 导入完成。
+- **版本可见**：`index.html` 顶部 build 文案从旧 `build-AE` 改成 `build-20260713b`，静态资源版本号同步更新到 `20260713b`，方便确认是否刷新到了新版本。
+
+### V5.3 过关小题文案降噪 + 力学题加图（build `20260713c`）
+
+- **学生可理解的命名**：把学生界面里的“出口题”改为“过关小题 / 做小题”，专注目标、toast、复制 Prompt 标题同步改掉，减少生硬感。
+- **题干降复杂度**：匀变速、牛二、功与功率、闭合电路题干改成更口语的中文单位，例如“8 米/秒”“1 米/秒²”“10 千克”，减少 `1m/s^2` 这类机器式写法。
+- **力的分解题加示意图**：`summerTasks.js` 为“力的合成与分解”增加内联 SVG 简图，展示左绳水平、右斜绳、30°角、重物 G 和重力方向；题干从“theta 抽象描述”改成“看图做题”，不再要求学生凭文字脑补图形。
+- `style.css` 新增 `.summer-diagram` 和图内线条/标签样式；`index.html` 静态资源版本号更新为 `20260713c`。
+
+### V5.4 课程计划补全 + 小题多题位 + 缺截图不乱出题（build `20260713d`）
+
+- **完整列课**：暑假任务区补上“平抛运动”和“万有引力”，并保留“闭合电路欧姆定律”。三节目前都标为“待补例题截图”，视频入口、开始专注、看完、导入记录等任务功能照常显示。
+- **不乱生成题**：闭合电路此前用自动抓到的一帧临时编了题，已删除。没有用户贴例题截图的课程只显示占位说明：“等你贴例题截图后补题”，不提供复制给 AI 的题目 Prompt。
+- **一课多题位**：已有截图支撑的课程改为 `practiceItems` 多题列表。匀变速、牛顿第二定律、力的合成与分解、功与功率各先放 2 个过关小题；每题都有独立“复制给 AI”按钮。
+- **交互调整**：`copy-prompt` 按小题索引生成 Prompt；无题课程点“待补题”只展开占位说明。静态资源版本号更新为 `20260713d`。
+- **进度口径**：任务区会显示已列 7 节课，其中 3 节待补例题截图；进度圈只统计当前已有小题的 4 节课，避免占位课造成无法完成的压力。

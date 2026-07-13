@@ -7312,6 +7312,432 @@ body.focus-mode #view {
   background: var(--card-bg, #fff);
 }
 
+.summer-task-card {
+  padding: 16px 18px;
+  border: 1.5px solid rgba(74, 69, 128, 0.18);
+}
+
+.summer-task-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.summer-task-head h3 {
+  margin: 2px 0 4px;
+  color: var(--physics);
+  font-size: 22px;
+}
+
+.summer-task-head p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.summer-kicker {
+  margin: 0;
+  color: var(--physics) !important;
+  font-size: 12px !important;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.summer-progress-ring {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  color: var(--physics);
+  background: var(--physics-container);
+  box-shadow: var(--soft-shadow);
+}
+
+.summer-progress-ring strong {
+  margin-bottom: -16px;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.summer-progress-ring span {
+  margin-top: 18px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.summer-plan-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 12px;
+  padding: 4px;
+  border-radius: 14px;
+  background: var(--surface-low);
+}
+
+.summer-plan-tab {
+  min-height: 36px;
+  border: 0;
+  border-radius: 10px;
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.summer-plan-tab.active {
+  color: #fff;
+  background: var(--physics);
+  box-shadow: var(--soft-shadow);
+}
+
+.summer-progress-track {
+  height: 5px;
+  overflow: hidden;
+  margin: 12px 0 10px;
+  border-radius: 999px;
+  background: var(--surface-high);
+}
+
+.summer-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--tertiary);
+  transition: width 0.25s ease;
+}
+
+.summer-day-list,
+.summer-task-list {
+  display: grid;
+  gap: 8px;
+}
+
+.summer-day-group {
+  display: grid;
+  gap: 6px;
+}
+
+.summer-day-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.summer-day-title strong {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.summer-day-title span {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.summer-task {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--outline);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.summer-task.completed {
+  border-color: rgba(47, 106, 63, 0.34);
+  background: color-mix(in srgb, var(--tertiary-container) 22%, #fff);
+}
+
+.summer-task.pending-import {
+  border-color: var(--physics);
+  box-shadow: 0 0 0 3px rgba(74, 69, 128, 0.1);
+}
+
+.summer-task-main {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.summer-task-title-row {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.summer-task-check {
+  margin-top: 1px;
+  color: var(--physics);
+  font-size: 22px;
+}
+
+.summer-task h4 {
+  margin: 0 0 2px;
+  color: var(--text-primary);
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.summer-task-title-row p {
+  margin: 0;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.summer-exit-box {
+  margin-left: 34px;
+  border-radius: 12px;
+  background: var(--surface-low);
+}
+
+.summer-exit-box summary {
+  padding: 8px 10px;
+  color: var(--physics);
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.summer-exit-box summary::marker {
+  color: var(--physics);
+}
+
+.summer-exit-question,
+.summer-exit-hint {
+  margin: 0;
+  padding: 0 10px 8px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.summer-exit-question {
+  color: var(--text-primary);
+}
+
+.summer-exit-hint {
+  color: var(--text-secondary);
+}
+
+.summer-exit-box .btn {
+  margin: 0 10px 10px;
+}
+
+.summer-practice-list {
+  display: grid;
+  gap: 10px;
+  padding: 0 10px 10px;
+}
+
+.summer-practice-item {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid rgba(74, 69, 128, 0.14);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.summer-practice-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--physics);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.summer-practice-title span {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--physics);
+  font-size: 12px;
+}
+
+.summer-practice-item .summer-exit-question,
+.summer-practice-item .summer-exit-hint {
+  padding: 0;
+}
+
+.summer-practice-item .btn {
+  justify-self: start;
+  margin: 0;
+}
+
+.summer-practice-empty {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 8px;
+  margin: 0 10px 10px;
+  padding: 10px;
+  border: 1px dashed rgba(74, 69, 128, 0.35);
+  border-radius: 12px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.summer-practice-empty .material-symbols-outlined {
+  color: var(--physics);
+  font-size: 22px;
+}
+
+.summer-practice-empty strong {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--physics);
+  font-size: 13px;
+}
+
+.summer-practice-empty p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.summer-diagram {
+  margin: 0 0 2px;
+  padding: 8px;
+  border: 1px solid rgba(74, 69, 128, 0.18);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.summer-diagram svg {
+  display: block;
+  width: 100%;
+  max-width: 340px;
+  height: auto;
+  margin: 0 auto;
+}
+
+.diagram-wall {
+  stroke: #9a8278;
+  stroke-width: 7;
+  stroke-linecap: round;
+}
+
+.diagram-rope {
+  stroke: var(--physics);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.diagram-rope-thin {
+  stroke-width: 3;
+}
+
+.diagram-guide,
+.diagram-arc {
+  fill: none;
+  stroke: #b9a9ad;
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+}
+
+.diagram-dot {
+  fill: var(--physics);
+}
+
+.diagram-weight {
+  fill: var(--secondary-container);
+  stroke: var(--secondary);
+  stroke-width: 2;
+}
+
+.diagram-label,
+.diagram-note {
+  fill: var(--text-primary);
+  font-family: "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-weight: 800;
+}
+
+.diagram-label {
+  font-size: 15px;
+}
+
+.diagram-note {
+  font-size: 12px;
+  fill: var(--text-secondary);
+}
+
+.diagram-weight-text {
+  fill: var(--secondary);
+}
+
+.summer-import-waiting,
+.summer-import-done {
+  margin: 0 0 0 34px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.summer-import-waiting {
+  color: var(--physics);
+  background: rgba(197, 194, 240, 0.42);
+}
+
+.summer-import-done {
+  color: var(--tertiary);
+  background: color-mix(in srgb, var(--tertiary-container) 36%, #fff);
+}
+
+.summer-task-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-content: start;
+  gap: 6px;
+  width: 116px;
+}
+
+.summer-task-actions .btn {
+  justify-content: center;
+  min-width: 0;
+  width: 100%;
+  white-space: normal;
+}
+
+.summer-task-actions .material-symbols-outlined,
+.summer-exit-box .material-symbols-outlined {
+  font-size: 17px;
+}
+
+.summer-prompt-fallback {
+  width: 100%;
+  min-height: 180px;
+  resize: vertical;
+  margin-top: 10px;
+  padding: 12px;
+  border: 1.5px solid var(--outline);
+  border-radius: 12px;
+  color: var(--text-primary);
+  background: var(--surface-low);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.summer-prompt-fallback:focus {
+  outline: none;
+  border-color: var(--physics);
+}
+
 .farm-level-badge {
   color: var(--tertiary);
   font-size: 16px;
@@ -7543,6 +7969,33 @@ body.focus-mode #view {
 @media (max-width: 700px) {
   .home-flow {
     gap: 6px;
+  }
+
+  .summer-task-card {
+    padding: 14px;
+  }
+
+  .summer-task-head {
+    align-items: center;
+  }
+
+  .summer-task {
+    grid-template-columns: 1fr;
+  }
+
+  .summer-task-actions {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .summer-task-actions .btn {
+    min-height: 38px;
+  }
+
+  .summer-exit-box,
+  .summer-import-waiting,
+  .summer-import-done {
+    margin-left: 0;
   }
 
   .streak-num {

@@ -4442,6 +4442,7 @@ ${record.originalQuestion || "暂无原题描述。"}
     logs.unshift(logEntry);
     writeStudyLogs(logs);
     setStudyCardMeta(logEntry.id, record.meta);
+    window.MochiSummerTasks?.attachImportedRecord?.(logEntry);
     const pet = window.MochiPet.addReward({
       xp: GAME_CONFIG.rewards.petXPPerQuestion,
       studyEnergy: 0,
@@ -4716,6 +4717,17 @@ ${record.originalQuestion || "暂无原题描述。"}
     });
 
     setTimeout(() => goalInput.focus(), 80);
+  }
+
+  function startCommittedFocus(goal = "", durationMins = 25) {
+    if (!isHolidayToday()) {
+      toast("今天不是学习日，想专注的话可以直接用番茄钟");
+      return startFocusFreeFallback();
+    }
+    const safeGoal = String(goal || "暑假学习任务").trim().slice(0, 40);
+    const mins = Math.max(5, Math.min(180, Number(durationMins) || 25));
+    _activeCommitment = { goal: safeGoal, plannedMins: mins, startTs: Date.now(), reflected: false };
+    window.MochiTimer?.startFocusDirect?.(safeGoal, mins);
   }
 
   // 上学日没有承诺门时的兜底：自由专注启动
@@ -5901,6 +5913,7 @@ ${record.originalQuestion || "暂无原题描述。"}
     calcStudyStreak,
     getTodayRecordCount,
     showCommitmentModal,
+    startCommittedFocus,
     commitmentKeptRate,
     readCommitmentHistory,
     escapeHtml,

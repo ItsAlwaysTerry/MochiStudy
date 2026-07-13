@@ -532,6 +532,7 @@
       <div class="home-flow">
         <div class="home-left-stack">
           ${renderStreakBanner()}
+          ${window.MochiSummerTasks?.render?.() || ""}
           ${!hasRecords && holiday ? renderAiGuideCard(true) : ""}
           ${holiday
             ? `
@@ -589,6 +590,7 @@
     container.querySelectorAll("[data-home-review-action]").forEach((button) => {
       button.addEventListener("click", handleHomeReviewStart);
     });
+    window.MochiSummerTasks?.bind?.(container);
     container.querySelectorAll("[data-action='scroll-to-import']").forEach((button) => {
       button.addEventListener("click", () => {
         const textarea = container.querySelector("#record-paste");
