@@ -21,6 +21,8 @@ typora-root-url: .
 
 以后在这个文件里粘贴图片，Typora 会优先把图片复制到旁边的 `screenshots/`，不要再放到 `C:\Users\...\Typora\typora-user-images`。
 
-## 待补课程
+## 已导入课程
 
-闭合电路欧姆定律、平抛运动、万有引力目前还没有例题截图。学生或家长后面可以直接在对应区域继续粘图。
+闭合电路欧姆定律、平抛运动、万有引力已从 `C:\Users\Administrator\Downloads\例题.docx` 导入截图，并统一复制到 `screenshots/`。
+
+后面如果学生或家长继续补图，仍然直接粘到 `例题收件箱.md` 对应视频区域即可。

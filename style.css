@@ -7569,6 +7569,23 @@ body.focus-mode #view {
   font-size: 12px;
 }
 
+.summer-practice-image-link {
+  display: block;
+  border-radius: 8px;
+}
+
+.summer-practice-image {
+  display: block;
+  width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+  padding: 8px;
+  border: 1px solid rgba(74, 69, 128, 0.14);
+  border-radius: 8px;
+  background: #fff;
+  cursor: zoom-in;
+}
+
 .summer-practice-item .summer-exit-question,
 .summer-practice-item .summer-exit-hint {
   padding: 0;

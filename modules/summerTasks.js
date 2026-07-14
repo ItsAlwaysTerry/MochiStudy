@@ -115,38 +115,110 @@
       focusMins: 55,
       url: "https://www.bilibili.com/video/BV1TDCUBREAk/",
       videoTitle: "闭合电路欧姆定律计算 + 全题型保姆精讲",
-      needsExamples: true,
-      practiceNote: "这节课还没贴例题截图。先保留视频任务，不生成题。",
+      practiceItems: [
+        {
+          title: "电源电动势和内阻",
+          image: "docs/summer-physics-examples/screenshots/closed-circuit-01.png",
+          question: "看上方截图，先独立读题并画出电路关系，再把求解过程写出来。",
+          hint: "先分清外电路电压、内电压、电动势三个量，不要一看到电压表就直接套公式。",
+        },
+        {
+          title: "开关变化前后比较",
+          image: "docs/summer-physics-examples/screenshots/closed-circuit-02.png",
+          question: "看上方截图，先判断开关闭合前后电路结构怎么变，再计算对应物理量。",
+          hint: "开关题先重画等效电路。不要边看原图边硬算，那样最容易乱。",
+        },
+        {
+          title: "多问计算题",
+          image: "docs/summer-physics-examples/screenshots/closed-circuit-03.png",
+          question: "看上方截图，按小问顺序做。每一问先写“要求什么、已知什么”。",
+          hint: "多问题不要跳步。先把总电阻、电流、路端电压这些基础量列出来。",
+        },
+        {
+          title: "图像和功率判断",
+          image: "docs/summer-physics-examples/screenshots/closed-circuit-04.png",
+          question: "看上方截图，先读懂图像横纵轴和交点意义，再判断选项。",
+          hint: "图像题先翻译图，不要先看选项。交点、斜率、截距通常各代表一个电路量。",
+        },
+      ],
     },
     {
       id: "projectile-motion",
       title: "平抛运动",
       subject: "physics",
       nodeLabel: "运动学",
-      day: 3,
-      compressedSlot: "待补例题截图",
+      day: 2,
+      compressedSlot: "晚上补充轮",
       source: "一物儿",
       duration: "1:43:00",
       focusMins: 45,
       url: "https://www.bilibili.com/video/BV1RTkhYoEhY/",
       videoTitle: "物理平抛运动？你想知道的，这都讲",
-      needsExamples: true,
-      practiceNote: "这节课还没贴例题截图。先把视频入口占住，题目等截图后再补。",
+      practiceItems: [
+        {
+          title: "平抛概念判断",
+          image: "docs/summer-physics-examples/screenshots/projectile-motion-01.png",
+          question: "看上方截图，先判断平抛运动水平方向和竖直方向分别是什么运动。",
+          hint: "先把运动拆成两条线：水平方向、竖直方向。每条线只问速度和加速度怎么变。",
+        },
+        {
+          title: "水平位移和落地时间",
+          image: "docs/summer-physics-examples/screenshots/projectile-motion-06.png",
+          question: "看上方截图，先找水平位移和初速度，再求运动时间。",
+          hint: "平抛基础题常用两条路：水平位移 = 水平速度 × 时间；竖直方向再用自由落体。",
+        },
+        {
+          title: "分解运动过程",
+          image: "docs/summer-physics-examples/screenshots/projectile-motion-07.png",
+          question: "看上方截图，把题目拆成水平和竖直两个方向，各写一条式子。",
+          hint: "不要试图在脑子里整体想轨迹。先拆方向，再合结果。",
+        },
+        {
+          title: "台阶或斜面情境",
+          image: "docs/summer-physics-examples/screenshots/projectile-motion-13.png",
+          question: "看上方截图，先标出起点、落点、高度差和水平距离，再开始算。",
+          hint: "复杂图先找几何关系。只要能把高度差和水平距离读出来，后面还是平抛两方向。",
+        },
+      ],
     },
     {
       id: "universal-gravitation",
       title: "万有引力",
       subject: "physics",
       nodeLabel: "动力学",
-      day: 3,
-      compressedSlot: "待补例题截图",
+      day: 2,
+      compressedSlot: "晚上补充轮",
       source: "一物儿",
       duration: "1:04:15",
       focusMins: 45,
       url: "https://www.bilibili.com/video/BV141QyYrELE/",
       videoTitle: "天体卫星所有题型",
-      needsExamples: true,
-      practiceNote: "这节课还没贴例题截图。先把视频入口占住，题目等截图后再补。",
+      practiceItems: [
+        {
+          title: "卫星基础量判断",
+          image: "docs/summer-physics-examples/screenshots/universal-gravitation-01.png",
+          question: "看上方截图，先判断题目问的是线速度、角速度、周期还是加速度。",
+          hint: "天体题先认量。不要一上来背一串公式，先说清楚比较的是哪个物理量。",
+        },
+        {
+          title: "轨道半径比较",
+          image: "docs/summer-physics-examples/screenshots/universal-gravitation-02.png",
+          question: "看上方截图，先找谁的轨道半径大，再判断各物理量大小。",
+          hint: "绕同一个中心天体运动时，很多量只和轨道半径有关。先抓住半径。",
+        },
+        {
+          title: "圆轨道受力关系",
+          image: "docs/summer-physics-examples/screenshots/universal-gravitation-03.png",
+          question: "看上方截图，先写出“万有引力提供向心力”，再看选项。",
+          hint: "核心句就是：引力负责把物体拉着转圈。先写这句话对应的式子。",
+        },
+        {
+          title: "航天器情境题",
+          image: "docs/summer-physics-examples/screenshots/universal-gravitation-04.png",
+          question: "看上方截图，先把题目里的星球、轨道、飞行器位置关系画清楚。",
+          hint: "真实航天背景看起来吓人，本质还是半径、速度、周期、向心加速度的比较。",
+        },
+      ],
     }
   ];
 
@@ -270,7 +342,7 @@
     return `
       <div class="summer-day-list">
         ${renderDayGroup("第 1 天", "运动 + 受力基础", day1, state)}
-        ${renderDayGroup("第 2 天", "功率 + 电路基础", day2, state)}
+        ${renderDayGroup("第 2 天", "功率 + 电路 + 曲线/天体", day2, state)}
         ${renderDayGroup("待补例题截图", "先占住视频入口，题目等截图后补", waiting, state)}
       </div>
     `;
@@ -282,6 +354,7 @@
       ["上午第二轮", TASKS.filter((task) => task.compressedSlot === "上午第二轮")],
       ["下午第一轮", TASKS.filter((task) => task.compressedSlot === "下午第一轮")],
       ["下午第二轮", TASKS.filter((task) => task.compressedSlot === "下午第二轮")],
+      ["晚上补充轮", TASKS.filter((task) => task.compressedSlot === "晚上补充轮")],
       ["待补例题截图", TASKS.filter((task) => task.needsExamples)],
     ];
     return `
@@ -297,6 +370,7 @@
   }
 
   function renderDayGroup(title, subtitle, tasks, state) {
+    if (!tasks.length) return "";
     return `
       <div class="summer-day-group">
         <div class="summer-day-title">
@@ -379,6 +453,7 @@
               <span>${index + 1}</span>
               <strong>${escapeHtml(item.title || `小题 ${index + 1}`)}</strong>
             </div>
+            ${renderPracticeImage(item)}
             ${renderTaskDiagram(item)}
             <p class="summer-exit-question">${escapeHtml(item.question)}</p>
             <p class="summer-exit-hint">${escapeHtml(item.hint)}</p>
@@ -388,6 +463,16 @@
           </section>
         `).join("")}
       </div>
+    `;
+  }
+
+  function renderPracticeImage(item) {
+    if (!item.image) return "";
+    const alt = item.imageAlt || item.title || "过关小题截图";
+    return `
+      <a class="summer-practice-image-link" href="${escapeHtml(item.image)}" target="_blank" rel="noreferrer" aria-label="打开原题截图">
+        <img class="summer-practice-image" src="${escapeHtml(item.image)}" alt="${escapeHtml(alt)}" loading="lazy">
+      </a>
     `;
   }
 
@@ -504,6 +589,7 @@
   function buildPracticePrompt(task, item) {
     return [
       `我刚看完「${task.title}」视频。`,
+      item.image ? `题目是 MochiStudy 页面上的这张截图：${item.image}。我会把题图一起发给你；如果你没有看到图片，请先提醒我上传题图，不要凭空编题。` : "",
       `请用零基础方式带我做这道过关小题：${item.question}`,
       item.hint ? `我希望你重点提醒我：${item.hint}` : "",
       "请一步步问我，不要直接给答案；如果我不会，先用更简单的问题铺垫。",
