@@ -555,3 +555,10 @@ v34 之后的改动：
 - **学生端文案减压**：`modules/summerTasks.js` 将任务展开 summary 改为“卡住再看 + 过关小题”，区块标题改为“卡住时再看”，资源标签改为“翻书救急”。
 - **AI Prompt 同步**：复制过关小题 Prompt 时，不再说“课前翻书范围”，改为“如果听课或做题卡住，翻书救急范围”。
 - **计划文档同步**：`docs/summer-physics-execution-plan.md` 和 `docs/summer-physics-resource-inventory.md` 改为“主线视频 → 过关题检验 → 卡住再翻实体书/基础课 → MOCHI-RECORD”的执行闭环；`index.html` 静态资源版本号更新为 `20260714d`。
+
+### V5.9 暑假任务下一步引导（build `20260714f`）
+
+- **按钮墙降噪**：`modules/summerTasks.js` 每条暑假任务从 5 个并列按钮改为 1 个“下一步”主按钮；原来的打开资源、开始专注、做小题、标记看完、导入记录收进“更多操作”。
+- **状态驱动工作流**：新增轻量状态判断，按 `startedAt / watched / practicingAt / pendingTaskId / completed` 自动切换主按钮：开始这节课 → 我看完了，去做题 → 做第 1 道题 → 复制第 1 题给 AI → 粘贴记录完成任务 → 已完成。
+- **减少漏记**：点“开始这节课”会同时打开视频资源并启动对应专注；复制过关题 Prompt 后自动关联任务并进入等待 MOCHI-RECORD 导入状态。剪贴板 API 加 900ms 超时，卡住时自动走手动复制框，不阻断任务状态推进。
+- **步骤条**：任务卡新增 `看视频 / 做题 / 导入 / 完成` stepper，`style.css` 新增 `.summer-stepper`、`.summer-next-btn`、`.summer-more-actions` 样式；`index.html` 静态资源版本号更新为 `20260714f`。

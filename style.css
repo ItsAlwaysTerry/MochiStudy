@@ -7496,6 +7496,54 @@ body.focus-mode #view {
   line-height: 1.4;
 }
 
+.summer-stepper {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  margin-left: 34px;
+}
+
+.summer-stepper span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 5px 6px;
+  border-radius: 8px;
+  color: var(--text-tertiary);
+  background: var(--surface-low);
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.summer-stepper i {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 17px;
+  height: 17px;
+  border-radius: 999px;
+  color: #fff;
+  background: #c8b9bf;
+  font-style: normal;
+  font-size: 10px;
+}
+
+.summer-stepper span.active {
+  color: var(--physics);
+  background: rgba(197, 194, 240, 0.34);
+}
+
+.summer-stepper span.active i,
+.summer-stepper span.done i {
+  background: var(--physics);
+}
+
+.summer-stepper span.done {
+  color: var(--text-secondary);
+}
+
 .summer-exit-box {
   margin-left: 34px;
   border-radius: 12px;
@@ -7778,7 +7826,7 @@ body.focus-mode #view {
   grid-template-columns: 1fr;
   align-content: start;
   gap: 6px;
-  width: 116px;
+  width: 148px;
 }
 
 .summer-task-actions .btn {
@@ -7786,6 +7834,35 @@ body.focus-mode #view {
   min-width: 0;
   width: 100%;
   white-space: normal;
+}
+
+.summer-next-btn {
+  min-height: 42px;
+}
+
+.summer-more-actions {
+  border: 1px solid rgba(74, 69, 128, 0.12);
+  border-radius: 8px;
+  background: var(--surface-low);
+}
+
+.summer-more-actions summary {
+  padding: 8px 10px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+  cursor: pointer;
+}
+
+.summer-more-actions summary::marker {
+  color: var(--text-tertiary);
+}
+
+.summer-more-actions div {
+  display: grid;
+  gap: 6px;
+  padding: 0 6px 6px;
 }
 
 .summer-task-actions .material-symbols-outlined,
@@ -8059,11 +8136,20 @@ body.focus-mode #view {
 
   .summer-task-actions {
     width: 100%;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 
   .summer-task-actions .btn {
     min-height: 38px;
+  }
+
+  .summer-stepper {
+    margin-left: 0;
+  }
+
+  .summer-stepper span {
+    justify-content: center;
+    padding: 5px 4px;
   }
 
   .summer-exit-box,

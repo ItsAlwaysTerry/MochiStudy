@@ -300,10 +300,15 @@
     refreshHome();
   }
 
-  function setPendingTask(id) {
+  function setPendingTask(id, patch = {}) {
     const state = readState();
     state.pendingTaskId = id;
     state.activeTaskId = id;
+    state.tasks[id] = {
+      ...taskState(state, id),
+      ...patch,
+      updatedAt: new Date().toISOString(),
+    };
     writeState(state);
     refreshHome();
   }
@@ -426,6 +431,7 @@
     const completed = Boolean(s.completed);
     const watched = Boolean(s.watched);
     const practiceItems = getPracticeItems(task);
+    const flow = getTaskFlow(task, s, isPending);
     return `
       <article class="summer-task ${completed ? "completed" : ""} ${isPending ? "pending-import" : ""}" data-summer-task-id="${escapeHtml(task.id)}">
         <div class="summer-task-main">
@@ -436,6 +442,7 @@
               <p>${escapeHtml(task.source)} · ${escapeHtml(task.duration)} · ${escapeHtml(task.videoTitle)}</p>
             </div>
           </div>
+          ${renderTaskStepper(flow)}
           <details class="summer-exit-box" ${isActive ? "open" : ""}>
             <summary>${practiceItems.length ? `卡住再看 + 过关小题：${practiceItems.length} 题` : "卡住再看 + 过关小题：待补截图"}</summary>
             ${renderPrep(task)}
@@ -444,24 +451,76 @@
           ${isPending ? `<p class="summer-import-waiting">等你把 AI 输出的 MOCHI-RECORD 导入后，这条任务会自动完成。</p>` : ""}
           ${completed && s.lastImportedRecord ? `<p class="summer-import-done">已完成：${escapeHtml(s.lastImportedRecord.nodeLabel || "物理")} · ${"★".repeat(Number(s.lastImportedRecord.stars || 0))}</p>` : ""}
         </div>
-        <div class="summer-task-actions">
-          <a class="btn btn-soft btn-sm" href="${escapeHtml(task.url)}" target="_blank" rel="noreferrer">
-            <span class="material-symbols-outlined">open_in_new</span>打开资源
-          </a>
-          <button class="btn btn-soft btn-sm" data-summer-action="focus" data-task-id="${escapeHtml(task.id)}" type="button">
-            <span class="material-symbols-outlined">timer</span>开始专注
-          </button>
-          <button class="btn btn-soft btn-sm" data-summer-action="practice" data-task-id="${escapeHtml(task.id)}" type="button">
-            <span class="material-symbols-outlined">edit_note</span>${practiceItems.length ? "做小题" : "待补题"}
-          </button>
-          <button class="btn btn-soft btn-sm" data-summer-action="watched" data-task-id="${escapeHtml(task.id)}" type="button">
-            <span class="material-symbols-outlined">visibility</span>${watched ? "已看完" : "看完了"}
-          </button>
-          <button class="btn btn-primary btn-sm" data-summer-action="import" data-task-id="${escapeHtml(task.id)}" type="button">
-            <span class="material-symbols-outlined">download_done</span>导入记录
-          </button>
-        </div>
+        ${renderTaskActions(task, flow)}
       </article>
+    `;
+  }
+
+  function getTaskFlow(task, taskInfo, isPending) {
+    const hasPractice = getPracticeItems(task).length > 0;
+    const started = Boolean(taskInfo.startedAt || taskInfo.lastFocusedAt || taskInfo.watched);
+    const watched = Boolean(taskInfo.watched);
+    const practicing = Boolean(taskInfo.practicingAt);
+    if (taskInfo.completed) {
+      return { step: 3, action: "done", label: "已完成", icon: "check_circle", tone: "done", hasPractice };
+    }
+    if (isPending) {
+      return { step: 2, action: "import", label: "粘贴记录完成任务", icon: "download_done", tone: "primary", hasPractice };
+    }
+    if (practicing && hasPractice) {
+      return { step: 1, action: "copy-first-prompt", label: "复制第 1 题给 AI", icon: "content_copy", tone: "primary", hasPractice };
+    }
+    if (watched && hasPractice) {
+      return { step: 1, action: "practice", label: "做第 1 道题", icon: "edit_note", tone: "primary", hasPractice };
+    }
+    if (started) {
+      return { step: 0, action: "watched-next", label: hasPractice ? "我看完了，去做题" : "我看完了", icon: "visibility", tone: "primary", hasPractice };
+    }
+    return { step: 0, action: "start-task", label: "开始这节课", icon: "play_arrow", tone: "primary", hasPractice };
+  }
+
+  function renderTaskStepper(flow) {
+    const steps = ["看视频", "做题", "导入", "完成"];
+    return `
+      <div class="summer-stepper" aria-label="任务步骤">
+        ${steps.map((label, index) => `
+          <span class="${index < flow.step ? "done" : index === flow.step ? "active" : ""}">
+            <i>${index < flow.step ? "✓" : index + 1}</i>${label}
+          </span>
+        `).join("")}
+      </div>
+    `;
+  }
+
+  function renderTaskActions(task, flow) {
+    const disabled = flow.action === "done" ? " disabled" : "";
+    const primaryClass = flow.tone === "done" ? "btn-soft" : "btn-primary";
+    return `
+      <div class="summer-task-actions">
+        <button class="btn ${primaryClass} btn-sm summer-next-btn" data-summer-action="${escapeHtml(flow.action)}" data-task-id="${escapeHtml(task.id)}" type="button"${disabled}>
+          <span class="material-symbols-outlined">${escapeHtml(flow.icon)}</span>${escapeHtml(flow.label)}
+        </button>
+        <details class="summer-more-actions">
+          <summary>更多操作</summary>
+          <div>
+            <a class="btn btn-soft btn-sm" href="${escapeHtml(task.url)}" target="_blank" rel="noreferrer">
+              <span class="material-symbols-outlined">open_in_new</span>打开资源
+            </a>
+            <button class="btn btn-soft btn-sm" data-summer-action="focus" data-task-id="${escapeHtml(task.id)}" type="button">
+              <span class="material-symbols-outlined">timer</span>开始专注
+            </button>
+            <button class="btn btn-soft btn-sm" data-summer-action="practice" data-task-id="${escapeHtml(task.id)}" type="button">
+              <span class="material-symbols-outlined">edit_note</span>${flow.hasPractice ? "做小题" : "待补题"}
+            </button>
+            <button class="btn btn-soft btn-sm" data-summer-action="watched" data-task-id="${escapeHtml(task.id)}" type="button">
+              <span class="material-symbols-outlined">visibility</span>标记看完
+            </button>
+            <button class="btn btn-soft btn-sm" data-summer-action="import" data-task-id="${escapeHtml(task.id)}" type="button">
+              <span class="material-symbols-outlined">download_done</span>导入记录
+            </button>
+          </div>
+        </details>
+      </div>
     `;
   }
 
@@ -550,6 +609,40 @@
       return;
     }
     if (!task) return;
+    if (action === "start-task") {
+      const state = readState();
+      const current = taskState(state, task.id);
+      const now = new Date().toISOString();
+      state.activeTaskId = task.id;
+      state.tasks[task.id] = {
+        ...current,
+        startedAt: current.startedAt || now,
+        lastFocusedAt: now,
+        updatedAt: now,
+      };
+      writeState(state);
+      window.open(task.url, "_blank", "noopener,noreferrer");
+      window.MochiApp?.startCommittedFocus?.(`暑假物理：看${task.title}`, task.focusMins);
+      refreshHome();
+      return;
+    }
+    if (action === "watched-next") {
+      const state = readState();
+      const current = taskState(state, task.id);
+      const hasPractice = getPracticeItems(task).length > 0;
+      state.activeTaskId = task.id;
+      state.tasks[task.id] = {
+        ...current,
+        watched: true,
+        practicingAt: hasPractice ? (current.practicingAt || new Date().toISOString()) : current.practicingAt,
+        updatedAt: new Date().toISOString(),
+      };
+      writeState(state);
+      refreshHome();
+      setTimeout(() => scrollToTask(task.id), 120);
+      window.MochiApp?.toast?.(hasPractice ? "已打开过关小题，先做第 1 道" : "已记录看完视频");
+      return;
+    }
     if (action === "watched") {
       updateTask(task.id, { watched: true });
       window.MochiApp?.toast?.("已记录看完视频，做完小题后再导入记录");
@@ -578,21 +671,13 @@
       window.MochiApp?.startCommittedFocus?.(goal, task.focusMins);
       return;
     }
+    if (action === "copy-first-prompt") {
+      await copyPracticePrompt(task, 0);
+      return;
+    }
     if (action === "copy-prompt") {
       const itemIndex = Number(event.currentTarget.dataset.itemIndex || 0);
-      const item = getPracticeItems(task)[itemIndex];
-      if (!item) {
-        window.MochiApp?.toast?.("这节课还没补例题截图，先不生成题");
-        return;
-      }
-      const prompt = buildPracticePrompt(task, item);
-      const ok = await copyText(prompt);
-      if (ok) {
-        window.MochiApp?.toast?.("过关小题已复制，粘给 AI 让它带你做");
-      } else {
-        showPromptFallback(prompt);
-        window.MochiApp?.toast?.("已打开手动复制框");
-      }
+      await copyPracticePrompt(task, itemIndex);
       return;
     }
     if (action === "import") {
@@ -608,6 +693,28 @@
         return;
       }
       window.MochiApp?.toast?.("已关联这条任务：粘贴 MOCHI-RECORD 后自动完成");
+    }
+  }
+
+  async function copyPracticePrompt(task, itemIndex) {
+    const item = getPracticeItems(task)[itemIndex];
+    if (!item) {
+      window.MochiApp?.toast?.("这节课还没补例题截图，先不生成题");
+      return;
+    }
+    const prompt = buildPracticePrompt(task, item);
+    const ok = await copyText(prompt);
+    setPendingTask(task.id, {
+      watched: true,
+      practicingAt: taskState(readState(), task.id).practicingAt || new Date().toISOString(),
+      promptCopiedAt: new Date().toISOString(),
+      lastPromptItemIndex: itemIndex,
+    });
+    if (ok) {
+      window.MochiApp?.toast?.("已复制给 AI，做完后把 MOCHI-RECORD 粘回来");
+    } else {
+      showPromptFallback(prompt);
+      window.MochiApp?.toast?.("已打开手动复制框，复制后把 AI 输出粘回来");
     }
   }
 
@@ -666,7 +773,11 @@
 
   async function copyText(text) {
     try {
-      await navigator.clipboard.writeText(text);
+      if (!navigator.clipboard?.writeText) throw new Error("clipboard unavailable");
+      await Promise.race([
+        navigator.clipboard.writeText(text),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("clipboard timeout")), 900)),
+      ]);
       return true;
     } catch { /* fallback below */ }
     try {
