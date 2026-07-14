@@ -336,7 +336,7 @@
     return state;
   }
 
-  function setPendingTask(id, patch = {}) {
+  function setPendingTask(id, patch = {}, options = {}) {
     const state = readState();
     state.pendingTaskId = id;
     state.activeTaskId = id;
@@ -346,7 +346,7 @@
       updatedAt: new Date().toISOString(),
     };
     writeState(state);
-    refreshHome();
+    refreshHome(options);
   }
 
   function attachImportedRecord(logEntry) {
@@ -883,25 +883,25 @@
     if (action === "route-day") {
       const dayNo = Number(event.currentTarget.dataset.routeDay || 0);
       if (ROUTE_DAYS.some((day) => day.day === dayNo)) {
+        const anchor = elementAnchorOptions(event.currentTarget, `[data-summer-action="route-day"][data-route-day="${dayNo}"]`);
         const state = readState();
         state.routeDetailDay = dayNo;
         writeState(state);
-        refreshHome();
-        setTimeout(() => {
-          document.querySelector(".summer-route-detail")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-        }, 80);
+        refreshHome(anchor);
       }
       return;
     }
     if (!task) return;
     if (action === "show-step") {
       const step = Math.min(3, Math.max(0, Number(event.currentTarget.dataset.step || 0)));
+      const selector = `[data-summer-action="show-step"][data-task-id="${escapeSelectorAttr(task.id)}"][data-step="${step}"]`;
+      const anchor = elementAnchorOptions(event.currentTarget, selector);
       updateTask(task.id, { activeStep: step });
-      refreshHome();
-      setTimeout(() => scrollToTask(task.id), 80);
+      refreshHome(anchor);
       return;
     }
     if (action === "start-task") {
+      const anchor = taskAnchorOptions(task.id, event.currentTarget);
       const state = readState();
       const current = taskState(state, task.id);
       const now = new Date().toISOString();
@@ -916,10 +916,11 @@
       writeState(state);
       window.open(task.url, "_blank", "noopener,noreferrer");
       window.MochiApp?.startCommittedFocus?.(`暑假物理：看${task.title}`, task.focusMins);
-      refreshHome();
+      refreshHome(anchor);
       return;
     }
     if (action === "watched-next") {
+      const anchor = taskAnchorOptions(task.id, event.currentTarget);
       const state = readState();
       const current = taskState(state, task.id);
       const hasPractice = getPracticeItems(task).length > 0;
@@ -932,18 +933,19 @@
         updatedAt: new Date().toISOString(),
       };
       writeState(state);
-      refreshHome();
-      setTimeout(() => scrollToTask(task.id), 120);
+      refreshHome(anchor);
       window.MochiApp?.toast?.(hasPractice ? "已打开过关小题，先做第 1 道" : "已记录看完视频");
       return;
     }
     if (action === "watched") {
+      const anchor = taskAnchorOptions(task.id, event.currentTarget);
       updateTask(task.id, { watched: true, activeStep: 1 });
       window.MochiApp?.toast?.("已记录看完视频，做完小题后再导入记录");
-      refreshHome();
+      refreshHome(anchor);
       return;
     }
     if (action === "practice") {
+      const anchor = taskAnchorOptions(task.id, event.currentTarget);
       const state = readState();
       const hasPractice = getPracticeItems(task).length > 0;
       state.activeTaskId = task.id;
@@ -955,8 +957,7 @@
         updatedAt: new Date().toISOString(),
       };
       writeState(state);
-      refreshHome();
-      setTimeout(() => scrollToTask(task.id), 120);
+      refreshHome(anchor);
       window.MochiApp?.toast?.(hasPractice ? "已打开过关小题，做完后再导入记录" : "这节课先占位，等你贴例题截图后补题");
       return;
     }
@@ -967,12 +968,12 @@
       return;
     }
     if (action === "copy-first-prompt") {
-      await copyPracticePrompt(task, 0);
+      await copyPracticePrompt(task, 0, taskAnchorOptions(task.id, event.currentTarget));
       return;
     }
     if (action === "copy-prompt") {
       const itemIndex = Number(event.currentTarget.dataset.itemIndex || 0);
-      await copyPracticePrompt(task, itemIndex);
+      await copyPracticePrompt(task, itemIndex, taskAnchorOptions(task.id, event.currentTarget));
       return;
     }
     if (action === "import") {
@@ -991,7 +992,7 @@
     }
   }
 
-  async function copyPracticePrompt(task, itemIndex) {
+  async function copyPracticePrompt(task, itemIndex, refreshOptions = { preserveScroll: true }) {
     const item = getPracticeItems(task)[itemIndex];
     if (!item) {
       window.MochiApp?.toast?.("这节课还没补例题截图，先不生成题");
@@ -1005,7 +1006,7 @@
       promptCopiedAt: new Date().toISOString(),
       lastPromptItemIndex: itemIndex,
       activeStep: 2,
-    });
+    }, refreshOptions);
     if (ok) {
       window.MochiApp?.toast?.("已复制给 AI，做完后把 MOCHI-RECORD 粘回来");
     } else {
@@ -1065,11 +1066,6 @@
     ].filter(Boolean).join("\n");
   }
 
-  function scrollToTask(id) {
-    const taskEl = document.querySelector(`[data-summer-task-id="${CSS.escape(id)}"]`);
-    taskEl?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }
-
   async function copyText(text) {
     try {
       if (!navigator.clipboard?.writeText) throw new Error("clipboard unavailable");
@@ -1108,9 +1104,47 @@
     }, 40);
   }
 
-  function refreshHome() {
+  function taskAnchorOptions(taskId, trigger) {
+    const card = trigger?.closest?.("[data-summer-task-id]");
+    const selector = `[data-summer-task-id="${escapeSelectorAttr(taskId)}"]`;
+    return elementAnchorOptions(card || trigger, selector);
+  }
+
+  function elementAnchorOptions(element, selector) {
+    const rect = element?.getBoundingClientRect?.();
+    if (!rect) return { preserveScroll: true };
+    return { preserveScroll: true, preserveAnchor: { selector, top: rect.top } };
+  }
+
+  function escapeSelectorAttr(value) {
+    return String(value ?? "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  }
+
+  function refreshHome(options = {}) {
+    const anchor = options.preserveAnchor;
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
     const view = document.getElementById("view");
     if (view && view.querySelector(".home-flow")) window.MochiFarm?.renderFarm?.(view);
+    if (anchor?.selector && Number.isFinite(anchor.top)) {
+      const restoreAnchor = () => {
+        const next = document.querySelector(anchor.selector);
+        if (!next) {
+          if (options.preserveScroll) window.scrollTo(scrollX, scrollY);
+          return;
+        }
+        const delta = next.getBoundingClientRect().top - anchor.top;
+        if (Math.abs(delta) > 0.5) window.scrollTo(scrollX, window.scrollY + delta);
+      };
+      requestAnimationFrame(() => {
+        restoreAnchor();
+        requestAnimationFrame(restoreAnchor);
+      });
+      return;
+    }
+    if (options.preserveScroll) {
+      requestAnimationFrame(() => window.scrollTo(scrollX, scrollY));
+    }
   }
 
   function escapeHtml(value) {
