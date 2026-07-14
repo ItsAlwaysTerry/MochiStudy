@@ -582,6 +582,7 @@
           ${renderCommitmentRecap()}
         </div>
       </div>
+      ${window.MochiSummerTasks?.renderRouteOverviewCard?.() || ""}
     `;
 
     container.querySelectorAll("[data-farm-action]").forEach((button) => {

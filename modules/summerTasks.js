@@ -1,5 +1,8 @@
 (function () {
   const STATE_KEY = "summer_task_state";
+  const BASIC_2045_URL = "https://space.bilibili.com/23630128/lists/2045?type=season";
+  const BASIC_2181_URL = "https://space.bilibili.com/23630128/lists/2181?type=season";
+  const ONE_ROUND_URL = "https://space.bilibili.com/23630128/lists/340933?type=series";
 
   const TASKS = [
     {
@@ -17,7 +20,8 @@
       prep: {
         concepts: ["速度和加速度", "位移和时间", "匀变速五个公式", "刹车陷阱", "v-t 图像"],
         oneRound: "实体书一轮讲义 1 第2-6页；刹车/图像卡住再翻第10-15页",
-        backup: "基础课 season 2045：1-28；优先看 13-23、26-28",
+        backup: "按目录找：速度、加速度、匀变速直线运动、运动图像",
+        backupLinks: [{ label: "打开基础课合集", url: BASIC_2045_URL }],
       },
       practiceItems: [
         {
@@ -47,7 +51,8 @@
       prep: {
         concepts: ["质量", "合外力", "加速度方向", "F = ma", "正交分解"],
         oneRound: "实体书一轮讲义 1 第33-36页；题目卡住再翻第37-40页",
-        backup: "基础课 season 2045：55-64；必要时看高一高二讲义一",
+        backup: "按目录找：牛顿第二定律、合外力、加速度、连接体",
+        backupLinks: [{ label: "打开基础课合集", url: BASIC_2045_URL }],
       },
       practiceItems: [
         {
@@ -77,7 +82,8 @@
       prep: {
         concepts: ["重力", "弹力", "摩擦力", "合力和分力", "受力图", "坐标轴"],
         oneRound: "实体书一轮讲义 1 第19-24页，重点第22-24页；动态平衡先不用钻第27-31页",
-        backup: "基础课 season 2045：29-35、45-54；必要时看高一高二讲义一",
+        backup: "按目录找：受力分析、共点力平衡、力的分解、正交分解",
+        backupLinks: [{ label: "打开基础课合集", url: BASIC_2045_URL }],
       },
       practiceItems: [
         {
@@ -108,7 +114,8 @@
       prep: {
         concepts: ["正功和负功", "力和位移夹角", "功率", "动能定理入口"],
         oneRound: "实体书一轮讲义 2 第44-46页；动能定理卡住再翻第48-50页",
-        backup: "基础课 season 2181：100-108",
+        backup: "按目录找：功、功率、动能定理",
+        backupLinks: [{ label: "打开基础课合集", url: BASIC_2181_URL }],
       },
       practiceItems: [
         {
@@ -138,7 +145,8 @@
       prep: {
         concepts: ["电流", "电压", "电阻", "电动势", "内阻", "路端电压", "串并联"],
         oneRound: "实体书一轮讲义 3 第23-24页；电动势/内阻实验卡住再翻第34-38页",
-        backup: "基础课 season 2181：192-212；必要时看高一高二讲义三",
+        backup: "按目录找：闭合电路欧姆定律、电动势、内阻、路端电压、串并联",
+        backupLinks: [{ label: "打开基础课合集", url: BASIC_2181_URL }],
       },
       practiceItems: [
         {
@@ -182,7 +190,11 @@
       prep: {
         concepts: ["水平匀速", "竖直自由落体", "等时性", "位移分解", "速度分解"],
         oneRound: "实体书一轮讲义 2 第8-10页；角度/类平抛卡住再翻第12-14页",
-        backup: "基础课 season 2045：95-98；一轮平抛合集 P1-P4",
+        backup: "按目录找：平抛运动、运动的合成与分解；一轮合集可找“平抛运动”",
+        backupLinks: [
+          { label: "打开基础课合集", url: BASIC_2045_URL },
+          { label: "打开一轮复习合集", url: ONE_ROUND_URL },
+        ],
       },
       practiceItems: [
         {
@@ -226,7 +238,11 @@
       prep: {
         concepts: ["万有引力", "圆周运动", "向心力", "轨道半径", "周期", "线速度"],
         oneRound: "实体书一轮讲义 2 第27-35页；双星/追及相遇先放到第38-43页有余力再看",
-        backup: "基础课 season 2045：113-120；一轮万有引力合集 P1-P9",
+        backup: "按目录找：万有引力、圆周运动、向心力、卫星问题",
+        backupLinks: [
+          { label: "打开基础课合集", url: BASIC_2045_URL },
+          { label: "打开一轮复习合集", url: ONE_ROUND_URL },
+        ],
       },
       practiceItems: [
         {
@@ -406,27 +422,51 @@
     const state = readState();
     const currentDayNo = currentRouteDay(state);
     const currentDay = ROUTE_DAYS.find((day) => day.day === currentDayNo) || ROUTE_DAYS[0];
-    const stat = routeStats(state);
-    const taskStat = progress(state);
+    const todayTasks = routeTasks(currentDay);
+    const todayCompleted = todayTasks.filter((task) => taskState(state, task.id).completed).length;
     return `
       <section class="card summer-task-card">
         <div class="summer-route-hero">
           <div>
-            <p class="summer-kicker">暑假物理 28 天路线</p>
-            <h3>第 ${currentDay.day} 天 / 28</h3>
+            <p class="summer-kicker">暑假物理今日任务</p>
+            <h3>第 ${currentDay.day} 天任务</h3>
             <p>${escapeHtml(currentDay.title)} · ${escapeHtml(currentDay.subtitle)}</p>
           </div>
-          <div class="summer-progress-ring" aria-label="路线已完成 ${stat.completed}/${stat.total}">
-            <strong>${stat.completed}</strong><span>/28</span>
+          <div class="summer-progress-ring" aria-label="今日已完成 ${todayCompleted}/${todayTasks.length || 1}">
+            <strong>${todayTasks.length ? todayCompleted : currentDay.day}</strong><span>${todayTasks.length ? `/${todayTasks.length}` : "/28"}</span>
           </div>
         </div>
         <div class="summer-route-meta">
-          <span>已完成 ${stat.completed} 天</span>
-          <span>已落实 ${taskStat.completed}/${taskStat.total} 节详细任务</span>
+          <span>看视频</span>
+          <span>做过关小题</span>
+          <span>导入 MOCHI-RECORD 才算完成</span>
+        </div>
+        <div class="summer-progress-track"><div class="summer-progress-fill" style="width:${todayTasks.length ? Math.round((todayCompleted / todayTasks.length) * 100) : 0}%"></div></div>
+        ${renderTodayRoute(currentDay, state)}
+      </section>
+    `;
+  }
+
+  function renderRouteOverviewCard() {
+    const state = readState();
+    const currentDayNo = currentRouteDay(state);
+    const stat = routeStats(state);
+    const taskStat = progress(state);
+    return `
+      <section class="card summer-route-card">
+        <div class="summer-route-card-head">
+          <div>
+            <p class="summer-kicker">暑假物理 28 天路线</p>
+            <h3>总计划</h3>
+            <p>后面的天先占大方向，等我们补齐具体视频、讲义范围和过关题后，再变成可执行任务。</p>
+          </div>
+          <div class="summer-route-card-stats">
+            <span>已完成 ${stat.completed}/28 天</span>
+            <span>已落实 ${taskStat.completed}/${taskStat.total} 节详细任务</span>
+          </div>
         </div>
         <div class="summer-progress-track"><div class="summer-progress-fill" style="width:${stat.pct}%"></div></div>
-        ${renderTodayRoute(currentDay, state)}
-        ${renderRouteOverview(state, currentDay.day)}
+        ${renderRouteOverview(state, currentDayNo)}
       </section>
     `;
   }
@@ -467,8 +507,7 @@
   function renderRouteOverview(state, currentDayNo) {
     const weeks = [1, 2, 3, 4].map((week) => ROUTE_DAYS.filter((day) => day.week === week));
     return `
-      <details class="summer-route-overview">
-        <summary>查看 28 天路线</summary>
+      <div class="summer-route-overview">
         <div class="summer-route-weeks">
           ${weeks.map((days, index) => `
             <section class="summer-route-week">
@@ -479,7 +518,7 @@
             </section>
           `).join("")}
         </div>
-      </details>
+      </div>
     `;
   }
 
@@ -658,6 +697,7 @@
     const prep = task.prep;
     if (!prep) return "";
     const concepts = Array.isArray(prep.concepts) ? prep.concepts : [];
+    const backupLinks = Array.isArray(prep.backupLinks) ? prep.backupLinks : [];
     return `
       <section class="summer-prep-box">
         <div class="summer-prep-title">
@@ -673,6 +713,15 @@
           ${prep.oneRound ? `<p><strong>翻书救急</strong>${escapeHtml(prep.oneRound)}</p>` : ""}
           ${prep.backup ? `<p><strong>不懂再看</strong>${escapeHtml(prep.backup)}</p>` : ""}
         </div>
+        ${backupLinks.length ? `
+          <div class="summer-prep-links">
+            ${backupLinks.map((link) => `
+              <a class="btn btn-soft btn-sm" href="${escapeHtml(link.url)}" target="_blank" rel="noreferrer">
+                <span class="material-symbols-outlined">open_in_new</span>${escapeHtml(link.label || "打开资源")}
+              </a>
+            `).join("")}
+          </div>
+        ` : ""}
       </section>
     `;
   }
@@ -842,11 +891,14 @@
   }
 
   function buildPracticePrompt(task, item) {
+    const backupLinks = Array.isArray(task.prep?.backupLinks)
+      ? task.prep.backupLinks.map((link) => `${link.label || "资源"}：${link.url}`).join("；")
+      : "";
     return [
       `我刚看完「${task.title}」视频。`,
       task.prep?.concepts?.length ? `今天相关基础概念：${task.prep.concepts.join("、")}。如果我概念不清楚，请先用一句话帮我补概念，再带我做题。` : "",
       task.prep?.oneRound ? `如果我做题或听课时卡住，翻书救急范围：${task.prep.oneRound}。` : "",
-      task.prep?.backup ? `如果我还是听不懂，备用资源是：${task.prep.backup}。` : "",
+      task.prep?.backup ? `如果我还是听不懂，备用资源按目录找：${task.prep.backup}。${backupLinks ? `链接：${backupLinks}。` : ""}` : "",
       item.image ? `题目是 MochiStudy 页面上的这张截图：${item.image}。我会把题图一起发给你；如果你没有看到图片，请先提醒我上传题图，不要凭空编题。` : "",
       `请用零基础方式带我做这道过关小题：${item.question}`,
       item.hint ? `我希望你重点提醒我：${item.hint}` : "",
@@ -912,6 +964,7 @@
     bind,
     attachImportedRecord,
     progress,
+    renderRouteOverviewCard,
     getTasks: () => TASKS.slice(),
   };
 })();

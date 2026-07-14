@@ -7317,6 +7317,51 @@ body.focus-mode #view {
   border: 1.5px solid rgba(74, 69, 128, 0.18);
 }
 
+.summer-route-card {
+  width: 100%;
+  max-width: 1180px;
+  margin: 16px auto 0;
+  padding: 16px 18px;
+  border: 1.5px solid rgba(74, 69, 128, 0.18);
+}
+
+.summer-route-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.summer-route-card-head h3 {
+  margin: 2px 0 4px;
+  color: var(--physics);
+  font-size: 22px;
+}
+
+.summer-route-card-head p {
+  max-width: 620px;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.summer-route-card-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.summer-route-card-stats span {
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: var(--physics);
+  background: rgba(197, 194, 240, 0.34);
+  font-size: 12px;
+  font-weight: 900;
+}
+
 .summer-route-hero {
   display: flex;
   align-items: flex-start;
@@ -7483,19 +7528,6 @@ body.focus-mode #view {
 
 .summer-route-overview {
   margin-top: 12px;
-  border-top: 1px solid rgba(74, 69, 128, 0.12);
-}
-
-.summer-route-overview > summary {
-  padding: 10px 2px 0;
-  color: var(--physics);
-  font-size: 13px;
-  font-weight: 900;
-  cursor: pointer;
-}
-
-.summer-route-overview > summary::marker {
-  color: var(--physics);
 }
 
 .summer-route-weeks {
@@ -7813,6 +7845,20 @@ body.focus-mode #view {
   min-width: 56px;
   margin-right: 6px;
   color: var(--text-primary);
+}
+
+.summer-prep-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.summer-prep-links .btn {
+  margin: 0;
+}
+
+.summer-prep-links .material-symbols-outlined {
+  font-size: 16px;
 }
 
 .summer-practice-list {
@@ -8300,6 +8346,20 @@ body.focus-mode #view {
 
   .summer-task-card {
     padding: 14px;
+  }
+
+  .summer-route-card {
+    margin-top: 10px;
+    padding: 14px;
+  }
+
+  .summer-route-card-head {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .summer-route-card-stats {
+    justify-content: flex-start;
   }
 
   .summer-route-hero {
