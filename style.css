@@ -7317,20 +7317,20 @@ body.focus-mode #view {
   border: 1.5px solid rgba(74, 69, 128, 0.18);
 }
 
-.summer-task-head {
+.summer-route-hero {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 14px;
 }
 
-.summer-task-head h3 {
+.summer-route-hero h3 {
   margin: 2px 0 4px;
   color: var(--physics);
   font-size: 22px;
 }
 
-.summer-task-head p {
+.summer-route-hero p {
   margin: 0;
   color: var(--text-secondary);
   font-size: 13px;
@@ -7369,30 +7369,20 @@ body.focus-mode #view {
   font-weight: 900;
 }
 
-.summer-plan-tabs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.summer-route-meta {
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
-  margin-top: 12px;
-  padding: 4px;
-  border-radius: 14px;
-  background: var(--surface-low);
+  margin-top: 10px;
 }
 
-.summer-plan-tab {
-  min-height: 36px;
-  border: 0;
-  border-radius: 10px;
-  color: var(--text-secondary);
-  background: transparent;
-  font-size: 13px;
+.summer-route-meta span {
+  padding: 5px 9px;
+  border-radius: 999px;
+  color: var(--physics);
+  background: rgba(197, 194, 240, 0.34);
+  font-size: 12px;
   font-weight: 900;
-}
-
-.summer-plan-tab.active {
-  color: #fff;
-  background: var(--physics);
-  box-shadow: var(--soft-shadow);
 }
 
 .summer-progress-track {
@@ -7408,6 +7398,192 @@ body.focus-mode #view {
   border-radius: inherit;
   background: var(--tertiary);
   transition: width 0.25s ease;
+}
+
+.summer-today-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.summer-today-summary {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid rgba(74, 69, 128, 0.12);
+  border-radius: 12px;
+  background: var(--surface-low);
+}
+
+.summer-today-summary > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.summer-today-summary strong {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.summer-today-summary span,
+.summer-today-summary p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.summer-route-placeholder {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 10px;
+  padding: 12px;
+  border: 1px dashed rgba(74, 69, 128, 0.28);
+  border-radius: 14px;
+  color: var(--text-secondary);
+  background: var(--surface-low);
+}
+
+.summer-route-placeholder > .material-symbols-outlined {
+  color: var(--physics);
+  font-size: 24px;
+}
+
+.summer-route-placeholder strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--physics);
+  font-size: 14px;
+}
+
+.summer-route-placeholder p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.summer-route-focus {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.summer-route-focus span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: #57495a;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.summer-route-overview {
+  margin-top: 12px;
+  border-top: 1px solid rgba(74, 69, 128, 0.12);
+}
+
+.summer-route-overview > summary {
+  padding: 10px 2px 0;
+  color: var(--physics);
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.summer-route-overview > summary::marker {
+  color: var(--physics);
+}
+
+.summer-route-weeks {
+  display: grid;
+  gap: 12px;
+  padding-top: 10px;
+}
+
+.summer-route-week {
+  display: grid;
+  gap: 7px;
+}
+
+.summer-route-week h4 {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.summer-route-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.summer-route-day {
+  min-height: 88px;
+  padding: 8px;
+  border: 1px solid var(--outline);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.summer-route-day.current {
+  border-color: var(--physics);
+  box-shadow: 0 0 0 2px rgba(74, 69, 128, 0.1);
+}
+
+.summer-route-day.done {
+  border-color: rgba(47, 106, 63, 0.28);
+  background: color-mix(in srgb, var(--tertiary-container) 28%, #fff);
+}
+
+.summer-route-day.draft {
+  background: var(--surface-low);
+}
+
+.summer-route-day-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+
+.summer-route-day-num {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--physics);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.summer-route-status {
+  min-width: 0;
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-weight: 900;
+  text-align: right;
+}
+
+.summer-route-day strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.summer-route-day p {
+  margin: 3px 0 0;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 .summer-day-list,
@@ -8126,8 +8302,22 @@ body.focus-mode #view {
     padding: 14px;
   }
 
-  .summer-task-head {
+  .summer-route-hero {
     align-items: center;
+  }
+
+  .summer-route-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .summer-route-day {
+    min-height: 82px;
+  }
+
+  .summer-today-summary > div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
   }
 
   .summer-task {

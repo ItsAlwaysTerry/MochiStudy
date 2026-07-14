@@ -257,21 +257,47 @@
     }
   ];
 
-  const PLAN_LABELS = {
-    twoDay: "两天推荐版",
-    oneDay: "一天压缩版",
-  };
+  const ROUTE_DAYS = [
+    { day: 1, week: 1, title: "直线运动 + 受力起步", subtitle: "匀变速、牛二、正交分解", taskIds: ["kinematics-basic", "newton-second-law", "force-decomposition"] },
+    { day: 2, week: 1, title: "功能、电路、曲线入门", subtitle: "功与功率、闭合电路、平抛、万有引力", taskIds: ["work-power", "closed-circuit-ohm", "projectile-motion", "universal-gravitation"] },
+    { day: 3, week: 1, title: "运动图像 + 追及相遇", subtitle: "把 x-t / v-t 图像和刹车追及补成拿分点", focus: ["运动图像", "刹车陷阱", "追及相遇"] },
+    { day: 4, week: 1, title: "受力分析回炉", subtitle: "重力、弹力、摩擦力、正交分解再做题", focus: ["受力图", "摩擦力", "动态平衡"] },
+    { day: 5, week: 1, title: "牛二基础题", subtitle: "斜面、连接体、简单多物体，不碰难模型", focus: ["F=ma", "斜面", "连接体"] },
+    { day: 6, week: 1, title: "平抛 + 圆周基础", subtitle: "曲线运动只抓分解和向心力", focus: ["平抛分解", "圆周运动", "向心力"] },
+    { day: 7, week: 1, title: "周测 + 错题回炉", subtitle: "用小卷检查第 1 周，错题导入记录", focus: ["限时小测", "错题复盘"] },
+    { day: 8, week: 2, title: "功与功率二刷", subtitle: "做功正负、平均功率、瞬时功率", focus: ["做功", "功率", "动能定理入口"] },
+    { day: 9, week: 2, title: "动能定理 + 机械能", subtitle: "先会列始末状态，再谈复杂过程", focus: ["动能定理", "机械能守恒"] },
+    { day: 10, week: 2, title: "万有引力 + 圆周综合", subtitle: "天体题只抓半径、周期、速度比较", focus: ["万有引力", "同步卫星", "轨道半径"] },
+    { day: 11, week: 2, title: "电场入门", subtitle: "电场强度、电势、电势能先会认量", focus: ["电场强度", "电势", "电势能"] },
+    { day: 12, week: 2, title: "恒定电流基础", subtitle: "串并联、电动势、内阻、路端电压", focus: ["串并联", "电动势", "内阻"] },
+    { day: 13, week: 2, title: "电学实验入门", subtitle: "仪器读数、伏安法、测电阻", focus: ["电表读数", "伏安法", "测电阻"] },
+    { day: 14, week: 2, title: "第 2 周小测", subtitle: "功能、天体、电路各抽基础题", focus: ["限时小测", "错题导入"] },
+    { day: 15, week: 3, title: "力学实验专项", subtitle: "打点计时器、纸带、图像处理", focus: ["纸带", "逐差法", "图像斜率"] },
+    { day: 16, week: 3, title: "电学实验专项", subtitle: "测电源电动势与内阻、仪器选择", focus: ["电源实验", "仪器选择", "误差分析"] },
+    { day: 17, week: 3, title: "振动与波", subtitle: "低分段先会读图、会判断基本量", focus: ["振动图像", "波形图", "周期频率"] },
+    { day: 18, week: 3, title: "热学/光学/原子择一", subtitle: "按考试范围挑最容易拿分的小专题", focus: ["热学", "光学", "原子结构"] },
+    { day: 19, week: 3, title: "磁场基础", subtitle: "安培力、洛伦兹力、左手定则", focus: ["安培力", "洛伦兹力", "左手定则"] },
+    { day: 20, week: 3, title: "电磁感应入门", subtitle: "磁通量变化、楞次定律先会判断方向", focus: ["磁通量", "楞次定律", "感应电流"] },
+    { day: 21, week: 3, title: "第 3 周错题回炉", subtitle: "实验题和小专题错题集中二刷", focus: ["实验错题", "概念错题"] },
+    { day: 22, week: 4, title: "选择题公式回炉", subtitle: "把高频公式和二级结论做成可用清单", focus: ["公式清单", "基础选择题"] },
+    { day: 23, week: 4, title: "力学综合小卷", subtitle: "运动、受力、能量混合但不追难题", focus: ["力学综合", "限时训练"] },
+    { day: 24, week: 4, title: "电学综合小卷", subtitle: "电场、电路、实验混合基础题", focus: ["电学综合", "限时训练"] },
+    { day: 25, week: 4, title: "实验专项二刷", subtitle: "把最容易得分的实验题再刷一轮", focus: ["力学实验", "电学实验"] },
+    { day: 26, week: 4, title: "限时小卷", subtitle: "按真实考试节奏做一套低压小卷", focus: ["限时", "选择题", "实验题"] },
+    { day: 27, week: 4, title: "错题二刷", subtitle: "只做曾经不会、半会、卡住的题", focus: ["错题复盘", "卡点修正"] },
+    { day: 28, week: 4, title: "总复盘 + 下一轮计划", subtitle: "导出学习档案，决定下一轮补哪 3 个点", focus: ["学习档案", "复盘报告", "下轮计划"] },
+  ];
 
   function readState() {
-    const fallback = { plan: "twoDay", pendingTaskId: "", activeTaskId: "", tasks: {} };
+    const fallback = { pendingTaskId: "", activeTaskId: "", tasks: {}, routeDays: {} };
     try {
       const saved = JSON.parse(localStorage.getItem(STATE_KEY) || "null");
       if (!saved || typeof saved !== "object") return fallback;
       return {
-        plan: saved.plan === "oneDay" ? "oneDay" : "twoDay",
         pendingTaskId: String(saved.pendingTaskId || ""),
         activeTaskId: String(saved.activeTaskId || ""),
         tasks: saved.tasks && typeof saved.tasks === "object" ? saved.tasks : {},
+        routeDays: saved.routeDays && typeof saved.routeDays === "object" ? saved.routeDays : {},
       };
     } catch {
       return fallback;
@@ -291,13 +317,6 @@
     state.tasks[id] = { ...taskState(state, id), ...patch, updatedAt: new Date().toISOString() };
     writeState(state);
     return state;
-  }
-
-  function setPlan(plan) {
-    const state = readState();
-    state.plan = plan === "oneDay" ? "oneDay" : "twoDay";
-    writeState(state);
-    refreshHome();
   }
 
   function setPendingTask(id, patch = {}) {
@@ -347,64 +366,138 @@
     return { completed, watched, total: readyTasks.length, all: TASKS.length, waiting };
   }
 
+  function findTask(id) {
+    return TASKS.find((task) => task.id === id) || null;
+  }
+
+  function routeTasks(day) {
+    return (day.taskIds || []).map(findTask).filter(Boolean);
+  }
+
+  function routeDayCompleted(day, state) {
+    const tasks = routeTasks(day);
+    if (tasks.length) return tasks.every((task) => taskState(state, task.id).completed);
+    return Boolean(state.routeDays?.[day.day]?.completed);
+  }
+
+  function routeDayStarted(day, state) {
+    const tasks = routeTasks(day);
+    if (!tasks.length) return Boolean(state.routeDays?.[day.day]?.startedAt);
+    return tasks.some((task) => {
+      const info = taskState(state, task.id);
+      return Boolean(info.startedAt || info.lastFocusedAt || info.watched || info.practicingAt || info.completed);
+    });
+  }
+
+  function currentRouteDay(state) {
+    const pendingTask = findTask(state.pendingTaskId);
+    const pendingDay = pendingTask && ROUTE_DAYS.find((day) => (day.taskIds || []).includes(pendingTask.id));
+    if (pendingDay) return pendingDay.day;
+    const firstOpenDay = ROUTE_DAYS.find((day) => !routeDayCompleted(day, state));
+    return firstOpenDay?.day || ROUTE_DAYS[ROUTE_DAYS.length - 1].day;
+  }
+
+  function routeStats(state) {
+    const completed = ROUTE_DAYS.filter((day) => routeDayCompleted(day, state)).length;
+    return { completed, total: ROUTE_DAYS.length, pct: Math.round((completed / ROUTE_DAYS.length) * 100) };
+  }
+
   function render() {
     const state = readState();
-    const stat = progress(state);
-    const pct = Math.round((stat.completed / stat.total) * 100);
-    const plan = state.plan === "oneDay" ? "oneDay" : "twoDay";
+    const currentDayNo = currentRouteDay(state);
+    const currentDay = ROUTE_DAYS.find((day) => day.day === currentDayNo) || ROUTE_DAYS[0];
+    const stat = routeStats(state);
+    const taskStat = progress(state);
     return `
       <section class="card summer-task-card">
-        <div class="summer-task-head">
+        <div class="summer-route-hero">
           <div>
-            <p class="summer-kicker">暑假物理补基础</p>
-            <h3>今日任务</h3>
-            <p>看过视频就直接做小题；导入一条学习记录才算完成。已列 ${stat.all} 节课${stat.waiting ? `，${stat.waiting} 节待补例题截图` : ""}。</p>
+            <p class="summer-kicker">暑假物理 28 天路线</p>
+            <h3>第 ${currentDay.day} 天 / 28</h3>
+            <p>${escapeHtml(currentDay.title)} · ${escapeHtml(currentDay.subtitle)}</p>
           </div>
-          <div class="summer-progress-ring" aria-label="已完成 ${stat.completed}/${stat.total}">
-            <strong>${stat.completed}</strong><span>/${stat.total}</span>
+          <div class="summer-progress-ring" aria-label="路线已完成 ${stat.completed}/${stat.total}">
+            <strong>${stat.completed}</strong><span>/28</span>
           </div>
         </div>
-        <div class="summer-plan-tabs" role="tablist" aria-label="任务计划">
-          ${Object.entries(PLAN_LABELS).map(([key, label]) => `
-            <button class="summer-plan-tab ${plan === key ? "active" : ""}" data-summer-action="plan" data-plan="${key}" type="button">${label}</button>
-          `).join("")}
+        <div class="summer-route-meta">
+          <span>已完成 ${stat.completed} 天</span>
+          <span>已落实 ${taskStat.completed}/${taskStat.total} 节详细任务</span>
         </div>
-        <div class="summer-progress-track"><div class="summer-progress-fill" style="width:${pct}%"></div></div>
-        ${plan === "oneDay" ? renderOneDay(state) : renderTwoDay(state)}
+        <div class="summer-progress-track"><div class="summer-progress-fill" style="width:${stat.pct}%"></div></div>
+        ${renderTodayRoute(currentDay, state)}
+        ${renderRouteOverview(state, currentDay.day)}
       </section>
     `;
   }
 
-  function renderTwoDay(state) {
-    const day1 = TASKS.filter((task) => task.day === 1 && !task.needsExamples);
-    const day2 = TASKS.filter((task) => task.day === 2 && !task.needsExamples);
-    const waiting = TASKS.filter((task) => task.needsExamples);
+  function renderTodayRoute(day, state) {
+    const tasks = routeTasks(day);
+    if (!tasks.length) return renderRoutePlaceholder(day);
+    const completed = tasks.filter((task) => taskState(state, task.id).completed).length;
+    const nextTask = tasks.find((task) => !taskState(state, task.id).completed);
     return `
-      <div class="summer-day-list">
-        ${renderDayGroup("第 1 天", "运动 + 受力基础", day1, state)}
-        ${renderDayGroup("第 2 天", "功率 + 电路 + 曲线/天体", day2, state)}
-        ${renderDayGroup("待补例题截图", "先占住视频入口，题目等截图后补", waiting, state)}
+      <div class="summer-today-panel">
+        <div class="summer-today-summary">
+          <div>
+            <strong>今天只做这一组</strong>
+            <span>${completed}/${tasks.length} 已完成</span>
+          </div>
+          <p>${nextTask ? `下一步：${escapeHtml(nextTask.title)}` : "今天这一组已经完成，可以去导出今日报告复盘。"}</p>
+        </div>
+        ${renderDayGroup(`第 ${day.day} 天任务`, day.subtitle, tasks, state)}
       </div>
     `;
   }
 
-  function renderOneDay(state) {
-    const groups = [
-      ["上午第一轮", TASKS.filter((task) => task.compressedSlot === "上午第一轮")],
-      ["上午第二轮", TASKS.filter((task) => task.compressedSlot === "上午第二轮")],
-      ["下午第一轮", TASKS.filter((task) => task.compressedSlot === "下午第一轮")],
-      ["下午第二轮", TASKS.filter((task) => task.compressedSlot === "下午第二轮")],
-      ["晚上补充轮", TASKS.filter((task) => task.compressedSlot === "晚上补充轮")],
-      ["待补例题截图", TASKS.filter((task) => task.needsExamples)],
-    ];
+  function renderRoutePlaceholder(day) {
+    const focus = Array.isArray(day.focus) ? day.focus : [];
     return `
-      <div class="summer-day-list">
-        ${groups.map(([title, tasks]) => renderDayGroup(
-          title,
-          title === "待补例题截图" ? "先占住视频入口，题目等截图后补" : "压缩版只保留过关小题，不追求全吃透",
-          tasks,
-          state
-        )).join("")}
+      <div class="summer-route-placeholder">
+        <span class="material-symbols-outlined">event_note</span>
+        <div>
+          <strong>这一天先占路线，不给学生乱派任务</strong>
+          <p>这里会等我们把对应视频、讲义范围和过关题补齐后，再变成可点击任务。当前只用来知道后面大方向。</p>
+          ${focus.length ? `<div class="summer-route-focus">${focus.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>` : ""}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderRouteOverview(state, currentDayNo) {
+    const weeks = [1, 2, 3, 4].map((week) => ROUTE_DAYS.filter((day) => day.week === week));
+    return `
+      <details class="summer-route-overview">
+        <summary>查看 28 天路线</summary>
+        <div class="summer-route-weeks">
+          ${weeks.map((days, index) => `
+            <section class="summer-route-week">
+              <h4>第 ${index + 1} 周</h4>
+              <div class="summer-route-grid">
+                ${days.map((day) => renderRouteDay(day, state, currentDayNo)).join("")}
+              </div>
+            </section>
+          `).join("")}
+        </div>
+      </details>
+    `;
+  }
+
+  function renderRouteDay(day, state, currentDayNo) {
+    const tasks = routeTasks(day);
+    const completed = routeDayCompleted(day, state);
+    const started = routeDayStarted(day, state);
+    const isCurrent = day.day === currentDayNo;
+    const status = completed ? "done" : isCurrent ? "current" : tasks.length ? "ready" : "draft";
+    const label = completed ? "已完成" : isCurrent ? "进行中" : tasks.length ? `${tasks.length} 节课` : "待补资源";
+    return `
+      <div class="summer-route-day ${status}">
+        <div class="summer-route-day-head">
+          <span class="summer-route-day-num">${day.day}</span>
+          <span class="summer-route-status">${started && !completed && !isCurrent ? "已开始" : label}</span>
+        </div>
+        <strong>${escapeHtml(day.title)}</strong>
+        <p>${escapeHtml(day.subtitle)}</p>
       </div>
     `;
   }
@@ -604,10 +697,6 @@
     const action = event.currentTarget.dataset.summerAction;
     const id = event.currentTarget.dataset.taskId || "";
     const task = TASKS.find((item) => item.id === id);
-    if (action === "plan") {
-      setPlan(event.currentTarget.dataset.plan || "twoDay");
-      return;
-    }
     if (!task) return;
     if (action === "start-task") {
       const state = readState();
