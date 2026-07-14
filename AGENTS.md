@@ -61,7 +61,7 @@ mochi_debug_panel_open        — 调试面板展开状态
 mochi_debug_float_collapsed   — 右下角调试浮窗收起状态
 mochi_debug_tab               — 调试浮窗当前 Tab
 commitment_history            — 专注承诺历史，每轮一条 {id,date,goal,plannedMins,actualMins,outcome,ts}；最多 50 条；用于首页"说到做到"回看
-summer_task_state             — 暑假任务区状态，保存 28天路线中每个视频任务的 watched/completed、当前展开任务 activeTaskId、待关联任务 pendingTaskId 和已关联学习记录 id；不改 study_log 字段
+summer_task_state             — 暑假任务区状态，保存 28天路线中每个视频任务的 watched/completed/activeStep、当前展开任务 activeTaskId、待关联任务 pendingTaskId、28天路线详情 routeDetailDay 和已关联学习记录 id；不改 study_log 字段
 sidebar_expanded              — 桌面端侧边栏展开状态，"1" 为展开文字导航，默认收起为窄图标栏
 ```
 
@@ -583,3 +583,10 @@ v34 之后的改动：
 - **桌面侧栏默认收起**：`style.css` 把 `--nav-width` 默认改为 76px 图标栏；`index.html` 新增侧栏展开按钮；`app.js` 新增 `sidebar_expanded` 状态，点击后切换 `body.sidebar-expanded` 并持久化，展开时恢复 240px 文字导航。移动端汉堡菜单仍显示完整文字导航。
 - **右辅助栏压缩**：首页 `.home-flow` 从近似 1:1 两栏改成 `主栏 + 280px 辅助栏`，最大宽度提升到 1360px；右侧迷你农场 padding、地块、精灵图和文字尺寸同步压缩，给中间每日计划让出更多空间。
 - **总路线同步扩宽**：`.summer-route-card` 最大宽度跟随首页提升到 1360px，28 天总计划继续作为独立全宽区域展示；`index.html` 静态资源版本号更新为 `20260714i`。
+
+### V5.13 首页学习工作台交互化（build `20260714j`）
+
+- **右侧操作栏**：`modules/farm.js` 把首页“导入学习记录”和“今日复习”从主学习栏移到 `.home-right-stack`，右侧顺序变成导入/复习/迷你农场/趋势/专注/承诺/AI指南；主栏更专注显示“今日暑假任务”。
+- **28天路线可点击**：`modules/summerTasks.js` 新增 `routeDetailDay` UI 状态。总计划里的每一天从静态卡改成可点击按钮，点击后在总计划顶部显示该日详情；第 1-2 天展示已落实视频任务和状态，第 3-28 天展示主题焦点和待补资源说明，不改变当前今日任务。
+- **任务步骤可点击**：暑假任务卡的 `看视频 / 做题 / 导入 / 完成` 步骤条改成按钮，记录到每个任务的 `activeStep`。点击步骤只切换任务卡内的操作面板，不会误标记完成；真实进度仍由“下一步”和 MOCHI-RECORD 导入推进。
+- **样式和缓存**：`style.css` 新增路线详情、步骤面板、右栏紧凑导入/复习样式；`index.html` 静态资源版本号更新为 `20260714j`。

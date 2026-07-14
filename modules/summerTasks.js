@@ -305,7 +305,7 @@
   ];
 
   function readState() {
-    const fallback = { pendingTaskId: "", activeTaskId: "", tasks: {}, routeDays: {} };
+    const fallback = { pendingTaskId: "", activeTaskId: "", tasks: {}, routeDays: {}, routeDetailDay: 0 };
     try {
       const saved = JSON.parse(localStorage.getItem(STATE_KEY) || "null");
       if (!saved || typeof saved !== "object") return fallback;
@@ -314,6 +314,7 @@
         activeTaskId: String(saved.activeTaskId || ""),
         tasks: saved.tasks && typeof saved.tasks === "object" ? saved.tasks : {},
         routeDays: saved.routeDays && typeof saved.routeDays === "object" ? saved.routeDays : {},
+        routeDetailDay: Number(saved.routeDetailDay || 0),
       };
     } catch {
       return fallback;
@@ -367,6 +368,7 @@
         nodeLabel: logEntry?.nodeLabel || "",
         stars: logEntry?.stars || 0,
       },
+      activeStep: 3,
       updatedAt: new Date().toISOString(),
     };
     state.pendingTaskId = "";
@@ -418,6 +420,11 @@
     return { completed, total: ROUTE_DAYS.length, pct: Math.round((completed / ROUTE_DAYS.length) * 100) };
   }
 
+  function selectedRouteDay(state, currentDayNo) {
+    const savedDay = ROUTE_DAYS.find((day) => day.day === Number(state.routeDetailDay || 0));
+    return savedDay || ROUTE_DAYS.find((day) => day.day === currentDayNo) || ROUTE_DAYS[0];
+  }
+
   function render() {
     const state = readState();
     const currentDayNo = currentRouteDay(state);
@@ -450,6 +457,7 @@
   function renderRouteOverviewCard() {
     const state = readState();
     const currentDayNo = currentRouteDay(state);
+    const selectedDay = selectedRouteDay(state, currentDayNo);
     const stat = routeStats(state);
     const taskStat = progress(state);
     return `
@@ -466,7 +474,8 @@
           </div>
         </div>
         <div class="summer-progress-track"><div class="summer-progress-fill" style="width:${stat.pct}%"></div></div>
-        ${renderRouteOverview(state, currentDayNo)}
+        ${renderRouteDayDetail(selectedDay, state, currentDayNo)}
+        ${renderRouteOverview(state, currentDayNo, selectedDay.day)}
       </section>
     `;
   }
@@ -504,7 +513,7 @@
     `;
   }
 
-  function renderRouteOverview(state, currentDayNo) {
+  function renderRouteOverview(state, currentDayNo, selectedDayNo) {
     const weeks = [1, 2, 3, 4].map((week) => ROUTE_DAYS.filter((day) => day.week === week));
     return `
       <div class="summer-route-overview">
@@ -513,7 +522,7 @@
             <section class="summer-route-week">
               <h4>第 ${index + 1} 周</h4>
               <div class="summer-route-grid">
-                ${days.map((day) => renderRouteDay(day, state, currentDayNo)).join("")}
+                ${days.map((day) => renderRouteDay(day, state, currentDayNo, selectedDayNo)).join("")}
               </div>
             </section>
           `).join("")}
@@ -522,21 +531,67 @@
     `;
   }
 
-  function renderRouteDay(day, state, currentDayNo) {
+  function renderRouteDay(day, state, currentDayNo, selectedDayNo) {
     const tasks = routeTasks(day);
     const completed = routeDayCompleted(day, state);
     const started = routeDayStarted(day, state);
     const isCurrent = day.day === currentDayNo;
+    const isSelected = day.day === selectedDayNo;
     const status = completed ? "done" : isCurrent ? "current" : tasks.length ? "ready" : "draft";
     const label = completed ? "已完成" : isCurrent ? "进行中" : tasks.length ? `${tasks.length} 节课` : "待补资源";
     return `
-      <div class="summer-route-day ${status}">
+      <button class="summer-route-day ${status} ${isSelected ? "selected" : ""}" data-summer-action="route-day" data-route-day="${day.day}" type="button" aria-pressed="${isSelected ? "true" : "false"}">
         <div class="summer-route-day-head">
           <span class="summer-route-day-num">${day.day}</span>
           <span class="summer-route-status">${started && !completed && !isCurrent ? "已开始" : label}</span>
         </div>
         <strong>${escapeHtml(day.title)}</strong>
         <p>${escapeHtml(day.subtitle)}</p>
+      </button>
+    `;
+  }
+
+  function renderRouteDayDetail(day, state, currentDayNo) {
+    const tasks = routeTasks(day);
+    const completed = tasks.filter((task) => taskState(state, task.id).completed).length;
+    const isCurrent = day.day === currentDayNo;
+    const focus = Array.isArray(day.focus) ? day.focus : [];
+    return `
+      <section class="summer-route-detail">
+        <div class="summer-route-detail-head">
+          <div>
+            <span class="summer-route-day-pill">${isCurrent ? "今天" : `第 ${day.day} 天`}</span>
+            <h4>${escapeHtml(day.title)}</h4>
+            <p>${escapeHtml(day.subtitle)}</p>
+          </div>
+          ${tasks.length ? `<strong>${completed}/${tasks.length} 完成</strong>` : `<strong>待补资源</strong>`}
+        </div>
+        ${tasks.length ? `
+          <div class="summer-route-detail-tasks">
+            ${tasks.map((task) => renderRouteDetailTask(task, state)).join("")}
+          </div>
+        ` : `
+          <div class="summer-route-detail-draft">
+            <p>这一天现在只作为路线占位。等我们把对应视频、实体书范围和过关小题补齐后，会变成可执行任务。</p>
+            ${focus.length ? `<div class="summer-route-focus">${focus.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>` : ""}
+          </div>
+        `}
+      </section>
+    `;
+  }
+
+  function renderRouteDetailTask(task, state) {
+    const info = taskState(state, task.id);
+    const status = info.completed ? "已完成" : info.practicingAt ? "做题中" : info.watched ? "已看视频" : "未开始";
+    const tone = info.completed ? "done" : info.watched || info.practicingAt ? "active" : "";
+    return `
+      <div class="summer-route-detail-task ${tone}">
+        <span class="material-symbols-outlined">${info.completed ? "check_circle" : info.watched ? "radio_button_checked" : "play_circle"}</span>
+        <div>
+          <strong>${escapeHtml(task.title)}</strong>
+          <p>${escapeHtml(task.source)} · ${escapeHtml(task.duration)} · ${getPracticeItems(task).length || 0} 道小题</p>
+        </div>
+        <em>${status}</em>
       </div>
     `;
   }
@@ -559,11 +614,11 @@
   function renderTask(task, state) {
     const s = taskState(state, task.id);
     const isPending = state.pendingTaskId === task.id;
-    const isActive = state.activeTaskId === task.id || isPending;
     const completed = Boolean(s.completed);
     const watched = Boolean(s.watched);
     const practiceItems = getPracticeItems(task);
     const flow = getTaskFlow(task, s, isPending);
+    const selectedStep = selectedTaskStep(s, flow);
     return `
       <article class="summer-task ${completed ? "completed" : ""} ${isPending ? "pending-import" : ""}" data-summer-task-id="${escapeHtml(task.id)}">
         <div class="summer-task-main">
@@ -574,12 +629,8 @@
               <p>${escapeHtml(task.source)} · ${escapeHtml(task.duration)} · ${escapeHtml(task.videoTitle)}</p>
             </div>
           </div>
-          ${renderTaskStepper(flow)}
-          <details class="summer-exit-box" ${isActive ? "open" : ""}>
-            <summary>${practiceItems.length ? `卡住再看 + 过关小题：${practiceItems.length} 题` : "卡住再看 + 过关小题：待补截图"}</summary>
-            ${renderPrep(task)}
-            ${renderPracticeItems(task, practiceItems)}
-          </details>
+          ${renderTaskStepper(task, flow, selectedStep)}
+          ${renderTaskStepPanel(task, selectedStep, flow, s)}
           ${isPending ? `<p class="summer-import-waiting">等你把 AI 输出的 MOCHI-RECORD 导入后，这条任务会自动完成。</p>` : ""}
           ${completed && s.lastImportedRecord ? `<p class="summer-import-done">已完成：${escapeHtml(s.lastImportedRecord.nodeLabel || "物理")} · ${"★".repeat(Number(s.lastImportedRecord.stars || 0))}</p>` : ""}
         </div>
@@ -611,16 +662,99 @@
     return { step: 0, action: "start-task", label: "开始这节课", icon: "play_arrow", tone: "primary", hasPractice };
   }
 
-  function renderTaskStepper(flow) {
+  function selectedTaskStep(taskInfo, flow) {
+    const saved = Number(taskInfo.activeStep);
+    if (Number.isInteger(saved) && saved >= 0 && saved <= 3) return saved;
+    return flow.step;
+  }
+
+  function renderTaskStepper(task, flow, selectedStep) {
     const steps = ["看视频", "做题", "导入", "完成"];
     return `
       <div class="summer-stepper" aria-label="任务步骤">
         ${steps.map((label, index) => `
-          <span class="${index < flow.step ? "done" : index === flow.step ? "active" : ""}">
+          <button class="${index < flow.step ? "done" : index === flow.step ? "active" : ""} ${index === selectedStep ? "selected" : ""}" data-summer-action="show-step" data-task-id="${escapeHtml(task.id)}" data-step="${index}" type="button" aria-pressed="${index === selectedStep ? "true" : "false"}">
             <i>${index < flow.step ? "✓" : index + 1}</i>${label}
-          </span>
+          </button>
         `).join("")}
       </div>
+    `;
+  }
+
+  function renderTaskStepPanel(task, selectedStep, flow, taskInfo) {
+    const practiceItems = getPracticeItems(task);
+    if (selectedStep === 0) {
+      return `
+        <section class="summer-step-panel">
+          <div class="summer-step-panel-head">
+            <span class="material-symbols-outlined">play_circle</span>
+            <div>
+              <strong>先看主线视频</strong>
+              <p>${escapeHtml(task.source)} · ${escapeHtml(task.duration)} · 建议专注 ${Number(task.focusMins || 25)} 分钟</p>
+            </div>
+          </div>
+          <div class="summer-step-actions">
+            <a class="btn btn-primary btn-sm" href="${escapeHtml(task.url)}" target="_blank" rel="noreferrer">
+              <span class="material-symbols-outlined">open_in_new</span>打开资源
+            </a>
+            <button class="btn btn-soft btn-sm" data-summer-action="focus" data-task-id="${escapeHtml(task.id)}" type="button">
+              <span class="material-symbols-outlined">timer</span>开始专注
+            </button>
+            <button class="btn btn-soft btn-sm" data-summer-action="watched-next" data-task-id="${escapeHtml(task.id)}" type="button">
+              <span class="material-symbols-outlined">visibility</span>我看完了
+            </button>
+          </div>
+        </section>
+      `;
+    }
+    if (selectedStep === 1) {
+      return `
+        <section class="summer-step-panel summer-step-panel-practice">
+          <div class="summer-step-panel-head">
+            <span class="material-symbols-outlined">edit_note</span>
+            <div>
+              <strong>做过关小题</strong>
+              <p>${practiceItems.length ? `这节课有 ${practiceItems.length} 道小题。先自己想，再复制给 AI 带做。` : "这节课先占位，等补截图后再放题。"}</p>
+            </div>
+          </div>
+          ${renderPrep(task)}
+          ${renderPracticeItems(task, practiceItems)}
+        </section>
+      `;
+    }
+    if (selectedStep === 2) {
+      return `
+        <section class="summer-step-panel">
+          <div class="summer-step-panel-head">
+            <span class="material-symbols-outlined">download_done</span>
+            <div>
+              <strong>导入学习记录</strong>
+              <p>${taskInfo.completed ? "这节已经完成。" : "做完题后，把 AI 输出的 MOCHI-RECORD 粘到右侧导入框。"}</p>
+            </div>
+          </div>
+          <div class="summer-step-actions">
+            <button class="btn btn-primary btn-sm" data-summer-action="import" data-task-id="${escapeHtml(task.id)}" type="button">
+              <span class="material-symbols-outlined">download_done</span>关联并去导入
+            </button>
+            ${practiceItems.length ? `
+              <button class="btn btn-soft btn-sm" data-summer-action="copy-first-prompt" data-task-id="${escapeHtml(task.id)}" type="button">
+                <span class="material-symbols-outlined">content_copy</span>复制第 1 题给 AI
+              </button>
+            ` : ""}
+          </div>
+        </section>
+      `;
+    }
+    return `
+      <section class="summer-step-panel ${taskInfo.completed ? "done" : ""}">
+        <div class="summer-step-panel-head">
+          <span class="material-symbols-outlined">${taskInfo.completed ? "check_circle" : "flag"}</span>
+          <div>
+            <strong>${taskInfo.completed ? "这节已完成" : "完成条件"}</strong>
+            <p>${taskInfo.completed ? "已经关联到学习档案，后面复习会用到这条记录。" : "看完视频、做完小题，并导入 MOCHI-RECORD 后才算真正完成。"}</p>
+          </div>
+        </div>
+      </section>
     `;
   }
 
@@ -746,7 +880,27 @@
     const action = event.currentTarget.dataset.summerAction;
     const id = event.currentTarget.dataset.taskId || "";
     const task = TASKS.find((item) => item.id === id);
+    if (action === "route-day") {
+      const dayNo = Number(event.currentTarget.dataset.routeDay || 0);
+      if (ROUTE_DAYS.some((day) => day.day === dayNo)) {
+        const state = readState();
+        state.routeDetailDay = dayNo;
+        writeState(state);
+        refreshHome();
+        setTimeout(() => {
+          document.querySelector(".summer-route-detail")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }, 80);
+      }
+      return;
+    }
     if (!task) return;
+    if (action === "show-step") {
+      const step = Math.min(3, Math.max(0, Number(event.currentTarget.dataset.step || 0)));
+      updateTask(task.id, { activeStep: step });
+      refreshHome();
+      setTimeout(() => scrollToTask(task.id), 80);
+      return;
+    }
     if (action === "start-task") {
       const state = readState();
       const current = taskState(state, task.id);
@@ -756,6 +910,7 @@
         ...current,
         startedAt: current.startedAt || now,
         lastFocusedAt: now,
+        activeStep: 0,
         updatedAt: now,
       };
       writeState(state);
@@ -773,6 +928,7 @@
         ...current,
         watched: true,
         practicingAt: hasPractice ? (current.practicingAt || new Date().toISOString()) : current.practicingAt,
+        activeStep: hasPractice ? 1 : 2,
         updatedAt: new Date().toISOString(),
       };
       writeState(state);
@@ -782,7 +938,7 @@
       return;
     }
     if (action === "watched") {
-      updateTask(task.id, { watched: true });
+      updateTask(task.id, { watched: true, activeStep: 1 });
       window.MochiApp?.toast?.("已记录看完视频，做完小题后再导入记录");
       refreshHome();
       return;
@@ -795,6 +951,7 @@
         ...taskState(state, task.id),
         watched: hasPractice ? true : taskState(state, task.id).watched || false,
         practicingAt: new Date().toISOString(),
+        activeStep: 1,
         updatedAt: new Date().toISOString(),
       };
       writeState(state);
@@ -804,7 +961,7 @@
       return;
     }
     if (action === "focus") {
-      updateTask(task.id, { watched: taskState(readState(), task.id).watched || false, lastFocusedAt: new Date().toISOString() });
+      updateTask(task.id, { watched: taskState(readState(), task.id).watched || false, lastFocusedAt: new Date().toISOString(), activeStep: 0 });
       const goal = getPracticeItems(task).length ? `暑假物理：${task.title}过关小题` : `暑假物理：看${task.title}`;
       window.MochiApp?.startCommittedFocus?.(goal, task.focusMins);
       return;
@@ -819,7 +976,7 @@
       return;
     }
     if (action === "import") {
-      setPendingTask(task.id);
+      setPendingTask(task.id, { activeStep: 2 });
       if (focusImportBox()) {
         window.MochiApp?.toast?.("已关联这条任务：粘贴 MOCHI-RECORD 后自动完成");
         return;
@@ -847,6 +1004,7 @@
       practicingAt: taskState(readState(), task.id).practicingAt || new Date().toISOString(),
       promptCopiedAt: new Date().toISOString(),
       lastPromptItemIndex: itemIndex,
+      activeStep: 2,
     });
     if (ok) {
       window.MochiApp?.toast?.("已复制给 AI，做完后把 MOCHI-RECORD 粘回来");

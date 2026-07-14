@@ -534,6 +534,8 @@
           ${renderStreakBanner()}
           ${window.MochiSummerTasks?.render?.() || ""}
           ${!hasRecords && holiday ? renderAiGuideCard(true) : ""}
+        </div>
+        <div class="home-right-stack">
           ${holiday
             ? `
               <section class="card import-card home-import-card">
@@ -560,9 +562,6 @@
             `
           }
           ${hasRecords ? renderTodayReviewCard() : ""}
-          ${hasRecords ? renderAiGuideCard(false) : ""}
-        </div>
-        <div class="home-right-stack">
           <section class="card mini-farm-card">
             <div class="mini-farm-header">
               <span class="farm-level-badge">Lv.${farmLv.level} ${farmLv.name}</span>
@@ -580,6 +579,7 @@
             ${window.MochiPet?.renderTimer?.(true) || ""}
           </div>
           ${renderCommitmentRecap()}
+          ${hasRecords ? renderAiGuideCard(false) : ""}
         </div>
       </div>
       ${window.MochiSummerTasks?.renderRouteOverviewCard?.() || ""}
