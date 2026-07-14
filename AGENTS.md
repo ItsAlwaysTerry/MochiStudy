@@ -534,3 +534,17 @@ v34 之后的改动：
 - **三节解除占位**：`modules/summerTasks.js` 删除这三节的 `needsExamples` 占位状态，补入带原始截图的 `practiceItems`。两天版改为第 1 天 3 节、第 2 天 4 节；一天压缩版新增“晚上补充轮”。
 - **过关小题显示题图**：`renderPracticeItems()` 支持 `item.image`，首页小题卡直接显示截图，点击题图可打开原图。`copy-prompt` 会提醒 AI 必须看题图，若没收到图片要先让学生上传，不可凭空编题。
 - **静态资源版本号**：`index.html` 更新到 `20260714a`，方便确认刷新到了最新 JS/CSS。
+
+### V5.6 暑假物理课前概念急救（build `20260714b`）
+
+- **本地计划沉淀**：新增 `docs/summer-physics-execution-plan.md`，记录“课前概念急救 → 主线视频 → 例题留痕 → 过关题 → MOCHI-RECORD”的执行闭环；新增 `docs/summer-physics-resource-inventory.md`，记录小红书攻略、已买 PDF、黄夫人 B 站合集和 API 抓取方式。
+- **任务卡补课前概念**：`modules/summerTasks.js` 每个暑假物理任务新增 `prep` 字段，包含当天必须会的概念、一轮讲义对应范围、基础课/基础讲义备用入口。
+- **首页展示**：任务展开区 summary 改为“课前概念 + 过关小题”，顶部渲染 `.summer-prep-box`，先显示概念标签、讲义范围和不懂时看的备用资源；`copy-prompt` 会把当天基础概念一起交给 AI。
+- **样式和缓存**：`style.css` 新增 `.summer-prep-*` 样式，`index.html` 静态资源版本号更新为 `20260714b`。
+
+### V5.7 暑假物理实体书页码收紧（build `20260714c`）
+
+- **实体书优先口径**：学生端不再写“目录页码/PDF页码”，`modules/summerTasks.js` 的课前资源改为“实体书一轮讲义 X 第几页”，PDF 只保留在本地计划文档里给家长/Codex 核对。
+- **范围减负**：现有 7 节任务的课前翻书范围从整章粗范围收紧为“先看核心页，卡住再翻补充页”，例如匀变速先第2-6页、刹车/图像卡住再第10-15页。
+- **Prompt 同步**：复制过关小题 Prompt 时，会带上当天课前翻书范围和备用资源，方便 AI 私教按同一计划接住学生。
+- **计划文档同步**：`docs/summer-physics-execution-plan.md` 与 `docs/summer-physics-resource-inventory.md` 新增实体书页码/PDF核对页映射表；`index.html` 静态资源版本号更新为 `20260714c`。

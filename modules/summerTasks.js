@@ -14,6 +14,11 @@
       focusMins: 35,
       url: "https://www.bilibili.com/video/BV1uZubzzEza/",
       videoTitle: "保姆级精讲匀变速直线运动基本公式及计算",
+      prep: {
+        concepts: ["速度和加速度", "位移和时间", "匀变速五个公式", "刹车陷阱", "v-t 图像"],
+        oneRound: "实体书一轮讲义 1 第2-6页；刹车/图像卡住再翻第10-15页",
+        backup: "基础课 season 2045：1-28；优先看 13-23、26-28",
+      },
       practiceItems: [
         {
           title: "方向判断",
@@ -39,6 +44,11 @@
       focusMins: 20,
       url: "https://www.bilibili.com/video/BV1P8BmYVEe4/",
       videoTitle: "牛顿第二定律保姆级教学",
+      prep: {
+        concepts: ["质量", "合外力", "加速度方向", "F = ma", "正交分解"],
+        oneRound: "实体书一轮讲义 1 第33-36页；题目卡住再翻第37-40页",
+        backup: "基础课 season 2045：55-64；必要时看高一高二讲义一",
+      },
       practiceItems: [
         {
           title: "公式读成中文",
@@ -64,6 +74,11 @@
       focusMins: 50,
       url: "https://www.bilibili.com/video/BV1XezpYxE3c/",
       videoTitle: "手把手零基础搞定正交分解",
+      prep: {
+        concepts: ["重力", "弹力", "摩擦力", "合力和分力", "受力图", "坐标轴"],
+        oneRound: "实体书一轮讲义 1 第19-24页，重点第22-24页；动态平衡先不用钻第27-31页",
+        backup: "基础课 season 2045：29-35、45-54；必要时看高一高二讲义一",
+      },
       practiceItems: [
         {
           title: "绳子受力分解",
@@ -90,6 +105,11 @@
       focusMins: 60,
       url: "https://www.bilibili.com/video/BV18GZAYyEtU/",
       videoTitle: "做功算不准？功率算不对？",
+      prep: {
+        concepts: ["正功和负功", "力和位移夹角", "功率", "动能定理入口"],
+        oneRound: "实体书一轮讲义 2 第44-46页；动能定理卡住再翻第48-50页",
+        backup: "基础课 season 2181：100-108",
+      },
       practiceItems: [
         {
           title: "拉力和摩擦力做功",
@@ -115,6 +135,11 @@
       focusMins: 55,
       url: "https://www.bilibili.com/video/BV1TDCUBREAk/",
       videoTitle: "闭合电路欧姆定律计算 + 全题型保姆精讲",
+      prep: {
+        concepts: ["电流", "电压", "电阻", "电动势", "内阻", "路端电压", "串并联"],
+        oneRound: "实体书一轮讲义 3 第23-24页；电动势/内阻实验卡住再翻第34-38页",
+        backup: "基础课 season 2181：192-212；必要时看高一高二讲义三",
+      },
       practiceItems: [
         {
           title: "电源电动势和内阻",
@@ -154,6 +179,11 @@
       focusMins: 45,
       url: "https://www.bilibili.com/video/BV1RTkhYoEhY/",
       videoTitle: "物理平抛运动？你想知道的，这都讲",
+      prep: {
+        concepts: ["水平匀速", "竖直自由落体", "等时性", "位移分解", "速度分解"],
+        oneRound: "实体书一轮讲义 2 第8-10页；角度/类平抛卡住再翻第12-14页",
+        backup: "基础课 season 2045：95-98；一轮平抛合集 P1-P4",
+      },
       practiceItems: [
         {
           title: "平抛概念判断",
@@ -193,6 +223,11 @@
       focusMins: 45,
       url: "https://www.bilibili.com/video/BV141QyYrELE/",
       videoTitle: "天体卫星所有题型",
+      prep: {
+        concepts: ["万有引力", "圆周运动", "向心力", "轨道半径", "周期", "线速度"],
+        oneRound: "实体书一轮讲义 2 第27-35页；双星/追及相遇先放到第38-43页有余力再看",
+        backup: "基础课 season 2045：113-120；一轮万有引力合集 P1-P9",
+      },
       practiceItems: [
         {
           title: "卫星基础量判断",
@@ -402,7 +437,8 @@
             </div>
           </div>
           <details class="summer-exit-box" ${isActive ? "open" : ""}>
-            <summary>${practiceItems.length ? `过关小题：${practiceItems.length} 题` : "过关小题：待补截图"}</summary>
+            <summary>${practiceItems.length ? `课前概念 + 过关小题：${practiceItems.length} 题` : "课前概念 + 过关小题：待补截图"}</summary>
+            ${renderPrep(task)}
             ${renderPracticeItems(task, practiceItems)}
           </details>
           ${isPending ? `<p class="summer-import-waiting">等你把 AI 输出的 MOCHI-RECORD 导入后，这条任务会自动完成。</p>` : ""}
@@ -463,6 +499,29 @@
           </section>
         `).join("")}
       </div>
+    `;
+  }
+
+  function renderPrep(task) {
+    const prep = task.prep;
+    if (!prep) return "";
+    const concepts = Array.isArray(prep.concepts) ? prep.concepts : [];
+    return `
+      <section class="summer-prep-box">
+        <div class="summer-prep-title">
+          <span class="material-symbols-outlined">checklist</span>
+          <strong>课前先过</strong>
+        </div>
+        ${concepts.length ? `
+          <div class="summer-prep-tags">
+            ${concepts.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
+          </div>
+        ` : ""}
+        <div class="summer-prep-lines">
+          ${prep.oneRound ? `<p><strong>课前翻书</strong>${escapeHtml(prep.oneRound)}</p>` : ""}
+          ${prep.backup ? `<p><strong>不懂再看</strong>${escapeHtml(prep.backup)}</p>` : ""}
+        </div>
+      </section>
     `;
   }
 
@@ -589,6 +648,9 @@
   function buildPracticePrompt(task, item) {
     return [
       `我刚看完「${task.title}」视频。`,
+      task.prep?.concepts?.length ? `今天相关基础概念：${task.prep.concepts.join("、")}。如果我概念不清楚，请先用一句话帮我补概念，再带我做题。` : "",
+      task.prep?.oneRound ? `课前翻书范围：${task.prep.oneRound}。` : "",
+      task.prep?.backup ? `如果我还是听不懂，备用资源是：${task.prep.backup}。` : "",
       item.image ? `题目是 MochiStudy 页面上的这张截图：${item.image}。我会把题图一起发给你；如果你没有看到图片，请先提醒我上传题图，不要凭空编题。` : "",
       `请用零基础方式带我做这道过关小题：${item.question}`,
       item.hint ? `我希望你重点提醒我：${item.hint}` : "",

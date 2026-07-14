@@ -7534,6 +7534,63 @@ body.focus-mode #view {
   margin: 0 10px 10px;
 }
 
+.summer-prep-box {
+  display: grid;
+  gap: 8px;
+  margin: 0 10px 10px;
+  padding: 10px;
+  border: 1px solid rgba(74, 69, 128, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.summer-prep-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--physics);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.summer-prep-title .material-symbols-outlined {
+  font-size: 18px;
+}
+
+.summer-prep-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.summer-prep-tags span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: #57495a;
+  background: rgba(74, 69, 128, 0.08);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.summer-prep-lines {
+  display: grid;
+  gap: 5px;
+}
+
+.summer-prep-lines p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.summer-prep-lines strong {
+  display: inline-block;
+  min-width: 56px;
+  margin-right: 6px;
+  color: var(--text-primary);
+}
+
 .summer-practice-list {
   display: grid;
   gap: 10px;
