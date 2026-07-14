@@ -548,3 +548,10 @@ v34 之后的改动：
 - **范围减负**：现有 7 节任务的课前翻书范围从整章粗范围收紧为“先看核心页，卡住再翻补充页”，例如匀变速先第2-6页、刹车/图像卡住再第10-15页。
 - **Prompt 同步**：复制过关小题 Prompt 时，会带上当天课前翻书范围和备用资源，方便 AI 私教按同一计划接住学生。
 - **计划文档同步**：`docs/summer-physics-execution-plan.md` 与 `docs/summer-physics-resource-inventory.md` 新增实体书页码/PDF核对页映射表；`index.html` 静态资源版本号更新为 `20260714c`。
+
+### V5.8 暑假物理主线优先 + 卡住救急（build `20260714d`）
+
+- **依据学生反馈调整策略**：学生反馈前两天主线视频基本能听懂，偶尔靠弹幕理解，所以实体书/基础课从“课前硬任务”降级为“听课或做题卡住时救急”。
+- **学生端文案减压**：`modules/summerTasks.js` 将任务展开 summary 改为“卡住再看 + 过关小题”，区块标题改为“卡住时再看”，资源标签改为“翻书救急”。
+- **AI Prompt 同步**：复制过关小题 Prompt 时，不再说“课前翻书范围”，改为“如果听课或做题卡住，翻书救急范围”。
+- **计划文档同步**：`docs/summer-physics-execution-plan.md` 和 `docs/summer-physics-resource-inventory.md` 改为“主线视频 → 过关题检验 → 卡住再翻实体书/基础课 → MOCHI-RECORD”的执行闭环；`index.html` 静态资源版本号更新为 `20260714d`。

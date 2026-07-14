@@ -437,7 +437,7 @@
             </div>
           </div>
           <details class="summer-exit-box" ${isActive ? "open" : ""}>
-            <summary>${practiceItems.length ? `课前概念 + 过关小题：${practiceItems.length} 题` : "课前概念 + 过关小题：待补截图"}</summary>
+            <summary>${practiceItems.length ? `卡住再看 + 过关小题：${practiceItems.length} 题` : "卡住再看 + 过关小题：待补截图"}</summary>
             ${renderPrep(task)}
             ${renderPracticeItems(task, practiceItems)}
           </details>
@@ -510,7 +510,7 @@
       <section class="summer-prep-box">
         <div class="summer-prep-title">
           <span class="material-symbols-outlined">checklist</span>
-          <strong>课前先过</strong>
+          <strong>卡住时再看</strong>
         </div>
         ${concepts.length ? `
           <div class="summer-prep-tags">
@@ -518,7 +518,7 @@
           </div>
         ` : ""}
         <div class="summer-prep-lines">
-          ${prep.oneRound ? `<p><strong>课前翻书</strong>${escapeHtml(prep.oneRound)}</p>` : ""}
+          ${prep.oneRound ? `<p><strong>翻书救急</strong>${escapeHtml(prep.oneRound)}</p>` : ""}
           ${prep.backup ? `<p><strong>不懂再看</strong>${escapeHtml(prep.backup)}</p>` : ""}
         </div>
       </section>
@@ -649,7 +649,7 @@
     return [
       `我刚看完「${task.title}」视频。`,
       task.prep?.concepts?.length ? `今天相关基础概念：${task.prep.concepts.join("、")}。如果我概念不清楚，请先用一句话帮我补概念，再带我做题。` : "",
-      task.prep?.oneRound ? `课前翻书范围：${task.prep.oneRound}。` : "",
+      task.prep?.oneRound ? `如果我做题或听课时卡住，翻书救急范围：${task.prep.oneRound}。` : "",
       task.prep?.backup ? `如果我还是听不懂，备用资源是：${task.prep.backup}。` : "",
       item.image ? `题目是 MochiStudy 页面上的这张截图：${item.image}。我会把题图一起发给你；如果你没有看到图片，请先提醒我上传题图，不要凭空编题。` : "",
       `请用零基础方式带我做这道过关小题：${item.question}`,
