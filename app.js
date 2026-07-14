@@ -1855,6 +1855,23 @@
     });
   }
 
+  function applySidebarPreference() {
+    const expanded = localStorage.getItem("sidebar_expanded") === "1";
+    document.body.classList.toggle("sidebar-expanded", expanded);
+    const button = document.getElementById("sidebar-toggle");
+    if (!button) return;
+    button.setAttribute("aria-label", expanded ? "收起侧边栏" : "展开侧边栏");
+    button.setAttribute("title", expanded ? "收起侧边栏" : "展开侧边栏");
+    const icon = button.querySelector(".material-symbols-outlined");
+    if (icon) icon.textContent = expanded ? "keyboard_double_arrow_left" : "keyboard_double_arrow_right";
+  }
+
+  function toggleSidebar() {
+    const expanded = !document.body.classList.contains("sidebar-expanded");
+    localStorage.setItem("sidebar_expanded", expanded ? "1" : "0");
+    applySidebarPreference();
+  }
+
   function setActive(routeId) {
     const isLearnRoute = routeId === "today" || routeId === "review" || routeId === "map" || routeId === "learn";
     document.querySelectorAll("[data-route]").forEach((el) => {
@@ -5513,6 +5530,10 @@ ${record.originalQuestion || "暂无原题描述。"}
     if (action) {
       const name = action.dataset.action;
       if (name === "parse-record") parsePastedRecord();
+      if (name === "toggle-sidebar") {
+        toggleSidebar();
+        return;
+      }
       if (name === "toggle-debug-panel") {
         toggleDebugPanel(action);
         return;
@@ -5760,6 +5781,7 @@ ${record.originalQuestion || "暂无原题描述。"}
 
   function init() {
     applyReadingPreferences();
+    applySidebarPreference();
     window.MochiKnowledge.readState();
     window.MochiPet.renderMiniState();
     window.addEventListener("hashchange", () => route());

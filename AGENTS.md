@@ -61,7 +61,8 @@ mochi_debug_panel_open        — 调试面板展开状态
 mochi_debug_float_collapsed   — 右下角调试浮窗收起状态
 mochi_debug_tab               — 调试浮窗当前 Tab
 commitment_history            — 专注承诺历史，每轮一条 {id,date,goal,plannedMins,actualMins,outcome,ts}；最多 50 条；用于首页"说到做到"回看
-summer_task_state             — 暑假任务区状态，保存 1天/2天计划选择、每个视频任务的 watched/completed、当前展开任务 activeTaskId、待关联任务 pendingTaskId 和已关联学习记录 id；不改 study_log 字段
+summer_task_state             — 暑假任务区状态，保存 28天路线中每个视频任务的 watched/completed、当前展开任务 activeTaskId、待关联任务 pendingTaskId 和已关联学习记录 id；不改 study_log 字段
+sidebar_expanded              — 桌面端侧边栏展开状态，"1" 为展开文字导航，默认收起为窄图标栏
 ```
 
 注意：当前代码没有单独的 `pet_state`、`achievements`、`calendar_state` 这三个 localStorage key。
@@ -576,3 +577,9 @@ v34 之后的改动：
 - **基础课不再写内部编号**：7 个已落实任务的 `prep.backup` 从 `season 2045：1-28` 这类不直观文案，改为“按目录找：速度、加速度、匀变速直线运动”等学生能对照目录查找的知识点。
 - **备用资源可点击**：任务的 `prep.backupLinks` 保存基础课/一轮复习 B 站合集链接；`renderPrep()` 在“卡住时再看”里渲染“打开基础课合集 / 打开一轮复习合集”按钮，复制给 AI 的过关题 Prompt 也会带上这些链接。
 - **样式和缓存**：`style.css` 新增 `.summer-route-card-*` 与 `.summer-prep-links` 样式；`index.html` 静态资源版本号更新为 `20260714h`。
+
+### V5.12 首页主工作区扩宽（build `20260714i`）
+
+- **桌面侧栏默认收起**：`style.css` 把 `--nav-width` 默认改为 76px 图标栏；`index.html` 新增侧栏展开按钮；`app.js` 新增 `sidebar_expanded` 状态，点击后切换 `body.sidebar-expanded` 并持久化，展开时恢复 240px 文字导航。移动端汉堡菜单仍显示完整文字导航。
+- **右辅助栏压缩**：首页 `.home-flow` 从近似 1:1 两栏改成 `主栏 + 280px 辅助栏`，最大宽度提升到 1360px；右侧迷你农场 padding、地块、精灵图和文字尺寸同步压缩，给中间每日计划让出更多空间。
+- **总路线同步扩宽**：`.summer-route-card` 最大宽度跟随首页提升到 1360px，28 天总计划继续作为独立全宽区域展示；`index.html` 静态资源版本号更新为 `20260714i`。
