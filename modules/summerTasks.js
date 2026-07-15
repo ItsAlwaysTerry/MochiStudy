@@ -1012,7 +1012,7 @@
     const phase = boardState.phase || "result";
     const cursor = Number.isFinite(Number(boardState.cursor)) ? Number(boardState.cursor) : 0;
     const targetIndex = Number.isFinite(Number(boardState.targetIndex)) ? Number(boardState.targetIndex) : -1;
-    const dice = Number(boardState.finalDice || boardState.dice || 0);
+    const dice = phase === "ready" ? 0 : Number(boardState.finalDice || boardState.dice || 0);
     const prize = normalizeRewardPrize(boardState.prize || boardState);
     const cells = board.map((item, index) => {
       const isActive = index === cursor;
@@ -1024,20 +1024,25 @@
         </div>
       `;
     }).join("");
-    const phaseText = phase === "rolling" ? "骰子转动中" : phase === "moving" ? `骰子 ${dice || "-"} 点，正在走格` : "结果已定格";
+    const phaseText = phase === "ready" ? "抽奖盘已打开" : phase === "rolling" ? "骰子转动中" : phase === "moving" ? `骰子 ${dice || "-"} 点，正在走格` : "结果已定格";
     return `
       <div class="summer-reward-game ${escapeHtml(phase)}" data-reward-game>
         <div class="summer-reward-game-head">
           <div class="summer-reward-dice ${phase === "rolling" ? "rolling" : ""}" data-reward-dice>${dice || "?"}</div>
           <div>
             <strong data-reward-status>${escapeHtml(phaseText)}</strong>
-            <span data-reward-caption>${phase === "result" ? "结果会留在这里，方便截图发给家长。" : "慢慢走完，停在哪格算哪格。"}</span>
+            <span data-reward-caption>${phase === "ready" ? "点下面的骰子按钮，再开始真正抽奖。" : phase === "result" ? "结果会留在这里，方便截图发给家长。" : "慢慢走完，停在哪格算哪格。"}</span>
           </div>
         </div>
         <div class="summer-reward-board" data-reward-board>
           ${cells}
         </div>
-        ${phase === "result" ? `
+        ${phase === "ready" ? `
+          <button class="summer-reward-roll" data-summer-action="reward-roll" type="button">
+            <span class="material-symbols-outlined">casino</span>
+            摇骰子开始
+          </button>
+        ` : phase === "result" ? `
           <div class="summer-reward-result ${rewardToneClass(prize.tone)}">
             <span>${escapeHtml(boardState.claim?.label || boardState.claim || "暑假任务奖励")}</span>
             <strong>${escapeHtml(prize.label)}</strong>
@@ -1059,15 +1064,17 @@
       : "";
     const claimCount = stats.claims.length;
     const activeDraw = reward.drawAnimation && reward.drawAnimation.active ? reward.drawAnimation : null;
-    const frozenBoard = activeDraw || reward.lastPrize;
+    const preparedDraw = reward.drawAnimation && !reward.drawAnimation.active && reward.drawAnimation.phase === "ready" ? reward.drawAnimation : null;
+    const frozenBoard = reward.drawAnimation || reward.lastPrize;
+    const rewardAngle = Math.round(stats.pct * 3.6);
     return `
-      <aside class="summer-reward-float ${reward.collapsed ? "collapsed" : ""} ${claimCount ? "ready" : ""} ${activeDraw ? "drawing" : ""}" data-summer-reward ${style}>
+      <aside class="summer-reward-float ${reward.collapsed ? "collapsed" : ""} ${claimCount ? "ready" : ""} ${activeDraw ? "drawing" : ""}" data-summer-reward style="--reward-angle:${rewardAngle}deg;${style ? style.replace(/^style="/, "").replace(/"$/, "") : ""}">
         <div class="summer-reward-head" data-summer-reward-drag>
           <button class="summer-reward-icon" data-summer-action="reward-toggle" type="button" aria-label="展开今日能量">
-            <span class="material-symbols-outlined">${activeDraw ? "casino" : claimCount ? "redeem" : "savings"}</span>
+            <span class="material-symbols-outlined">${activeDraw || preparedDraw ? "casino" : claimCount ? "redeem" : "savings"}</span>
           </button>
           <div>
-            <strong>${activeDraw ? "正在抽奖" : claimCount ? "可以抽奖了" : "今日能量"}</strong>
+            <strong>${activeDraw ? "正在抽奖" : preparedDraw ? "点骰子开始" : claimCount ? "可以抽奖了" : "今日能量"}</strong>
             <span>视频 ${stats.completedTasks}/${stats.totalTasks || 0} · ${stats.focusMins} 分钟</span>
           </div>
           <button class="btn-icon summer-reward-collapse" data-summer-action="reward-collapse" type="button" aria-label="${reward.collapsed ? "展开" : "收起"}">
@@ -1085,9 +1092,9 @@
             </div>
             ${renderRewardBoard(frozenBoard)}
             ${claimCount ? `
-              <button class="summer-reward-draw" data-summer-action="reward-draw" type="button" ${activeDraw ? "disabled" : ""}>
+              <button class="summer-reward-draw" data-summer-action="reward-draw" type="button" ${activeDraw || preparedDraw ? "disabled" : ""}>
                 <span class="material-symbols-outlined">casino</span>
-                ${activeDraw ? "抽奖中" : "抽一次奖励"}
+                ${activeDraw ? "抽奖中" : preparedDraw ? "抽奖盘已打开" : "打开抽奖盘"}
               </button>
               <p class="summer-reward-claim">${escapeHtml(stats.claims[0].label)} · 还有 ${claimCount} 次</p>
             ` : `
@@ -1228,10 +1235,6 @@
             <span>今天最卡的一点</span>
             <textarea name="hardest" rows="2" placeholder="例如：看到图像还是不知道读哪个量。">${escapeHtml(draft.hardest || "")}</textarea>
           </label>
-          <label class="summer-reflection-field compact">
-            <span>明天开始前先看</span>
-            <input name="tomorrow" value="${escapeHtml(draft.tomorrow || "")}" placeholder="例如：先复习 v-t 图像面积">
-          </label>
           <p class="summer-reflection-message" data-reflection-message></p>
           <button class="btn btn-primary summer-reflection-submit" data-summer-action="save-day-reflection" data-route-day="${day.day}" type="button">
             <span class="material-symbols-outlined">arrow_forward</span>保存复盘，解锁下一组
@@ -1308,10 +1311,10 @@
 
   function renderMoodPicker(selected) {
     const options = [
+      { value: "smooth", label: "很顺" },
       { value: "ok", label: "正常" },
-      { value: "tired", label: "累" },
-      { value: "smooth", label: "顺" },
-      { value: "stuck", label: "崩" },
+      { value: "tired", label: "有点累" },
+      { value: "stuck", label: "卡住了" },
     ];
     return `
       <fieldset class="summer-reflection-choice">
@@ -1843,7 +1846,7 @@
   function renderDayReflectionReview(day, state) {
     const reflection = routeDayState(state, day.day).dailyReflection;
     if (!reflection) return "";
-    const labels = { ok: "正常", tired: "累", smooth: "顺", stuck: "崩" };
+    const labels = { smooth: "很顺", ok: "正常", tired: "有点累", stuck: "卡住了" };
     return `
       <div class="summer-day-reflection-review">
         <div>
@@ -1852,7 +1855,6 @@
         </div>
         ${reflection.best ? `<p><span>最有用</span>${escapeHtml(reflection.best)}</p>` : ""}
         ${reflection.hardest ? `<p><span>最卡</span>${escapeHtml(reflection.hardest)}</p>` : ""}
-        ${reflection.tomorrow ? `<p><span>下次先看</span>${escapeHtml(reflection.tomorrow)}</p>` : ""}
       </div>
     `;
   }
@@ -2537,6 +2539,10 @@
       startSummerRewardDraw(event.currentTarget);
       return;
     }
+    if (action === "reward-roll") {
+      beginSummerRewardRoll(event.currentTarget);
+      return;
+    }
     if (action === "reward-clear-result") {
       writeRewardState({ lastPrize: null, drawAnimation: null });
       refreshHome({ preserveScroll: true });
@@ -2892,8 +2898,8 @@
     const startIndex = ((Number(reward.boardCursor || 0) % SUMMER_REWARD_BOARD_SIZE) + SUMMER_REWARD_BOARD_SIZE) % SUMMER_REWARD_BOARD_SIZE;
     const targetIndex = (startIndex + finalDice) % SUMMER_REWARD_BOARD_SIZE;
     const animation = {
-      active: true,
-      phase: "rolling",
+      active: false,
+      phase: "ready",
       dice: 0,
       finalDice,
       cursor: startIndex,
@@ -2914,7 +2920,28 @@
     writeState(state);
     refreshHome({ preserveScroll: true });
     trigger?.blur?.();
-    scheduleRewardAnimation(animation, 120);
+    window.MochiApp?.toast?.("抽奖盘已打开，点骰子开始");
+  }
+
+  function beginSummerRewardRoll(trigger) {
+    const state = readState();
+    const reward = rewardState(state);
+    const animation = reward.drawAnimation;
+    if (!animation || animation.phase !== "ready") {
+      window.MochiApp?.toast?.("先打开抽奖盘");
+      return;
+    }
+    const activeAnimation = { ...animation, active: true, phase: "rolling", dice: 0 };
+    state.reward = {
+      ...reward,
+      collapsed: false,
+      open: true,
+      drawAnimation: activeAnimation,
+    };
+    writeState(state);
+    refreshHome({ preserveScroll: true });
+    trigger?.blur?.();
+    scheduleRewardAnimation(activeAnimation, 120);
   }
 
   function scheduleRewardAnimation(animation, delay = 120) {
@@ -2927,17 +2954,17 @@
     window.clearTimeout(rewardAnimationTimer);
     const root = document.querySelector("[data-summer-reward]");
     if (!root) {
-      rewardAnimationTimer = setTimeout(() => finishSummerRewardDraw(animation), 1600);
+      rewardAnimationTimer = setTimeout(() => finishSummerRewardDraw(animation), 5600);
       return;
     }
-    const rollValues = [1, 4, 2, 6, 3, 5, animation.finalDice];
+    const rollValues = Array.from({ length: 30 }, (_, index) => ((index * 3 + 1) % 6) + 1).concat(animation.finalDice);
     let rollIndex = 0;
     const rollDice = () => {
       setRewardDice(rollValues[rollIndex], true);
       playRewardTick(rollIndex % 2 ? 520 : 620);
       rollIndex += 1;
       if (rollIndex < rollValues.length) {
-        rewardAnimationTimer = setTimeout(rollDice, 135);
+        rewardAnimationTimer = setTimeout(rollDice, 145);
         return;
       }
       setRewardDice(animation.finalDice, false);
@@ -3261,7 +3288,6 @@
     const mood = form.querySelector("input[name='mood']:checked")?.value || "";
     const best = String(form.querySelector("[name='best']")?.value || "").trim();
     const hardest = String(form.querySelector("[name='hardest']")?.value || "").trim();
-    const tomorrow = String(form.querySelector("[name='tomorrow']")?.value || "").trim();
     if (!mood) {
       showReflectionMessage(form, "先选一下今天整体状态。");
       return;
@@ -3278,7 +3304,7 @@
       completed: true,
       dailyReflectionRequired: true,
       dailyReflectionDone: true,
-      dailyReflection: { mood, best, hardest, tomorrow, createdAt: now, updatedAt: now },
+      dailyReflection: { mood, best, hardest, createdAt: now, updatedAt: now },
       updatedAt: now,
     };
     if (Number(state.activeRouteDay || 0) === day.day && routeDayCompleted(day, state)) state.activeRouteDay = 0;

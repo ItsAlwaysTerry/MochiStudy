@@ -9630,6 +9630,7 @@ body.focus-mode #view {
 }
 
 .summer-reward-icon {
+  position: relative;
   display: grid;
   place-items: center;
   width: 42px;
@@ -9637,12 +9638,28 @@ body.focus-mode #view {
   border: 0;
   border-radius: 50%;
   color: #6b421c;
+  background: conic-gradient(#77b255 0 var(--reward-angle, 0deg), rgba(154, 98, 34, 0.14) var(--reward-angle, 0deg) 360deg);
+  box-shadow: 0 8px 18px rgba(154, 98, 34, 0.18);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.summer-reward-icon::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
   background: linear-gradient(135deg, #ffe28a, #f3b75f);
   box-shadow: inset 0 -2px 0 rgba(104, 65, 28, 0.14);
-  cursor: pointer;
+}
+
+.summer-reward-float.ready .summer-reward-icon {
+  background: conic-gradient(#57c96c 0 var(--reward-angle, 0deg), #ffd15c var(--reward-angle, 0deg) 360deg);
 }
 
 .summer-reward-icon .material-symbols-outlined {
+  position: relative;
+  z-index: 1;
   font-size: 24px;
 }
 
@@ -9717,6 +9734,27 @@ body.focus-mode #view {
 .summer-reward-draw:disabled {
   cursor: wait;
   opacity: 0.72;
+}
+
+.summer-reward-roll {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 14px;
+  color: #3f2918;
+  background: linear-gradient(135deg, #ffd15c, #ff8f4d);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 1000;
+  box-shadow: 0 12px 24px rgba(154, 98, 34, 0.24);
+  cursor: pointer;
+}
+
+.summer-reward-roll .material-symbols-outlined {
+  font-size: 20px;
 }
 
 .summer-reward-claim {
