@@ -1753,8 +1753,8 @@
     const compact = Boolean(options.compact);
     const title = compact ? "例题截图" : "视频例题截图";
     const helper = examples.length
-      ? `已收集 ${examples.length} 张。点“同类测验包”，再把这些截图一起发给 AI。`
-      : compact ? "截老师讲的代表题，粘贴后再生成同类测验。" : "看视频时截 1-3 张代表性例题，直接粘到这里。收集后可以让 AI 定制同类测试。";
+      ? `已自动保存 ${examples.length} 张到本机。点“同类测验包”，再把这些截图一起发给 AI。`
+      : compact ? "截老师讲的代表题，点左侧后 Ctrl+V，会自动保存到本机。" : "看视频时截 1-3 张代表性例题，点左侧后 Ctrl+V，会自动保存到本机。";
     return `
       <section class="summer-example-box ${compact ? "compact" : ""}" data-summer-example-task-id="${escapeHtml(task.id)}">
         <div class="summer-example-head">
@@ -1771,7 +1771,7 @@
             <small>点后 Ctrl+V</small>
           </div>
           <label class="btn btn-soft btn-sm summer-example-file">
-            <span class="material-symbols-outlined">upload_file</span>上传
+            <span class="material-symbols-outlined">add_photo_alternate</span>从文件添加
             <input data-example-file data-task-id="${escapeHtml(task.id)}" type="file" accept="image/*" hidden>
           </label>
           <button class="btn btn-primary btn-sm summer-example-quiz" data-summer-action="copy-example-quiz" data-task-id="${escapeHtml(task.id)}" type="button" ${examples.length ? "" : "disabled"}>
@@ -1781,6 +1781,10 @@
             <span class="material-symbols-outlined">content_copy</span>${examples.length > 1 ? "复制首图" : "复制图片"}
           </button>
         </div>
+        <p class="summer-example-local-note">
+          <span class="material-symbols-outlined">save</span>
+          粘贴成功就已保存到本机浏览器；“从文件添加”只是备用，不会上传到 GitHub。
+        </p>
         ${renderExampleAiStatus(task, examples)}
         ${examples.length ? `
           <div class="summer-example-list">
@@ -1802,7 +1806,7 @@
           <strong>${hasExamples ? "下一步：测验包和图片发给 Gemini，练完写本节收尾" : "当前：先把视频里的例题截图存到这里"}</strong>
           <p>${hasExamples
             ? "不用接多模态 API。先点“测验包”复制文字，再点“复制图片”把截图贴到同一个 Gemini 对话里；练完回到下方收尾卡。"
-            : "网站只负责收集和回看截图；生成同类题时，把提示词和图片一起交给 Gemini。"
+            : "截图保存在本机浏览器里；生成同类题时，把提示词和图片一起交给 Gemini。"
           }</p>
         </div>
       </div>
@@ -2423,7 +2427,7 @@
     const task = findSummerTask(taskId);
     if (!task || !file) return;
     if (!String(file.type || "").startsWith("image/")) {
-      window.MochiApp?.toast?.("请粘贴或上传图片截图");
+      window.MochiApp?.toast?.("请粘贴截图，或从文件添加一张图片");
       return;
     }
     const id = `example_${Date.now()}_${Math.random().toString(16).slice(2)}`;
@@ -2447,7 +2451,7 @@
       };
       writeState(state);
       refreshHome(taskAnchorOptions(taskId, trigger));
-      window.MochiApp?.toast?.(`已保存到「${task.title}」的视频例题`);
+      window.MochiApp?.toast?.(`已自动保存到本机：「${task.title}」的视频例题`);
     } catch (error) {
       console.error(error);
       window.MochiApp?.toast?.("截图保存失败：浏览器没有放行本地图片存储");
@@ -2757,7 +2761,7 @@
       task.prep?.concepts?.length ? `今天相关基础概念：${task.prep.concepts.join("、")}。如果我概念不清楚，请先用一句话帮我补概念，再带我做题。` : "",
       task.prep?.oneRound ? `如果我做题或听课时卡住，翻书救急范围：${task.prep.oneRound}。` : "",
       task.prep?.backup ? `如果我还是听不懂，备用资源按目录找：${task.prep.backup}。${backupLinks ? `链接：${backupLinks}。` : ""}` : "",
-      item.image ? `题目是 MochiStudy 页面上的这张截图：${item.image}。我会把题图一起发给你；如果你没有看到图片，请先提醒我上传题图，不要凭空编题。` : "",
+      item.image ? `题目是 MochiStudy 页面上的这张截图：${item.image}。我会把题图一起发给你；如果你没有看到图片，请先提醒我补发题图，不要凭空编题。` : "",
       `请用零基础方式带我做这道过关小题：${item.question}`,
       item.hint ? `我希望你重点提醒我：${item.hint}` : "",
       "请一步步问我，不要直接给答案；如果我不会，先用更简单的问题铺垫。",

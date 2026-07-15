@@ -9045,6 +9045,21 @@ body.focus-mode #view {
   color: var(--tertiary);
 }
 
+.summer-example-local-note {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: -2px 0 0;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.summer-example-local-note .material-symbols-outlined {
+  color: var(--tertiary);
+  font-size: 15px;
+}
+
 .summer-task-reflection-card {
   display: grid;
   gap: 8px;
