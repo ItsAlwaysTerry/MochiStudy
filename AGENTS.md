@@ -61,7 +61,7 @@ mochi_debug_panel_open        — 调试面板展开状态
 mochi_debug_float_collapsed   — 右下角调试浮窗收起状态
 mochi_debug_tab               — 调试浮窗当前 Tab
 commitment_history            — 专注承诺历史，每轮一条 {id,date,goal,plannedMins,actualMins,outcome,ts}；最多 50 条；用于首页"说到做到"回看
-summer_task_state             — 暑假任务区状态，保存 28天路线中每个视频任务的 watched/completed/activeStep、当前展开任务 activeTaskId、待关联任务 pendingTaskId、28天路线详情 routeDetailDay 和已关联学习记录 id；不改 study_log 字段
+summer_task_state             — 暑假任务区状态，保存滚动任务队列中的 watched/completed/activeStep、当前展开任务 activeTaskId、待关联视频任务 pendingTaskId、待关联路线学习单 pendingRouteDay、28天路线详情 routeDetailDay、视频例题截图元信息 examples 和已关联学习记录 id；不改 study_log 字段。截图图片本体存在 IndexedDB `mochi_summer_examples`
 sidebar_expanded              — 桌面端侧边栏展开状态，"1" 为展开文字导航，默认收起为窄图标栏
 ```
 
@@ -596,3 +596,11 @@ v34 之后的改动：
 - **纯查看操作保持当前位置**：`modules/summerTasks.js` 的 `route-day` 和 `show-step` 不再调用 `scrollIntoView()`，改为按被点击按钮做锚点恢复；点击 28 天路线或任务步骤时，即使上方详情高度变化，按钮也保持在原来的屏幕位置。
 - **状态推进也减少跳动**：看完视频、打开做题区、标记看完、开始视频、复制过关小题等会重渲染任务卡的操作改为按整张任务卡做锚点恢复；只有“关联并去导入”仍会主动滚到右侧导入框。
 - **缓存版本号**：`index.html` 静态资源版本号更新为 `20260714k`。
+
+### V5.15 暑假物理滚动队列 + 例题截图收集（build `20260714l`）
+
+- **滚动任务队列**：首页暑假物理区从固定“第 N 天”改为未完成优先队列。未完成的视频任务会一直排在前面，完成后自动露出下一组；提前完成不需要手动切计划。
+- **28 天路线可执行**：第 3-28 天不再显示学生端占位/待补资源文案，改为“学习单”形态。每张学习单都有主题、资源入口、截图要求、开始专注、关联并导入 MOCHI-RECORD，导入后写入 `routeDays[day].completed`。
+- **资源入口补齐**：后续学习单会按主题关键词自动给出一轮复习 B 站合集、基础课合集和小红书攻略入口；一轮合集 BV 来自 B 站公开 API，可直接点击。
+- **视频例题截图收集**：每个视频任务新增“视频例题截图”区，支持点击后 Ctrl+V 粘贴截图或上传图片，并标记“会 / 半会 / 不会”。元信息存入 `summer_task_state.examples`，图片本体存入 IndexedDB `mochi_summer_examples`，不污染 `study_log`。
+- **缓存版本号**：`index.html` 静态资源版本号更新为 `20260714l`。

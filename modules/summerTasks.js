@@ -3,6 +3,26 @@
   const BASIC_2045_URL = "https://space.bilibili.com/23630128/lists/2045?type=season";
   const BASIC_2181_URL = "https://space.bilibili.com/23630128/lists/2181?type=season";
   const ONE_ROUND_URL = "https://space.bilibili.com/23630128/lists/340933?type=series";
+  const XHS_STRATEGY_URL = "https://www.xiaohongshu.com/explore/6955e1e0000000001d03b300";
+  const XHS_FORMULA_URL = "https://www.xiaohongshu.com/explore/695de9b9000000000b009294";
+  const XHS_LEVEL_URL = "https://www.xiaohongshu.com/explore/697b4bd8000000000a02f417";
+  const EXAMPLE_DB_NAME = "mochi_summer_examples";
+  const EXAMPLE_STORE = "images";
+  const ONE_ROUND_BVS = {
+    kinematics: "BV1D54y1m7Av",
+    balance: "BV1vD4y1U7k4",
+    newton: "BV1R64y1c7m2",
+    curve: "BV1mK4y1773Y",
+    projectile: "BV1b54y1r7LD",
+    circular: "BV11a4y1s7wJ",
+    gravitation: "BV1vv411e7QZ",
+    energy: "BV1iK4y1Q7mc",
+    electric: "BV1A5411E7Q1",
+    experiment: "BV1CK4y1n769",
+    magneticBasic: "BV1uK4y1T7ox",
+    magneticCircle: "BV1Xb4y1Q7Eq",
+    induction: "BV13i4y1N7RJ",
+  };
 
   const TASKS = [
     {
@@ -305,16 +325,18 @@
   ];
 
   function readState() {
-    const fallback = { pendingTaskId: "", activeTaskId: "", tasks: {}, routeDays: {}, routeDetailDay: 0 };
+    const fallback = { pendingTaskId: "", pendingRouteDay: 0, activeTaskId: "", tasks: {}, routeDays: {}, routeDetailDay: 0, examples: {} };
     try {
       const saved = JSON.parse(localStorage.getItem(STATE_KEY) || "null");
       if (!saved || typeof saved !== "object") return fallback;
       return {
         pendingTaskId: String(saved.pendingTaskId || ""),
+        pendingRouteDay: Number(saved.pendingRouteDay || 0),
         activeTaskId: String(saved.activeTaskId || ""),
         tasks: saved.tasks && typeof saved.tasks === "object" ? saved.tasks : {},
         routeDays: saved.routeDays && typeof saved.routeDays === "object" ? saved.routeDays : {},
         routeDetailDay: Number(saved.routeDetailDay || 0),
+        examples: saved.examples && typeof saved.examples === "object" ? saved.examples : {},
       };
     } catch {
       return fallback;
@@ -327,6 +349,10 @@
 
   function taskState(state, id) {
     return state.tasks[id] || {};
+  }
+
+  function routeDayState(state, dayNo) {
+    return state.routeDays?.[dayNo] || {};
   }
 
   function updateTask(id, patch) {
@@ -352,7 +378,30 @@
   function attachImportedRecord(logEntry) {
     const state = readState();
     const id = state.pendingTaskId;
-    if (!id || !TASKS.some((task) => task.id === id)) return;
+    if (!id || !TASKS.some((task) => task.id === id)) {
+      const routeDay = ROUTE_DAYS.find((day) => day.day === Number(state.pendingRouteDay || 0));
+      if (!routeDay) return;
+      const currentRoute = routeDayState(state, routeDay.day);
+      const linkedLogIds = Array.isArray(currentRoute.linkedLogIds) ? currentRoute.linkedLogIds.slice() : [];
+      if (logEntry?.id && !linkedLogIds.includes(logEntry.id)) linkedLogIds.push(logEntry.id);
+      state.routeDays[routeDay.day] = {
+        ...currentRoute,
+        startedAt: currentRoute.startedAt || new Date().toISOString(),
+        completed: true,
+        completedAt: new Date().toISOString(),
+        linkedLogIds,
+        lastImportedRecord: {
+          id: logEntry?.id || "",
+          subject: logEntry?.subject || "",
+          nodeLabel: logEntry?.nodeLabel || "",
+          stars: logEntry?.stars || 0,
+        },
+        updatedAt: new Date().toISOString(),
+      };
+      state.pendingRouteDay = 0;
+      writeState(state);
+      return;
+    }
     const current = taskState(state, id);
     const linkedLogIds = Array.isArray(current.linkedLogIds) ? current.linkedLogIds.slice() : [];
     if (logEntry?.id && !linkedLogIds.includes(logEntry.id)) linkedLogIds.push(logEntry.id);
@@ -372,6 +421,7 @@
       updatedAt: new Date().toISOString(),
     };
     state.pendingTaskId = "";
+    state.pendingRouteDay = 0;
     state.activeTaskId = "";
     writeState(state);
   }
@@ -425,31 +475,80 @@
     return savedDay || ROUTE_DAYS.find((day) => day.day === currentDayNo) || ROUTE_DAYS[0];
   }
 
+  function rollingTasks(state, limit = 3) {
+    const pending = findTask(state.pendingTaskId);
+    const openTasks = TASKS.filter((task) => !taskState(state, task.id).completed);
+    const ordered = pending ? [pending, ...openTasks.filter((task) => task.id !== pending.id)] : openTasks;
+    return ordered.slice(0, limit);
+  }
+
+  function nextRoutePlanDay(state) {
+    return ROUTE_DAYS.find((day) => !routeTasks(day).length && !routeDayCompleted(day, state)) || null;
+  }
+
+  function oneRoundVideoUrl(key) {
+    const bvid = ONE_ROUND_BVS[key];
+    return bvid ? `https://www.bilibili.com/video/${bvid}/` : ONE_ROUND_URL;
+  }
+
+  function routeResources(day) {
+    const focusText = [...(Array.isArray(day.focus) ? day.focus : []), day.title, day.subtitle].join(" ");
+    const links = [];
+    const add = (label, url) => {
+      if (!links.some((item) => item.url === url && item.label === label)) links.push({ label, url });
+    };
+
+    if (/运动图像|刹车|追及|直线运动/.test(focusText)) add("一轮运动学合集", oneRoundVideoUrl("kinematics"));
+    if (/受力|摩擦|动态平衡|平衡/.test(focusText)) add("一轮平衡力学合集", oneRoundVideoUrl("balance"));
+    if (/牛二|F=ma|连接体|斜面/.test(focusText)) add("一轮牛二力学合集", oneRoundVideoUrl("newton"));
+    if (/平抛/.test(focusText)) add("一轮平抛运动合集", oneRoundVideoUrl("projectile"));
+    if (/圆周|向心力/.test(focusText)) add("一轮圆周运动合集", oneRoundVideoUrl("circular"));
+    if (/万有引力|卫星|轨道/.test(focusText)) add("一轮万有引力合集", oneRoundVideoUrl("gravitation"));
+    if (/功|功率|动能|机械能|动量|功能/.test(focusText)) add("一轮功能动量合集", oneRoundVideoUrl("energy"));
+    if (/电场|电势|电势能|恒定电流|串并联|电动势|内阻/.test(focusText)) add("一轮电场合集", oneRoundVideoUrl("electric"));
+    if (/实验|纸带|伏安法|电表|仪器|误差/.test(focusText)) add("一轮电学实验合集", oneRoundVideoUrl("experiment"));
+    if (/磁场|安培力|洛伦兹|左手/.test(focusText)) add("一轮磁场基础合集", oneRoundVideoUrl("magneticBasic"));
+    if (/电磁感应|磁通量|楞次/.test(focusText)) add("一轮电磁感应合集", oneRoundVideoUrl("induction"));
+
+    if (/力学|运动|受力|牛二|平抛|圆周|万有引力/.test(focusText)) add("基础课目录找当天关键词", BASIC_2045_URL);
+    if (/功|电|磁|波|热学|光学|原子/.test(focusText)) add("基础课目录找当天关键词", BASIC_2181_URL);
+    add("小红书基础题拿分公式", XHS_FORMULA_URL);
+    if (/实验|热学|光学|原子|磁场|电磁/.test(focusText)) add("小红书 60 分以下提分思路", XHS_STRATEGY_URL);
+    if (/综合|小卷|复盘|错题|下一轮|公式/.test(focusText)) add("小红书分数段视频汇总", XHS_LEVEL_URL);
+    return links.slice(0, 5);
+  }
+
   function render() {
     const state = readState();
-    const currentDayNo = currentRouteDay(state);
-    const currentDay = ROUTE_DAYS.find((day) => day.day === currentDayNo) || ROUTE_DAYS[0];
-    const todayTasks = routeTasks(currentDay);
-    const todayCompleted = todayTasks.filter((task) => taskState(state, task.id).completed).length;
+    const queue = rollingTasks(state, 3);
+    const planDay = queue.length ? null : nextRoutePlanDay(state);
+    const completedDetailed = TASKS.filter((task) => taskState(state, task.id).completed).length;
+    const remainingDetailed = TASKS.length - completedDetailed;
+    const pendingRoute = ROUTE_DAYS.find((day) => day.day === Number(state.pendingRouteDay || 0));
     return `
       <section class="card summer-task-card">
         <div class="summer-route-hero">
           <div>
-            <p class="summer-kicker">暑假物理今日任务</p>
-            <h3>第 ${currentDay.day} 天任务</h3>
-            <p>${escapeHtml(currentDay.title)} · ${escapeHtml(currentDay.subtitle)}</p>
+            <p class="summer-kicker">暑假物理滚动任务</p>
+            <h3>${queue.length ? "先把最前面的任务清掉" : planDay ? `第 ${planDay.day} 天学习单` : "28 天物理路线已完成"}</h3>
+            <p>${queue.length
+              ? "没做完的不会消失，会自动排在最前面；提前做完就自动解锁下一组。"
+              : planDay
+                ? `${escapeHtml(planDay.title)} · ${escapeHtml(planDay.subtitle)}`
+                : "可以导出学习档案，回看最卡的 3 个点，再决定下一轮。"
+            }</p>
           </div>
-          <div class="summer-progress-ring" aria-label="今日已完成 ${todayCompleted}/${todayTasks.length || 1}">
-            <strong>${todayTasks.length ? todayCompleted : currentDay.day}</strong><span>${todayTasks.length ? `/${todayTasks.length}` : "/28"}</span>
+          <div class="summer-progress-ring" aria-label="详细任务已完成 ${completedDetailed}/${TASKS.length}">
+            <strong>${completedDetailed}</strong><span>/${TASKS.length}</span>
           </div>
         </div>
         <div class="summer-route-meta">
-          <span>看视频</span>
-          <span>做过关小题</span>
+          <span>未完成自动顺延</span>
+          <span>看完视频要留例题截图</span>
           <span>导入 MOCHI-RECORD 才算完成</span>
         </div>
-        <div class="summer-progress-track"><div class="summer-progress-fill" style="width:${todayTasks.length ? Math.round((todayCompleted / todayTasks.length) * 100) : 0}%"></div></div>
-        ${renderTodayRoute(currentDay, state)}
+        <div class="summer-progress-track"><div class="summer-progress-fill" style="width:${Math.round((completedDetailed / TASKS.length) * 100)}%"></div></div>
+        ${queue.length ? renderRollingQueue(queue, state, remainingDetailed) : renderRouteLearningSheet(planDay, state, { pendingRoute })}
       </section>
     `;
   }
@@ -466,17 +565,82 @@
           <div>
             <p class="summer-kicker">暑假物理 28 天路线</p>
             <h3>总计划</h3>
-            <p>后面的天先占大方向，等我们补齐具体视频、讲义范围和过关题后，再变成可执行任务。</p>
+            <p>前 7 节是详细视频任务；后续每一天先按主题学习单执行，资源会自动给到一轮合集、基础课和小红书攻略入口。</p>
           </div>
           <div class="summer-route-card-stats">
             <span>已完成 ${stat.completed}/28 天</span>
-            <span>已落实 ${taskStat.completed}/${taskStat.total} 节详细任务</span>
+            <span>详细视频 ${taskStat.completed}/${taskStat.total} 节</span>
           </div>
         </div>
         <div class="summer-progress-track"><div class="summer-progress-fill" style="width:${stat.pct}%"></div></div>
         ${renderRouteDayDetail(selectedDay, state, currentDayNo)}
         ${renderRouteOverview(state, currentDayNo, selectedDay.day)}
       </section>
+    `;
+  }
+
+  function renderRollingQueue(tasks, state, remainingDetailed) {
+    const pendingTask = findTask(state.pendingTaskId);
+    const nextTask = pendingTask || tasks.find((task) => !taskState(state, task.id).completed);
+    return `
+      <div class="summer-today-panel">
+        <div class="summer-today-summary">
+          <div>
+            <strong>${pendingTask ? "先把正在导入的任务收尾" : "当前只看这几条"}</strong>
+            <span>还剩 ${remainingDetailed} 节详细任务</span>
+          </div>
+          <p>${nextTask ? `下一步：${escapeHtml(nextTask.title)}。没完成就留在这里，完成后自动顺延。` : "这组已经完成，下一组会自动出现。"}</p>
+        </div>
+        ${renderDayGroup("滚动任务队列", "按未完成优先排序；不用手动挪计划。", tasks, state)}
+      </div>
+    `;
+  }
+
+  function renderRouteLearningSheet(day, state, options = {}) {
+    if (!day) {
+      return `
+        <div class="summer-route-placeholder summer-route-sheet">
+          <span class="material-symbols-outlined">flag</span>
+          <div>
+            <strong>物理 28 天主线已跑完</strong>
+            <p>现在最重要的是导出学习档案，看哪些卡点反复出现，再定下一轮 7 天小计划。</p>
+          </div>
+        </div>
+      `;
+    }
+    const routeInfo = routeDayState(state, day.day);
+    const isPending = Number(options.pendingRoute?.day || 0) === day.day;
+    const completed = Boolean(routeInfo.completed);
+    const resources = routeResources(day);
+    const focus = Array.isArray(day.focus) ? day.focus : [];
+    return `
+      <div class="summer-route-placeholder summer-route-sheet ${completed ? "done" : isPending ? "pending" : ""}">
+        <span class="material-symbols-outlined">${completed ? "check_circle" : isPending ? "download_done" : "route"}</span>
+        <div>
+          <strong>${completed ? "这张学习单已完成" : isPending ? "等你导入 MOCHI-RECORD" : "后续学习单已经可以执行"}</strong>
+          <p>${escapeHtml(day.title)}：先按资源入口找当天主题，看 1 个最贴近的视频或片段，截 1-3 张例题，再做记录。具体视频之后补得更细，也不会影响今天执行。</p>
+          ${focus.length ? `<div class="summer-route-focus">${focus.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>` : ""}
+          <div class="summer-sheet-steps">
+            <span>1 打开资源找当天主题</span>
+            <span>2 看视频时截例题</span>
+            <span>3 粘贴 MOCHI-RECORD 完成</span>
+          </div>
+          <div class="summer-sheet-links">
+            ${resources.map((link) => `
+              <a class="btn btn-soft btn-sm" href="${escapeHtml(link.url)}" target="_blank" rel="noreferrer">
+                <span class="material-symbols-outlined">open_in_new</span>${escapeHtml(link.label)}
+              </a>
+            `).join("")}
+            <button class="btn btn-soft btn-sm" data-summer-action="route-focus" data-route-day="${day.day}" type="button">
+              <span class="material-symbols-outlined">timer</span>开始专注
+            </button>
+            <button class="btn btn-primary btn-sm" data-summer-action="route-import" data-route-day="${day.day}" type="button">
+              <span class="material-symbols-outlined">download_done</span>${isPending ? "去粘贴记录" : "关联并导入"}
+            </button>
+          </div>
+          ${routeInfo.lastImportedRecord ? `<p class="summer-import-done">已完成：${escapeHtml(routeInfo.lastImportedRecord.nodeLabel || "物理")} · ${"★".repeat(Number(routeInfo.lastImportedRecord.stars || 0))}</p>` : ""}
+        </div>
+      </div>
     `;
   }
 
@@ -505,8 +669,8 @@
       <div class="summer-route-placeholder">
         <span class="material-symbols-outlined">event_note</span>
         <div>
-          <strong>这一天先占路线，不给学生乱派任务</strong>
-          <p>这里会等我们把对应视频、讲义范围和过关题补齐后，再变成可点击任务。当前只用来知道后面大方向。</p>
+          <strong>这一天按学习单执行</strong>
+          <p>打开资源找当天关键词，看 1 个最贴近的视频或片段，截 1-3 张例题，再导入 MOCHI-RECORD 完成。</p>
           ${focus.length ? `<div class="summer-route-focus">${focus.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>` : ""}
         </div>
       </div>
@@ -537,8 +701,8 @@
     const started = routeDayStarted(day, state);
     const isCurrent = day.day === currentDayNo;
     const isSelected = day.day === selectedDayNo;
-    const status = completed ? "done" : isCurrent ? "current" : tasks.length ? "ready" : "draft";
-    const label = completed ? "已完成" : isCurrent ? "进行中" : tasks.length ? `${tasks.length} 节课` : "待补资源";
+    const status = completed ? "done" : isCurrent ? "current" : tasks.length ? "ready" : "sheet";
+    const label = completed ? "已完成" : isCurrent ? "进行中" : tasks.length ? `${tasks.length} 节课` : "学习单";
     return `
       <button class="summer-route-day ${status} ${isSelected ? "selected" : ""}" data-summer-action="route-day" data-route-day="${day.day}" type="button" aria-pressed="${isSelected ? "true" : "false"}">
         <div class="summer-route-day-head">
@@ -564,17 +728,14 @@
             <h4>${escapeHtml(day.title)}</h4>
             <p>${escapeHtml(day.subtitle)}</p>
           </div>
-          ${tasks.length ? `<strong>${completed}/${tasks.length} 完成</strong>` : `<strong>待补资源</strong>`}
+          ${tasks.length ? `<strong>${completed}/${tasks.length} 完成</strong>` : `<strong>${routeDayCompleted(day, state) ? "已完成" : "学习单"}</strong>`}
         </div>
         ${tasks.length ? `
           <div class="summer-route-detail-tasks">
             ${tasks.map((task) => renderRouteDetailTask(task, state)).join("")}
           </div>
         ` : `
-          <div class="summer-route-detail-draft">
-            <p>这一天现在只作为路线占位。等我们把对应视频、实体书范围和过关小题补齐后，会变成可执行任务。</p>
-            ${focus.length ? `<div class="summer-route-focus">${focus.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>` : ""}
-          </div>
+          ${renderRouteLearningSheet(day, state)}
         `}
       </section>
     `;
@@ -631,6 +792,7 @@
           </div>
           ${renderTaskStepper(task, flow, selectedStep)}
           ${renderTaskStepPanel(task, selectedStep, flow, s)}
+          ${renderExampleCollector(task, state)}
           ${isPending ? `<p class="summer-import-waiting">等你把 AI 输出的 MOCHI-RECORD 导入后，这条任务会自动完成。</p>` : ""}
           ${completed && s.lastImportedRecord ? `<p class="summer-import-done">已完成：${escapeHtml(s.lastImportedRecord.nodeLabel || "物理")} · ${"★".repeat(Number(s.lastImportedRecord.stars || 0))}</p>` : ""}
         </div>
@@ -714,7 +876,7 @@
             <span class="material-symbols-outlined">edit_note</span>
             <div>
               <strong>做过关小题</strong>
-              <p>${practiceItems.length ? `这节课有 ${practiceItems.length} 道小题。先自己想，再复制给 AI 带做。` : "这节课先占位，等补截图后再放题。"}</p>
+              <p>${practiceItems.length ? `这节课有 ${practiceItems.length} 道小题。先自己想，再复制给 AI 带做。` : "这节课先收集视频例题截图，再用 MOCHI-RECORD 完成学习闭环。"}</p>
             </div>
           </div>
           ${renderPrep(task)}
@@ -776,7 +938,7 @@
               <span class="material-symbols-outlined">timer</span>开始专注
             </button>
             <button class="btn btn-soft btn-sm" data-summer-action="practice" data-task-id="${escapeHtml(task.id)}" type="button">
-              <span class="material-symbols-outlined">edit_note</span>${flow.hasPractice ? "做小题" : "待补题"}
+              <span class="material-symbols-outlined">edit_note</span>${flow.hasPractice ? "做小题" : "收集例题"}
             </button>
             <button class="btn btn-soft btn-sm" data-summer-action="watched" data-task-id="${escapeHtml(task.id)}" type="button">
               <span class="material-symbols-outlined">visibility</span>标记看完
@@ -790,6 +952,80 @@
     `;
   }
 
+  function renderExampleCollector(task, state) {
+    const examples = taskExamples(state, task.id);
+    return `
+      <section class="summer-example-box">
+        <div class="summer-example-head">
+          <span class="material-symbols-outlined">add_photo_alternate</span>
+          <div>
+            <strong>视频例题截图</strong>
+            <p>看视频时截 1-3 张代表性例题，直接粘到这里。以后可以拿这些图让 AI 定制同类测试。</p>
+          </div>
+        </div>
+        <div class="summer-example-actions">
+          <div class="summer-example-paste" tabindex="0" data-example-paste data-task-id="${escapeHtml(task.id)}" role="button" aria-label="粘贴${escapeHtml(task.title)}的视频例题截图">
+            <span class="material-symbols-outlined">content_paste</span>
+            <strong>点这里后 Ctrl+V 粘贴截图</strong>
+            <small>默认标记为“半会”，保存后可改成会/不会。</small>
+          </div>
+          <label class="btn btn-soft btn-sm summer-example-file">
+            <span class="material-symbols-outlined">upload_file</span>上传图片
+            <input data-example-file data-task-id="${escapeHtml(task.id)}" type="file" accept="image/*" hidden>
+          </label>
+        </div>
+        ${examples.length ? `
+          <div class="summer-example-list">
+            ${examples.map((item) => renderExampleItem(task, item)).join("")}
+          </div>
+        ` : `
+          <p class="summer-example-empty">还没有收集这节课的视频例题。看视频时遇到老师讲的代表题，就截一张贴进来。</p>
+        `}
+      </section>
+    `;
+  }
+
+  function renderExampleItem(task, item) {
+    const status = item.status || "半会";
+    return `
+      <article class="summer-example-item">
+        <div class="summer-example-thumb">
+          <img data-example-image-id="${escapeHtml(item.id)}" alt="${escapeHtml(task.title)} 例题截图" hidden>
+          <span class="material-symbols-outlined">image</span>
+        </div>
+        <div class="summer-example-meta">
+          <strong>${escapeHtml(status)} · ${formatExampleDate(item.createdAt)}</strong>
+          <p>${escapeHtml(item.note || "视频里收集到的例题截图")}</p>
+          <div class="summer-example-statuses" aria-label="标记掌握情况">
+            ${["会", "半会", "不会"].map((label) => `
+              <button class="${status === label ? "selected" : ""}" data-summer-action="example-status" data-task-id="${escapeHtml(task.id)}" data-example-id="${escapeHtml(item.id)}" data-example-status="${label}" type="button">${label}</button>
+            `).join("")}
+            <button class="danger" data-summer-action="example-delete" data-task-id="${escapeHtml(task.id)}" data-example-id="${escapeHtml(item.id)}" type="button">删除</button>
+          </div>
+        </div>
+      </article>
+    `;
+  }
+
+  function taskExamples(state, taskId) {
+    const entry = state.examples?.[taskId];
+    if (Array.isArray(entry)) return entry;
+    if (Array.isArray(entry?.items)) return entry.items;
+    return [];
+  }
+
+  function setTaskExamples(state, taskId, items) {
+    state.examples = state.examples && typeof state.examples === "object" ? state.examples : {};
+    state.examples[taskId] = { items: items.slice(0, 24) };
+  }
+
+  function formatExampleDate(value) {
+    if (!value) return "刚刚";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "刚刚";
+    return `${date.getMonth() + 1}/${date.getDate()} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+  }
+
   function getPracticeItems(task) {
     return Array.isArray(task.practiceItems) ? task.practiceItems : [];
   }
@@ -800,8 +1036,8 @@
         <div class="summer-practice-empty">
           <span class="material-symbols-outlined">pending</span>
           <div>
-            <strong>等你贴例题截图后补题</strong>
-            <p>${escapeHtml(task.practiceNote || "这节课先保留视频入口，不生成低质量题。")}</p>
+            <strong>先收集视频例题截图</strong>
+            <p>${escapeHtml(task.practiceNote || "这节课先看视频，把老师讲的代表题截图存到本节课下面，再导入 MOCHI-RECORD。")}</p>
           </div>
         </div>
       `;
@@ -874,6 +1110,14 @@
     container.querySelectorAll("[data-summer-action]").forEach((el) => {
       el.addEventListener("click", handleAction);
     });
+    container.querySelectorAll("[data-example-paste]").forEach((el) => {
+      el.addEventListener("paste", handleExamplePaste);
+      el.addEventListener("click", () => el.focus());
+    });
+    container.querySelectorAll("[data-example-file]").forEach((el) => {
+      el.addEventListener("change", handleExampleFile);
+    });
+    hydrateExampleImages(container);
   }
 
   async function handleAction(event) {
@@ -891,7 +1135,52 @@
       }
       return;
     }
+    if (action === "route-focus" || action === "route-import") {
+      const dayNo = Number(event.currentTarget.dataset.routeDay || 0);
+      const day = ROUTE_DAYS.find((item) => item.day === dayNo);
+      if (!day) return;
+      const state = readState();
+      const current = routeDayState(state, day.day);
+      state.routeDays[day.day] = {
+        ...current,
+        startedAt: current.startedAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      if (action === "route-focus") {
+        writeState(state);
+        window.MochiApp?.startCommittedFocus?.(`暑假物理：${day.title}`, 45);
+        return;
+      }
+      state.pendingTaskId = "";
+      state.pendingRouteDay = day.day;
+      writeState(state);
+      refreshHome({ preserveScroll: true });
+      if (focusImportBox()) {
+        window.MochiApp?.toast?.(`已关联第 ${day.day} 天学习单：粘贴 MOCHI-RECORD 后自动完成`);
+        return;
+      }
+      if (window.MochiApp?.setHolidayMode) {
+        window.MochiApp.setHolidayMode("holiday");
+        setTimeout(() => focusImportBox(), 350);
+        window.MochiApp?.toast?.(`已打开今天的学习模式，并关联第 ${day.day} 天学习单`);
+        return;
+      }
+      window.MochiApp?.toast?.(`已关联第 ${day.day} 天学习单：粘贴 MOCHI-RECORD 后自动完成`);
+      return;
+    }
     if (!task) return;
+    if (action === "example-status") {
+      const exampleId = event.currentTarget.dataset.exampleId || "";
+      const status = event.currentTarget.dataset.exampleStatus || "半会";
+      updateExampleMeta(task.id, exampleId, { status });
+      refreshHome(taskAnchorOptions(task.id, event.currentTarget));
+      return;
+    }
+    if (action === "example-delete") {
+      const exampleId = event.currentTarget.dataset.exampleId || "";
+      await deleteExample(task.id, exampleId, taskAnchorOptions(task.id, event.currentTarget));
+      return;
+    }
     if (action === "show-step") {
       const step = Math.min(3, Math.max(0, Number(event.currentTarget.dataset.step || 0)));
       const selector = `[data-summer-action="show-step"][data-task-id="${escapeSelectorAttr(task.id)}"][data-step="${step}"]`;
@@ -958,7 +1247,7 @@
       };
       writeState(state);
       refreshHome(anchor);
-      window.MochiApp?.toast?.(hasPractice ? "已打开过关小题，做完后再导入记录" : "这节课先占位，等你贴例题截图后补题");
+      window.MochiApp?.toast?.(hasPractice ? "已打开过关小题，做完后再导入记录" : "先收集这节课的视频例题截图，再导入记录");
       return;
     }
     if (action === "focus") {
@@ -1013,6 +1302,155 @@
       showPromptFallback(prompt);
       window.MochiApp?.toast?.("已打开手动复制框，复制后把 AI 输出粘回来");
     }
+  }
+
+  async function handleExamplePaste(event) {
+    const taskId = event.currentTarget.dataset.taskId || "";
+    const items = Array.from(event.clipboardData?.items || []);
+    const imageItem = items.find((item) => item.type?.startsWith("image/"));
+    if (!imageItem) return;
+    event.preventDefault();
+    const file = imageItem.getAsFile();
+    await saveExampleFile(taskId, file, event.currentTarget);
+  }
+
+  async function handleExampleFile(event) {
+    const taskId = event.currentTarget.dataset.taskId || "";
+    const file = event.currentTarget.files?.[0];
+    await saveExampleFile(taskId, file, event.currentTarget);
+    event.currentTarget.value = "";
+  }
+
+  async function saveExampleFile(taskId, file, trigger) {
+    const task = findTask(taskId);
+    if (!task || !file) return;
+    if (!String(file.type || "").startsWith("image/")) {
+      window.MochiApp?.toast?.("请粘贴或上传图片截图");
+      return;
+    }
+    const id = `example_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    try {
+      await putExampleImage(id, file);
+      const state = readState();
+      const current = taskExamples(state, taskId);
+      setTaskExamples(state, taskId, [{
+        id,
+        status: "半会",
+        note: "",
+        type: file.type || "image/png",
+        size: Number(file.size || 0),
+        createdAt: new Date().toISOString(),
+      }, ...current]);
+      state.activeTaskId = taskId;
+      state.tasks[taskId] = {
+        ...taskState(state, taskId),
+        watched: taskState(state, taskId).watched || false,
+        updatedAt: new Date().toISOString(),
+      };
+      writeState(state);
+      refreshHome(taskAnchorOptions(taskId, trigger));
+      window.MochiApp?.toast?.(`已保存到「${task.title}」的视频例题`);
+    } catch (error) {
+      console.error(error);
+      window.MochiApp?.toast?.("截图保存失败：浏览器没有放行本地图片存储");
+    }
+  }
+
+  function updateExampleMeta(taskId, exampleId, patch) {
+    if (!exampleId) return;
+    const state = readState();
+    const next = taskExamples(state, taskId).map((item) => (
+      item.id === exampleId ? { ...item, ...patch, updatedAt: new Date().toISOString() } : item
+    ));
+    setTaskExamples(state, taskId, next);
+    writeState(state);
+  }
+
+  async function deleteExample(taskId, exampleId, refreshOptions = { preserveScroll: true }) {
+    if (!exampleId) return;
+    const state = readState();
+    setTaskExamples(state, taskId, taskExamples(state, taskId).filter((item) => item.id !== exampleId));
+    writeState(state);
+    try {
+      await deleteExampleImage(exampleId);
+    } catch (error) {
+      console.warn(error);
+    }
+    refreshHome(refreshOptions);
+    window.MochiApp?.toast?.("已删除这张例题截图");
+  }
+
+  function openExampleDb() {
+    return new Promise((resolve, reject) => {
+      if (!window.indexedDB) {
+        reject(new Error("IndexedDB unavailable"));
+        return;
+      }
+      const request = window.indexedDB.open(EXAMPLE_DB_NAME, 1);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains(EXAMPLE_STORE)) db.createObjectStore(EXAMPLE_STORE, { keyPath: "id" });
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || new Error("open IndexedDB failed"));
+    });
+  }
+
+  async function withExampleStore(mode, callback) {
+    const db = await openExampleDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(EXAMPLE_STORE, mode);
+      const store = tx.objectStore(EXAMPLE_STORE);
+      let result;
+      try {
+        result = callback(store);
+      } catch (error) {
+        db.close();
+        reject(error);
+        return;
+      }
+      tx.oncomplete = () => {
+        db.close();
+        resolve(result);
+      };
+      tx.onerror = () => {
+        db.close();
+        reject(tx.error || new Error("IndexedDB transaction failed"));
+      };
+    });
+  }
+
+  function putExampleImage(id, blob) {
+    return withExampleStore("readwrite", (store) => store.put({ id, blob, type: blob.type || "", updatedAt: new Date().toISOString() }));
+  }
+
+  function getExampleImage(id) {
+    return withExampleStore("readonly", (store) => new Promise((resolve, reject) => {
+      const request = store.get(id);
+      request.onsuccess = () => resolve(request.result?.blob || null);
+      request.onerror = () => reject(request.error || new Error("get image failed"));
+    }));
+  }
+
+  function deleteExampleImage(id) {
+    return withExampleStore("readwrite", (store) => store.delete(id));
+  }
+
+  function hydrateExampleImages(container) {
+    container.querySelectorAll("img[data-example-image-id]").forEach((img) => {
+      if (img.dataset.loaded) return;
+      img.dataset.loaded = "1";
+      getExampleImage(img.dataset.exampleImageId)
+        .then((blob) => {
+          if (!blob) return;
+          const url = URL.createObjectURL(blob);
+          img.onload = () => URL.revokeObjectURL(url);
+          img.src = url;
+          img.hidden = false;
+          img.closest(".summer-example-thumb")?.classList.add("loaded");
+        })
+        .catch((error) => console.warn(error));
+    });
   }
 
   function focusImportBox() {
