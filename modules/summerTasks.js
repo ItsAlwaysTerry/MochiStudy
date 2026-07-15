@@ -403,13 +403,14 @@
   ];
 
   function readState() {
-    const fallback = { pendingTaskId: "", pendingRouteDay: 0, activeTaskId: "", activeRouteDay: 0, tasks: {}, routeDays: {}, routeDetailDay: 0, examples: {} };
+    const fallback = { pendingTaskId: "", pendingRouteDay: 0, pendingRouteTaskId: "", activeTaskId: "", activeRouteDay: 0, tasks: {}, routeDays: {}, routeDetailDay: 0, examples: {} };
     try {
       const saved = JSON.parse(localStorage.getItem(STATE_KEY) || "null");
       if (!saved || typeof saved !== "object") return fallback;
       return {
         pendingTaskId: String(saved.pendingTaskId || ""),
         pendingRouteDay: Number(saved.pendingRouteDay || 0),
+        pendingRouteTaskId: String(saved.pendingRouteTaskId || ""),
         activeTaskId: String(saved.activeTaskId || ""),
         activeRouteDay: Number(saved.activeRouteDay || 0),
         tasks: saved.tasks && typeof saved.tasks === "object" ? saved.tasks : {},
@@ -463,10 +464,36 @@
       const currentRoute = routeDayState(state, routeDay.day);
       const linkedLogIds = Array.isArray(currentRoute.linkedLogIds) ? currentRoute.linkedLogIds.slice() : [];
       if (logEntry?.id && !linkedLogIds.includes(logEntry.id)) linkedLogIds.push(logEntry.id);
+      const routeTaskId = state.pendingRouteTaskId || routeSheetTask(routeDay).id;
+      const routeTask = findSummerTask(routeTaskId);
+      if (routeTask) {
+        const currentRouteTask = taskState(state, routeTask.id);
+        const routeTaskLogIds = Array.isArray(currentRouteTask.linkedLogIds) ? currentRouteTask.linkedLogIds.slice() : [];
+        if (logEntry?.id && !routeTaskLogIds.includes(logEntry.id)) routeTaskLogIds.push(logEntry.id);
+        state.tasks[routeTask.id] = {
+          ...currentRouteTask,
+          watched: true,
+          completed: true,
+          reflectionRequired: true,
+          reflectionDone: false,
+          completedAt: new Date().toISOString(),
+          linkedLogIds: routeTaskLogIds,
+          lastImportedRecord: {
+            id: logEntry?.id || "",
+            subject: logEntry?.subject || "",
+            nodeLabel: logEntry?.nodeLabel || "",
+            stars: logEntry?.stars || 0,
+          },
+          activeStep: 3,
+          updatedAt: new Date().toISOString(),
+        };
+      }
       state.routeDays[routeDay.day] = {
         ...currentRoute,
         startedAt: currentRoute.startedAt || new Date().toISOString(),
         completed: true,
+        dailyReflectionRequired: true,
+        dailyReflectionDone: false,
         completedAt: new Date().toISOString(),
         linkedLogIds,
         lastImportedRecord: {
@@ -478,6 +505,7 @@
         updatedAt: new Date().toISOString(),
       };
       state.pendingRouteDay = 0;
+      state.pendingRouteTaskId = "";
       writeState(state);
       return;
     }
@@ -488,6 +516,8 @@
       ...current,
       watched: true,
       completed: true,
+      reflectionRequired: true,
+      reflectionDone: false,
       completedAt: new Date().toISOString(),
       linkedLogIds,
       lastImportedRecord: {
@@ -501,13 +531,14 @@
     };
     state.pendingTaskId = "";
     state.pendingRouteDay = 0;
+    state.pendingRouteTaskId = "";
     state.activeTaskId = "";
     writeState(state);
   }
 
   function progress(state = readState()) {
     const readyTasks = TASKS.filter((task) => !task.needsExamples);
-    const completed = readyTasks.filter((task) => taskState(state, task.id).completed).length;
+    const completed = readyTasks.filter((task) => taskReadyToAdvance(task, state)).length;
     const watched = TASKS.filter((task) => taskState(state, task.id).watched).length;
     const waiting = TASKS.filter((task) => task.needsExamples).length;
     return { completed, watched, total: readyTasks.length, all: TASKS.length, waiting };
@@ -607,8 +638,8 @@
 
   function routeDayCompleted(day, state) {
     const tasks = routeTasks(day);
-    if (tasks.length) return tasks.every((task) => taskState(state, task.id).completed);
-    return Boolean(state.routeDays?.[day.day]?.completed);
+    if (tasks.length) return tasks.every((task) => taskReadyToAdvance(task, state)) && dayReflectionDone(day, state);
+    return Boolean(state.routeDays?.[day.day]?.completed) && !hasPendingTaskReflectionForDay(day, state) && dayReflectionDone(day, state);
   }
 
   function routeDayStarted(day, state) {
@@ -618,6 +649,70 @@
       const info = taskState(state, task.id);
       return Boolean(info.startedAt || info.lastFocusedAt || info.watched || info.practicingAt || info.completed);
     });
+  }
+
+  function taskReflectionDone(info) {
+    if (!info?.completed) return false;
+    if (!info.reflectionRequired) return true;
+    return Boolean(info.reflectionDone);
+  }
+
+  function taskReadyToAdvance(task, state) {
+    return taskReflectionDone(taskState(state, task.id));
+  }
+
+  function routeVideoTasks(day) {
+    const videos = routeVideos(day).map((video) => routeVideoTask(day, video));
+    const sheet = routeSheetTask(day);
+    return videos.length ? [...videos, sheet] : [sheet];
+  }
+
+  function dayRequiresDailyReflection(day, state) {
+    const dayState = routeDayState(state, day.day);
+    if (dayState.dailyReflectionRequired) return true;
+    const tasks = routeTasks(day);
+    if (tasks.length) return tasks.some((task) => Boolean(taskState(state, task.id).reflectionRequired));
+    return routeVideoTasks(day).some((task) => Boolean(taskState(state, task.id).reflectionRequired));
+  }
+
+  function dayReflectionDone(day, state) {
+    const dayState = routeDayState(state, day.day);
+    if (!dayRequiresDailyReflection(day, state)) return true;
+    return Boolean(dayState.dailyReflectionDone || dayState.reflectionDone);
+  }
+
+  function hasPendingTaskReflectionForDay(day, state) {
+    const taskPool = routeTasks(day).length ? routeTasks(day) : routeVideoTasks(day);
+    return taskPool.some((task) => {
+      const info = taskState(state, task.id);
+      return Boolean(info.completed && info.reflectionRequired && !info.reflectionDone);
+    });
+  }
+
+  function dayReadyForDailyReflection(day, state) {
+    if (!dayRequiresDailyReflection(day, state)) return false;
+    const tasks = routeTasks(day);
+    if (tasks.length) return tasks.every((task) => taskReadyToAdvance(task, state));
+    return Boolean(routeDayState(state, day.day).completed) && !hasPendingTaskReflectionForDay(day, state);
+  }
+
+  function pendingDailyReflectionDay(state) {
+    return ROUTE_DAYS.find((day) => dayReadyForDailyReflection(day, state) && !dayReflectionDone(day, state)) || null;
+  }
+
+  function pendingBlockingTaskReflection(state) {
+    const detailed = TASKS.find((task) => {
+      const info = taskState(state, task.id);
+      return Boolean(info.completed && info.reflectionRequired && !info.reflectionDone);
+    });
+    if (detailed) return { task: detailed, routeDay: ROUTE_DAYS.find((day) => (day.taskIds || []).includes(detailed.id)) || null };
+    for (const day of ROUTE_DAYS) {
+      for (const task of routeVideoTasks(day)) {
+        const info = taskState(state, task.id);
+        if (info.completed && info.reflectionRequired && !info.reflectionDone) return { task, routeDay: day };
+      }
+    }
+    return null;
   }
 
   function currentRouteDay(state) {
@@ -646,11 +741,11 @@
     const pending = findTask(state.pendingTaskId);
     const activeDay = ROUTE_DAYS.find((day) => day.day === Number(state.activeRouteDay || 0));
     if (activeDay && !routeDayCompleted(activeDay, state)) {
-      const activeTasks = routeTasks(activeDay).filter((task) => !taskState(state, task.id).completed);
+      const activeTasks = routeTasks(activeDay).filter((task) => !taskReadyToAdvance(task, state));
       if (activeTasks.length) return activeTasks.slice(0, limit);
       return [];
     }
-    const openTasks = TASKS.filter((task) => !taskState(state, task.id).completed);
+    const openTasks = TASKS.filter((task) => !taskReadyToAdvance(task, state));
     const ordered = pending ? [pending, ...openTasks.filter((task) => task.id !== pending.id)] : openTasks;
     return ordered.slice(0, limit);
   }
@@ -698,10 +793,12 @@
     const queue = rollingTasks(state, 3);
     const planDay = queue.length ? null : nextRoutePlanDay(state);
     const activeDay = ROUTE_DAYS.find((day) => day.day === Number(state.activeRouteDay || 0));
-    const completedDetailed = TASKS.filter((task) => taskState(state, task.id).completed).length;
+    const completedDetailed = TASKS.filter((task) => taskReadyToAdvance(task, state)).length;
     const remainingDetailed = TASKS.length - completedDetailed;
     const pendingRoute = ROUTE_DAYS.find((day) => day.day === Number(state.pendingRouteDay || 0));
-    const hero = buildHeroSummary(state, queue, planDay, remainingDetailed, pendingRoute);
+    const blockingTask = pendingBlockingTaskReflection(state);
+    const dailyGate = blockingTask ? null : pendingDailyReflectionDay(state);
+    const hero = buildHeroSummary(state, queue, planDay, remainingDetailed, pendingRoute, blockingTask, dailyGate);
     return `
       <section class="card summer-task-card">
         <div class="summer-route-hero">
@@ -732,19 +829,42 @@
           </div>
         ` : ""}
         ${queue.length ? renderRollingQueue(queue, state, remainingDetailed) : renderRouteLearningSheet(planDay, state, { pendingRoute })}
+        ${blockingTask ? renderTaskReflectionOverlay(blockingTask.task, blockingTask.routeDay, state) : dailyGate ? renderDailyReflectionOverlay(dailyGate, state) : ""}
       </section>
     `;
   }
 
-  function buildHeroSummary(state, queue, planDay, remainingDetailed, pendingRoute) {
+  function buildHeroSummary(state, queue, planDay, remainingDetailed, pendingRoute, blockingTask, dailyGate) {
     const currentDayNo = currentRouteDay(state);
     const currentDay = ROUTE_DAYS.find((day) => day.day === currentDayNo);
+    if (blockingTask) {
+      return {
+        title: "先写 30 秒学习收尾",
+        description: `「${blockingTask.task.title}」已经导入记录，写完感受才会翻到下一步。`,
+        stats: [
+          { label: "当前状态", value: "待收尾", note: "不能跳过" },
+          { label: "记录", value: "已导入", note: "还差反思" },
+          { label: "下一步", value: "写完放行", note: "自动顺延" },
+        ],
+      };
+    }
+    if (dailyGate) {
+      return {
+        title: `第 ${dailyGate.day} 天收尾复盘`,
+        description: "这一组已经学完，先留下今天总感受，再进入下一组。",
+        stats: [
+          { label: "今日任务", value: "已完成", note: "待复盘" },
+          { label: "复盘", value: "必填", note: "30 秒" },
+          { label: "下一组", value: "待解锁", note: "写完出现" },
+        ],
+      };
+    }
     if (queue.length) {
       const queueDay = ROUTE_DAYS.find((day) => routeTasks(day).some((task) => task.id === queue[0]?.id)) || currentDay;
       const dayTasks = queueDay ? routeTasks(queueDay) : [];
-      const completed = dayTasks.length ? dayTasks.filter((task) => taskState(state, task.id).completed).length : TASKS.length - remainingDetailed;
+      const completed = dayTasks.length ? dayTasks.filter((task) => taskReadyToAdvance(task, state)).length : TASKS.length - remainingDetailed;
       const total = dayTasks.length || TASKS.length;
-      const nextTask = queue.find((task) => !taskState(state, task.id).completed) || queue[0];
+      const nextTask = queue.find((task) => !taskReadyToAdvance(task, state)) || queue[0];
       return {
         title: queueDay ? `第 ${queueDay.day} 天：${queueDay.title}` : "先把最前面的任务清掉",
         description: nextTask ? `下一步只盯一件事：${nextTask.title}` : "这一组已经完成，下一组会自动出现。",
@@ -824,6 +944,122 @@
     `;
   }
 
+  function renderTaskReflectionOverlay(task, routeDay, state) {
+    const info = taskState(state, task.id);
+    const draft = info.reflectionDraft || info.reflection || {};
+    const dayLabel = routeDay ? `第 ${routeDay.day} 天 · ${routeDay.title}` : "暑假物理任务";
+    return `
+      <div class="summer-reflection-overlay" role="dialog" aria-modal="true" aria-labelledby="summer-task-reflection-title">
+        <form class="summer-reflection-dialog" data-reflection-form="task" data-task-id="${escapeHtml(task.id)}">
+          <div class="summer-reflection-head">
+            <span class="material-symbols-outlined">rate_review</span>
+            <div>
+              <p class="summer-kicker">${escapeHtml(dayLabel)}</p>
+              <h3 id="summer-task-reflection-title">30 秒学习收尾</h3>
+              <p>「${escapeHtml(task.title)}」已经导入记录。写完这一页，系统才会进入下一步。</p>
+            </div>
+          </div>
+          ${renderUnderstandingPicker(draft.understanding)}
+          <label class="summer-reflection-field">
+            <span>一句话收获</span>
+            <textarea name="takeaway" rows="2" placeholder="例如：追及题要先找临界条件。">${escapeHtml(draft.takeaway || "")}</textarea>
+          </label>
+          <label class="summer-reflection-field">
+            <span>一句话卡点</span>
+            <textarea name="stuckPoint" rows="2" placeholder="例如：v-t 图像面积还不会用。">${escapeHtml(draft.stuckPoint || "")}</textarea>
+          </label>
+          <label class="summer-reflection-field compact">
+            <span>下次复习提醒</span>
+            <input name="reviewCue" value="${escapeHtml(draft.reviewCue || "")}" placeholder="可选：下次先重看哪一步">
+          </label>
+          <p class="summer-reflection-message" data-reflection-message></p>
+          <button class="btn btn-primary summer-reflection-submit" data-summer-action="save-task-reflection" data-task-id="${escapeHtml(task.id)}" type="button">
+            <span class="material-symbols-outlined">lock_open</span>保存收尾，进入下一步
+          </button>
+        </form>
+      </div>
+    `;
+  }
+
+  function renderDailyReflectionOverlay(day, state) {
+    const dayState = routeDayState(state, day.day);
+    const draft = dayState.dailyReflectionDraft || dayState.dailyReflection || {};
+    return `
+      <div class="summer-reflection-overlay" role="dialog" aria-modal="true" aria-labelledby="summer-daily-reflection-title">
+        <form class="summer-reflection-dialog daily" data-reflection-form="daily" data-route-day="${day.day}">
+          <div class="summer-reflection-head">
+            <span class="material-symbols-outlined">task_alt</span>
+            <div>
+              <p class="summer-kicker">第 ${day.day} 天 · ${escapeHtml(day.title)}</p>
+              <h3 id="summer-daily-reflection-title">今日总复盘</h3>
+              <p>这一组已经完成。先留下今天的总体感受，写完才会解锁下一组。</p>
+            </div>
+          </div>
+          ${renderMoodPicker(draft.mood)}
+          <label class="summer-reflection-field">
+            <span>今天最有用的一点</span>
+            <textarea name="best" rows="2" placeholder="例如：知道了追及题先画运动过程。">${escapeHtml(draft.best || "")}</textarea>
+          </label>
+          <label class="summer-reflection-field">
+            <span>今天最卡的一点</span>
+            <textarea name="hardest" rows="2" placeholder="例如：看到图像还是不知道读哪个量。">${escapeHtml(draft.hardest || "")}</textarea>
+          </label>
+          <label class="summer-reflection-field compact">
+            <span>明天开始前先看</span>
+            <input name="tomorrow" value="${escapeHtml(draft.tomorrow || "")}" placeholder="例如：先复习 v-t 图像面积">
+          </label>
+          <p class="summer-reflection-message" data-reflection-message></p>
+          <button class="btn btn-primary summer-reflection-submit" data-summer-action="save-day-reflection" data-route-day="${day.day}" type="button">
+            <span class="material-symbols-outlined">arrow_forward</span>保存复盘，解锁下一组
+          </button>
+        </form>
+      </div>
+    `;
+  }
+
+  function renderUnderstandingPicker(selected) {
+    const options = [
+      { value: "clear", label: "会一点" },
+      { value: "partial", label: "半懂" },
+      { value: "lost", label: "还是懵" },
+    ];
+    return `
+      <fieldset class="summer-reflection-choice">
+        <legend>这节课现在感觉</legend>
+        <div>
+          ${options.map((item) => `
+            <label>
+              <input type="radio" name="understanding" value="${item.value}" ${selected === item.value ? "checked" : ""}>
+              <span>${item.label}</span>
+            </label>
+          `).join("")}
+        </div>
+      </fieldset>
+    `;
+  }
+
+  function renderMoodPicker(selected) {
+    const options = [
+      { value: "ok", label: "正常" },
+      { value: "tired", label: "累" },
+      { value: "smooth", label: "顺" },
+      { value: "stuck", label: "崩" },
+    ];
+    return `
+      <fieldset class="summer-reflection-choice">
+        <legend>今天整体状态</legend>
+        <div>
+          ${options.map((item) => `
+            <label>
+              <input type="radio" name="mood" value="${item.value}" ${selected === item.value ? "checked" : ""}>
+              <span>${item.label}</span>
+            </label>
+          `).join("")}
+        </div>
+      </fieldset>
+    `;
+  }
+
   function renderRouteLearningSheet(day, state, options = {}) {
     if (!day) {
       return `
@@ -838,16 +1074,18 @@
     }
     const routeInfo = routeDayState(state, day.day);
     const isPending = Number(options.pendingRoute?.day || 0) === day.day;
-    const completed = Boolean(routeInfo.completed);
+    const imported = Boolean(routeInfo.completed);
+    const completed = routeDayCompleted(day, state);
+    const waitingReview = imported && !completed;
     const resources = routeResources(day);
     const focus = Array.isArray(day.focus) ? day.focus : [];
     const videos = routeVideos(day);
     const intro = day.mission || `${day.title}：按下方主线视频从上到下看。每看完一个视频，至少截 1 张老师讲的代表例题，再复制同类测验包做变式练习。`;
     return `
-      <div class="summer-route-placeholder summer-route-sheet ${completed ? "done" : isPending ? "pending" : ""}">
-        <span class="material-symbols-outlined">${completed ? "check_circle" : isPending ? "download_done" : "route"}</span>
+      <div class="summer-route-placeholder summer-route-sheet ${completed ? "done" : waitingReview || isPending ? "pending" : ""}">
+        <span class="material-symbols-outlined">${completed ? "check_circle" : waitingReview ? "rate_review" : isPending ? "download_done" : "route"}</span>
         <div>
-          <strong>${completed ? "这张学习单已完成" : isPending ? "等你导入 MOCHI-RECORD" : "后续学习单已经可以执行"}</strong>
+          <strong>${completed ? "这张学习单已完成" : waitingReview ? "已导入，先写收尾复盘" : isPending ? "等你导入 MOCHI-RECORD" : "后续学习单已经可以执行"}</strong>
           <p>${escapeHtml(intro)}</p>
           ${focus.length ? `<div class="summer-route-focus">${focus.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>` : ""}
           ${renderRouteVideos(day, state, videos)}
@@ -947,6 +1185,9 @@
     const info = taskState(state, task.id);
     const examples = taskExamples(state, task.id);
     if (routeDayCompleted(day, state) || info.completed) {
+      if (info.completed && info.reflectionRequired && !info.reflectionDone) {
+        return { tone: "active", icon: "rate_review", label: "待收尾" };
+      }
       return { tone: "done", icon: "check_circle", label: "已完成" };
     }
     if (info.exampleQuizPromptCopiedAt) {
@@ -1016,10 +1257,11 @@
     const tasks = routeTasks(day);
     const completed = routeDayCompleted(day, state);
     const started = routeDayStarted(day, state);
+    const waitingReview = !completed && Boolean(routeDayState(state, day.day).completed);
     const isCurrent = day.day === currentDayNo;
     const isSelected = day.day === selectedDayNo;
-    const status = completed ? "done" : isCurrent ? "current" : tasks.length ? "ready" : "sheet";
-    const label = completed ? "已完成" : isCurrent ? "进行中" : tasks.length ? `${tasks.length} 节课` : "学习单";
+    const status = completed ? "done" : isCurrent || waitingReview ? "current" : tasks.length ? "ready" : "sheet";
+    const label = completed ? "已完成" : waitingReview ? "待复盘" : isCurrent ? "进行中" : tasks.length ? `${tasks.length} 节课` : "学习单";
     return `
       <button class="summer-route-day ${status} ${isSelected ? "selected" : ""}" data-summer-action="route-day" data-route-day="${day.day}" type="button" aria-pressed="${isSelected ? "true" : "false"}">
         <div class="summer-route-day-head">
@@ -1034,10 +1276,12 @@
 
   function renderRouteDayDetail(day, state, currentDayNo) {
     const tasks = routeTasks(day);
-    const completed = tasks.filter((task) => taskState(state, task.id).completed).length;
+    const completed = tasks.filter((task) => taskReadyToAdvance(task, state)).length;
     const isCurrent = day.day === currentDayNo;
     const isActive = Number(state.activeRouteDay || 0) === day.day && !routeDayCompleted(day, state);
     const focus = Array.isArray(day.focus) ? day.focus : [];
+    const dayState = routeDayState(state, day.day);
+    const routeLabel = routeDayCompleted(day, state) ? "已完成" : dayState.completed ? "待复盘" : "学习单";
     return `
       <section class="summer-route-detail">
         <div class="summer-route-detail-head">
@@ -1047,7 +1291,7 @@
             <p>${escapeHtml(day.subtitle)}</p>
           </div>
           <div class="summer-route-detail-actions">
-            ${tasks.length ? `<strong>${completed}/${tasks.length} 完成</strong>` : `<strong>${routeDayCompleted(day, state) ? "已完成" : "学习单"}</strong>`}
+            ${tasks.length ? `<strong>${completed}/${tasks.length} 完成</strong>` : `<strong>${routeLabel}</strong>`}
             ${routeDayCompleted(day, state) ? "" : `
               <button class="btn ${isActive ? "btn-soft" : "btn-primary"} btn-sm" data-summer-action="route-activate" data-route-day="${day.day}" type="button">
                 <span class="material-symbols-outlined">${isActive ? "done" : "today"}</span>${isActive ? "已设为今日" : "设为今日任务"}
@@ -1062,6 +1306,7 @@
         ` : `
           ${renderRoutePreview(day, state)}
         `}
+        ${renderDayReflectionReview(day, state)}
       </section>
     `;
   }
@@ -1075,8 +1320,9 @@
         const task = routeVideoTask(day, video);
         const info = taskState(state, task.id);
         const examples = taskExamples(state, task.id);
-        const status = completed ? "已完成" : info.exampleQuizPromptCopiedAt ? "已生成测验" : examples.length ? `已收 ${examples.length} 图` : info.lastFocusedAt ? "已开始" : "未开始";
-        const tone = completed || info.exampleQuizPromptCopiedAt || examples.length ? "done" : info.lastFocusedAt ? "active" : "";
+        const needsReflection = info.completed && info.reflectionRequired && !info.reflectionDone;
+        const status = completed ? "已完成" : needsReflection ? "待收尾" : info.exampleQuizPromptCopiedAt ? "已生成测验" : examples.length ? `已收 ${examples.length} 图` : info.lastFocusedAt ? "已开始" : "未开始";
+        const tone = needsReflection ? "active" : completed || info.exampleQuizPromptCopiedAt || examples.length ? "done" : info.lastFocusedAt ? "active" : "";
         return { task, title: video.title, meta: `${video.source || "B站资源"} · ${video.duration || "按需观看"}`, note: video.require || video.part || "", status, tone };
       })
       : [{
@@ -1084,8 +1330,8 @@
         title: day.title,
         meta: "当天学习单 · 按需执行",
         note: day.mission || "按资源/资料选择最贴近的小专题，收集例题后导入记录。",
-        status: completed ? "已完成" : routeStarted ? "已开始" : "未开始",
-        tone: completed ? "done" : routeStarted ? "active" : "",
+        status: completed ? "已完成" : routeDayState(state, day.day).completed ? "待复盘" : routeStarted ? "已开始" : "未开始",
+        tone: completed ? "done" : routeDayState(state, day.day).completed || routeStarted ? "active" : "",
       }];
     return `
       <div class="summer-route-preview-list">
@@ -1113,11 +1359,12 @@
 
   function renderRouteDetailTask(task, state) {
     const info = taskState(state, task.id);
-    const status = info.completed ? "已完成" : info.practicingAt ? "做题中" : info.watched ? "已看视频" : "未开始";
-    const tone = info.completed ? "done" : info.watched || info.practicingAt ? "active" : "";
+    const needsReflection = info.completed && info.reflectionRequired && !info.reflectionDone;
+    const status = needsReflection ? "待收尾" : info.completed ? "已完成" : info.practicingAt ? "做题中" : info.watched ? "已看视频" : "未开始";
+    const tone = needsReflection ? "active" : info.completed ? "done" : info.watched || info.practicingAt ? "active" : "";
     return `
       <div class="summer-route-detail-task ${tone}">
-        <span class="material-symbols-outlined">${info.completed ? "check_circle" : info.watched ? "radio_button_checked" : "play_circle"}</span>
+        <span class="material-symbols-outlined">${needsReflection ? "rate_review" : info.completed ? "check_circle" : info.watched ? "radio_button_checked" : "play_circle"}</span>
         <div>
           <strong>${escapeHtml(task.title)}</strong>
           <p>${escapeHtml(task.source)} · ${escapeHtml(task.duration)} · ${getPracticeItems(task).length || 0} 道小题</p>
@@ -1133,8 +1380,10 @@
     const examples = taskExamples(state, task.id);
     const info = taskState(state, task.id);
     const note = String(info.studyNote || "");
+    const reflection = info.reflection || null;
     const summaryBits = [
       examples.length ? `${examples.length} 张例题` : "暂无例题",
+      reflection ? "有收尾" : "无收尾",
       note ? "已记笔记" : "可写笔记",
     ];
     return `
@@ -1149,6 +1398,7 @@
             <textarea data-example-note data-task-id="${escapeHtml(task.id)}" rows="2" placeholder="例如：追及题的临界条件不会找，后面要重看。">${escapeHtml(note)}</textarea>
             <small>离开输入框自动保存，之后复习可以从总计划回看。</small>
           </label>
+          ${reflection ? renderSavedTaskReflection(reflection) : ""}
           ${examples.length ? `
             <div class="summer-route-review-examples">
               ${examples.map((item) => renderExampleReviewItem(task, item)).join("")}
@@ -1158,6 +1408,35 @@
           `}
         </div>
       </details>
+    `;
+  }
+
+  function renderSavedTaskReflection(reflection) {
+    const labels = { clear: "会一点", partial: "半懂", lost: "还是懵" };
+    return `
+      <div class="summer-saved-reflection">
+        <strong>学习收尾 · ${escapeHtml(labels[reflection.understanding] || "已记录")}</strong>
+        ${reflection.takeaway ? `<p><span>收获</span>${escapeHtml(reflection.takeaway)}</p>` : ""}
+        ${reflection.stuckPoint ? `<p><span>卡点</span>${escapeHtml(reflection.stuckPoint)}</p>` : ""}
+        ${reflection.reviewCue ? `<p><span>复习</span>${escapeHtml(reflection.reviewCue)}</p>` : ""}
+      </div>
+    `;
+  }
+
+  function renderDayReflectionReview(day, state) {
+    const reflection = routeDayState(state, day.day).dailyReflection;
+    if (!reflection) return "";
+    const labels = { ok: "正常", tired: "累", smooth: "顺", stuck: "崩" };
+    return `
+      <div class="summer-day-reflection-review">
+        <div>
+          <strong>今日总复盘 · ${escapeHtml(labels[reflection.mood] || "已记录")}</strong>
+          <span>${reflection.updatedAt || reflection.createdAt ? escapeHtml(formatExampleDate(reflection.updatedAt || reflection.createdAt)) : ""}</span>
+        </div>
+        ${reflection.best ? `<p><span>最有用</span>${escapeHtml(reflection.best)}</p>` : ""}
+        ${reflection.hardest ? `<p><span>最卡</span>${escapeHtml(reflection.hardest)}</p>` : ""}
+        ${reflection.tomorrow ? `<p><span>下次先看</span>${escapeHtml(reflection.tomorrow)}</p>` : ""}
+      </div>
     `;
   }
 
@@ -1200,27 +1479,42 @@
     const isPending = state.pendingTaskId === task.id;
     const completed = Boolean(s.completed);
     const watched = Boolean(s.watched);
+    const needsReflection = Boolean(completed && s.reflectionRequired && !s.reflectionDone);
     const practiceItems = getPracticeItems(task);
     const flow = getTaskFlow(task, s, isPending);
     const selectedStep = selectedTaskStep(s, flow);
     return `
-      <article class="summer-task ${completed ? "completed" : ""} ${isPending ? "pending-import" : ""}" data-summer-task-id="${escapeHtml(task.id)}">
+      <article class="summer-task ${completed ? "completed" : ""} ${isPending ? "pending-import" : ""} ${needsReflection ? "needs-reflection" : ""}" data-summer-task-id="${escapeHtml(task.id)}">
         <div class="summer-task-main">
           <div class="summer-task-title-row">
-            <span class="summer-task-check material-symbols-outlined">${completed ? "check_circle" : watched ? "radio_button_checked" : "radio_button_unchecked"}</span>
+            <span class="summer-task-check material-symbols-outlined">${needsReflection ? "rate_review" : completed ? "check_circle" : watched ? "radio_button_checked" : "radio_button_unchecked"}</span>
             <div>
               <h4>${escapeHtml(task.title)}</h4>
               <p>${escapeHtml(task.source)} · ${escapeHtml(task.duration)} · ${escapeHtml(task.videoTitle)}</p>
             </div>
           </div>
-          ${renderTaskStepper(task, flow, selectedStep)}
-          ${renderTaskStepPanel(task, selectedStep, flow, s)}
-          ${renderExampleCollector(task, state)}
+          ${needsReflection ? renderReflectionInline(task) : `
+            ${renderTaskStepper(task, flow, selectedStep)}
+            ${renderTaskStepPanel(task, selectedStep, flow, s)}
+            ${renderExampleCollector(task, state)}
+          `}
           ${isPending ? `<p class="summer-import-waiting">等你把 AI 输出的 MOCHI-RECORD 导入后，这条任务会自动完成。</p>` : ""}
-          ${completed && s.lastImportedRecord ? `<p class="summer-import-done">已完成：${escapeHtml(s.lastImportedRecord.nodeLabel || "物理")} · ${"★".repeat(Number(s.lastImportedRecord.stars || 0))}</p>` : ""}
+          ${completed && s.lastImportedRecord ? `<p class="summer-import-done">${needsReflection ? "已导入，待学习收尾：" : "已完成："}${escapeHtml(s.lastImportedRecord.nodeLabel || "物理")} · ${"★".repeat(Number(s.lastImportedRecord.stars || 0))}</p>` : ""}
         </div>
-        ${renderTaskActions(task, flow)}
+        ${needsReflection ? "" : renderTaskActions(task, flow)}
       </article>
+    `;
+  }
+
+  function renderReflectionInline(task) {
+    return `
+      <div class="summer-reflection-inline">
+        <span class="material-symbols-outlined">lock</span>
+        <div>
+          <strong>还差 30 秒学习收尾</strong>
+          <p>这节已经导入记录，但不会自动顺延。写完弹窗里的收获和卡点，系统才会进入下一节。</p>
+        </div>
+      </div>
     `;
   }
 
@@ -1666,6 +1960,7 @@
       }
       state.pendingTaskId = "";
       state.pendingRouteDay = day.day;
+      state.pendingRouteTaskId = routeSheetTask(day).id;
       writeState(state);
       refreshHome({ preserveScroll: true });
       if (focusImportBox()) {
@@ -1681,7 +1976,16 @@
       window.MochiApp?.toast?.(`已关联第 ${day.day} 天学习单：粘贴 MOCHI-RECORD 后自动完成`);
       return;
     }
+    if (action === "save-day-reflection") {
+      const dayNo = Number(event.currentTarget.dataset.routeDay || 0);
+      saveDayReflection(dayNo, event.currentTarget);
+      return;
+    }
     if (!task) return;
+    if (action === "save-task-reflection") {
+      saveTaskReflection(task, event.currentTarget);
+      return;
+    }
     if (action === "copy-example-image") {
       const exampleId = event.currentTarget.dataset.exampleId || "";
       await copyExampleImage(task, exampleId);
@@ -1884,6 +2188,7 @@
     if (task.routeVideo) {
       nextState.pendingTaskId = "";
       nextState.pendingRouteDay = task.day;
+      nextState.pendingRouteTaskId = task.id;
       nextState.routeDays[task.day] = {
         ...routeDayState(nextState, task.day),
         startedAt: routeDayState(nextState, task.day).startedAt || now,
@@ -1892,6 +2197,7 @@
     } else {
       nextState.pendingTaskId = task.id;
       nextState.pendingRouteDay = 0;
+      nextState.pendingRouteTaskId = "";
       nextState.activeTaskId = task.id;
     }
     writeState(nextState);
@@ -1928,6 +2234,76 @@
     updateTask(taskId, { studyNote: value });
     const hint = event.currentTarget.closest(".summer-route-note")?.querySelector("small");
     if (hint) hint.textContent = value ? "已保存。复习时可以从总计划回看。" : "已清空备注，离开输入框会自动保存。";
+  }
+
+  function saveTaskReflection(task, trigger) {
+    const form = trigger.closest("[data-reflection-form='task']");
+    if (!form) return;
+    const understanding = form.querySelector("input[name='understanding']:checked")?.value || "";
+    const takeaway = String(form.querySelector("[name='takeaway']")?.value || "").trim();
+    const stuckPoint = String(form.querySelector("[name='stuckPoint']")?.value || "").trim();
+    const reviewCue = String(form.querySelector("[name='reviewCue']")?.value || "").trim();
+    if (!understanding) {
+      showReflectionMessage(form, "先选一下这节课现在的感觉。");
+      return;
+    }
+    if ((takeaway + stuckPoint).trim().length < 4) {
+      showReflectionMessage(form, "至少写一句收获或一句卡点，真的一句就行。");
+      return;
+    }
+    const now = new Date().toISOString();
+    const reflection = { understanding, takeaway, stuckPoint, reviewCue, createdAt: now, updatedAt: now };
+    const state = readState();
+    const current = taskState(state, task.id);
+    state.tasks[task.id] = {
+      ...current,
+      reflectionRequired: true,
+      reflectionDone: true,
+      reflection,
+      studyNote: current.studyNote || [takeaway, stuckPoint].filter(Boolean).join("；"),
+      updatedAt: now,
+    };
+    writeState(state);
+    refreshHome({ preserveScroll: true });
+    window.MochiApp?.toast?.("学习收尾已保存，下一步已解锁");
+  }
+
+  function saveDayReflection(dayNo, trigger) {
+    const day = ROUTE_DAYS.find((item) => item.day === Number(dayNo || 0));
+    const form = trigger.closest("[data-reflection-form='daily']");
+    if (!day || !form) return;
+    const mood = form.querySelector("input[name='mood']:checked")?.value || "";
+    const best = String(form.querySelector("[name='best']")?.value || "").trim();
+    const hardest = String(form.querySelector("[name='hardest']")?.value || "").trim();
+    const tomorrow = String(form.querySelector("[name='tomorrow']")?.value || "").trim();
+    if (!mood) {
+      showReflectionMessage(form, "先选一下今天整体状态。");
+      return;
+    }
+    if ((best + hardest).trim().length < 4) {
+      showReflectionMessage(form, "至少写一句今天有用的点或最卡的点。");
+      return;
+    }
+    const now = new Date().toISOString();
+    const state = readState();
+    const current = routeDayState(state, day.day);
+    state.routeDays[day.day] = {
+      ...current,
+      dailyReflectionDone: true,
+      dailyReflection: { mood, best, hardest, tomorrow, createdAt: now, updatedAt: now },
+      updatedAt: now,
+    };
+    if (Number(state.activeRouteDay || 0) === day.day && routeDayCompleted(day, state)) state.activeRouteDay = 0;
+    writeState(state);
+    refreshHome({ preserveScroll: true });
+    window.MochiApp?.toast?.("今日复盘已保存，下一组已解锁");
+  }
+
+  function showReflectionMessage(form, message) {
+    const el = form.querySelector("[data-reflection-message]");
+    if (!el) return;
+    el.textContent = message;
+    el.classList.add("show");
   }
 
   async function saveExampleFile(taskId, file, trigger) {

@@ -8121,6 +8121,57 @@ body.focus-mode #view {
   line-height: 1.35;
 }
 
+.summer-saved-reflection,
+.summer-day-reflection-review {
+  display: grid;
+  gap: 5px;
+  padding: 8px;
+  border: 1px solid rgba(47, 106, 63, 0.14);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--tertiary-container) 18%, #fff);
+}
+
+.summer-saved-reflection strong,
+.summer-day-reflection-review strong {
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.summer-saved-reflection p,
+.summer-day-reflection-review p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.summer-saved-reflection p span,
+.summer-day-reflection-review p span {
+  display: inline-block;
+  min-width: 48px;
+  margin-right: 6px;
+  color: var(--tertiary);
+  font-weight: 1000;
+}
+
+.summer-day-reflection-review {
+  margin-top: 8px;
+}
+
+.summer-day-reflection-review > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.summer-day-reflection-review > div span {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 800;
+}
+
 .summer-route-detail-draft p {
   margin: 0;
   color: var(--text-secondary);
@@ -8458,6 +8509,19 @@ body.focus-mode #view {
   background: var(--physics);
 }
 
+.summer-task.needs-reflection {
+  border-color: rgba(154, 98, 34, 0.34);
+  background: #fffaf2;
+  box-shadow: 0 0 0 3px rgba(154, 98, 34, 0.08);
+}
+
+.summer-task.needs-reflection::before {
+  content: "!";
+  color: #fff;
+  border-color: #9a6222;
+  background: #9a6222;
+}
+
 .summer-task-main {
   display: grid;
   gap: 8px;
@@ -8490,6 +8554,37 @@ body.focus-mode #view {
   font-size: 12px;
   font-weight: 700;
   line-height: 1.4;
+}
+
+.summer-reflection-inline {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  margin-left: 34px;
+  padding: 9px;
+  border: 1px solid rgba(154, 98, 34, 0.18);
+  border-radius: 12px;
+  color: #7a4b16;
+  background: rgba(255, 246, 230, 0.78);
+}
+
+.summer-reflection-inline .material-symbols-outlined {
+  font-size: 20px;
+}
+
+.summer-reflection-inline strong {
+  display: block;
+  color: #6d4212;
+  font-size: 13px;
+  font-weight: 1000;
+}
+
+.summer-reflection-inline p {
+  margin: 2px 0 0;
+  color: #8a5c22;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .summer-stepper {
@@ -9058,6 +9153,186 @@ body.focus-mode #view {
   background: #fff;
 }
 
+.summer-reflection-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9800;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(31, 25, 47, 0.42);
+  backdrop-filter: blur(5px);
+}
+
+.summer-reflection-dialog {
+  width: min(560px, 100%);
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid rgba(74, 69, 128, 0.18);
+  border-radius: 18px;
+  background: #fffdf8;
+  box-shadow: 0 20px 60px rgba(31, 25, 47, 0.22);
+}
+
+.summer-reflection-dialog.daily {
+  background: #fbfff9;
+}
+
+.summer-reflection-head {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.summer-reflection-head > .material-symbols-outlined {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+  color: #fff;
+  background: var(--physics);
+  font-size: 24px;
+}
+
+.summer-reflection-dialog.daily .summer-reflection-head > .material-symbols-outlined {
+  background: var(--tertiary);
+}
+
+.summer-reflection-head h3 {
+  margin: 1px 0 3px;
+  color: var(--text-primary);
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.summer-reflection-head p:not(.summer-kicker) {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.summer-reflection-choice {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.summer-reflection-choice legend,
+.summer-reflection-field span {
+  margin-bottom: 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.summer-reflection-choice > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.summer-reflection-dialog.daily .summer-reflection-choice > div {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.summer-reflection-choice label {
+  min-width: 0;
+}
+
+.summer-reflection-choice input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.summer-reflection-choice label span {
+  display: grid;
+  place-items: center;
+  min-height: 38px;
+  padding: 7px 8px;
+  border: 1px solid rgba(74, 69, 128, 0.14);
+  border-radius: 12px;
+  color: var(--text-secondary);
+  background: var(--surface-low);
+  font-size: 12px;
+  font-weight: 1000;
+  cursor: pointer;
+}
+
+.summer-reflection-choice input:checked + span {
+  color: #fff;
+  border-color: var(--physics);
+  background: var(--physics);
+}
+
+.summer-reflection-dialog.daily .summer-reflection-choice input:checked + span {
+  border-color: var(--tertiary);
+  background: var(--tertiary);
+}
+
+.summer-reflection-field {
+  display: grid;
+  gap: 6px;
+}
+
+.summer-reflection-field textarea,
+.summer-reflection-field input {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid rgba(74, 69, 128, 0.14);
+  border-radius: 12px;
+  color: var(--text-primary);
+  background: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.summer-reflection-field textarea {
+  resize: vertical;
+  min-height: 58px;
+}
+
+.summer-reflection-field.compact input {
+  min-height: 38px;
+}
+
+.summer-reflection-field textarea:focus,
+.summer-reflection-field input:focus {
+  outline: none;
+  border-color: var(--physics);
+  box-shadow: 0 0 0 3px rgba(74, 69, 128, 0.1);
+}
+
+.summer-reflection-message {
+  display: none;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  color: #9d4258;
+  background: #fff1f3;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.summer-reflection-message.show {
+  display: block;
+}
+
+.summer-reflection-submit {
+  width: 100%;
+  min-height: 42px;
+  justify-content: center;
+  margin: 0;
+}
+
 .summer-diagram {
   margin: 0 0 2px;
   padding: 8px;
@@ -9560,7 +9835,8 @@ body.focus-mode #view {
   .summer-example-box,
   .summer-exit-box,
   .summer-import-waiting,
-  .summer-import-done {
+  .summer-import-done,
+  .summer-reflection-inline {
     margin-left: 0;
   }
 
@@ -9575,6 +9851,33 @@ body.focus-mode #view {
   .summer-sheet-links .btn {
     width: 100%;
     justify-content: center;
+  }
+
+  .summer-reflection-overlay {
+    align-items: end;
+    padding: 10px;
+  }
+
+  .summer-reflection-dialog {
+    max-height: calc(100vh - 20px);
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .summer-reflection-choice > div,
+  .summer-reflection-dialog.daily .summer-reflection-choice > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .summer-reflection-head {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .summer-reflection-head > .material-symbols-outlined {
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+    font-size: 22px;
   }
 
   .streak-num {

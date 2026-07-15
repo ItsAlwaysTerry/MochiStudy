@@ -61,7 +61,7 @@ mochi_debug_panel_open        — 调试面板展开状态
 mochi_debug_float_collapsed   — 右下角调试浮窗收起状态
 mochi_debug_tab               — 调试浮窗当前 Tab
 commitment_history            — 专注承诺历史，每轮一条 {id,date,goal,plannedMins,actualMins,outcome,ts}；最多 50 条；用于首页"说到做到"回看
-summer_task_state             — 暑假任务区状态，保存滚动任务队列中的 watched/completed/activeStep/studyNote、当前展开任务 activeTaskId、用户锁定为今日任务的 activeRouteDay、待关联视频任务 pendingTaskId、待关联路线学习单 pendingRouteDay、28天路线详情 routeDetailDay、视频例题截图元信息 examples 和已关联学习记录 id；不改 study_log 字段。截图图片本体存在 IndexedDB `mochi_summer_examples`
+summer_task_state             — 暑假任务区状态，保存滚动任务队列中的 watched/completed/activeStep/studyNote/reflectionRequired/reflectionDone/reflection、当前展开任务 activeTaskId、用户锁定为今日任务的 activeRouteDay、待关联视频任务 pendingTaskId、待关联路线学习单 pendingRouteDay、待关联路线视频/学习单 pendingRouteTaskId、28天路线详情 routeDetailDay、每日总复盘 routeDays[].dailyReflection、视频例题截图元信息 examples 和已关联学习记录 id；不改 study_log 字段。截图图片本体存在 IndexedDB `mochi_summer_examples`
 sidebar_expanded              — 桌面端侧边栏展开状态，"1" 为展开文字导航，默认收起为窄图标栏
 ```
 
@@ -643,3 +643,12 @@ v34 之后的改动：
 - **总计划回顾详情**：28 天总计划预览卡保持简洁，但每条视频/学习单新增“查看例题和笔记”折叠入口；展开后可回看本视频保存过的例题截图、掌握状态，并单独复制图片。
 - **学习备注**：总计划回顾里新增“学习备注 / 卡住点”输入框，离开输入框自动保存到 `summer_task_state.tasks[id].studyNote`，方便后续复习时看到学生自己的反馈。
 - **缓存版本号**：`index.html` 静态资源版本号更新为 `20260714q`。
+
+### V5.21 强制学习收尾 + 今日总复盘（build `20260714r`）
+
+- **完成不等于翻篇**：暑假任务导入 MOCHI-RECORD 后只进入 `completed=true + reflectionRequired=true + reflectionDone=false`，任务仍挡在滚动队列最前面；只有保存学习收尾后才算 `taskReadyToAdvance`，才会自动顺延。
+- **单节学习收尾弹窗**：导入后显示固定遮罩弹窗，要求选择“会一点/半懂/还是懵”，并至少写一句收获或卡点。保存后写入 `summer_task_state.tasks[id].reflection`，同时可回填 `studyNote` 供总计划回看。
+- **每日总复盘弹窗**：同一天全部任务都完成且单节收尾完成后，系统先弹“今日总复盘”，保存整体状态、最有用的一点、最卡的一点和明天先看什么；保存到 `routeDays[day].dailyReflection` 后才解锁下一组。
+- **路线视频也有门禁**：从路线视频“测验包”导入时记录 `pendingRouteTaskId`，先收该视频的学习收尾，再收当天总复盘；从整天学习单导入时用 `route-day-N-sheet` 作为收尾对象。
+- **总计划回看增强**：总计划展开详情会显示单节学习收尾和今日总复盘，不再只是手写备注和例题截图。
+- **缓存版本号**：`index.html` 静态资源版本号更新为 `20260714r`。
