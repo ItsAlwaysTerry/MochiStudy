@@ -7510,10 +7510,10 @@ body.focus-mode #view {
 }
 
 .summer-route-hero {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.78fr);
+  align-items: stretch;
+  gap: 12px;
 }
 
 .summer-route-hero h3 {
@@ -7537,28 +7537,48 @@ body.focus-mode #view {
   letter-spacing: 0;
 }
 
-.summer-progress-ring {
-  flex: 0 0 auto;
+.summer-hero-stats {
   display: grid;
-  place-items: center;
-  width: 58px;
-  height: 58px;
-  border-radius: 16px;
-  color: var(--physics);
-  background: var(--physics-container);
-  box-shadow: var(--soft-shadow);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
 }
 
-.summer-progress-ring strong {
-  margin-bottom: -16px;
-  font-size: 22px;
-  line-height: 1;
+.summer-hero-stat {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(74, 69, 128, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
 }
 
-.summer-progress-ring span {
-  margin-top: 18px;
-  font-size: 12px;
+.summer-hero-stat span {
+  color: var(--text-tertiary);
+  font-size: 11px;
   font-weight: 900;
+}
+
+.summer-hero-stat strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--physics);
+  font-size: 15px;
+  font-weight: 1000;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.summer-hero-stat small {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .summer-route-meta {
@@ -8037,9 +8057,9 @@ body.focus-mode #view {
 .summer-route-video-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
-  padding: 10px;
+  padding: 8px 9px;
   border: 1px solid rgba(74, 69, 128, 0.14);
   border-radius: 12px;
   background: #fff;
@@ -8088,11 +8108,14 @@ body.focus-mode #view {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 6px;
+  gap: 5px;
 }
 
 .summer-route-video-actions .btn {
   margin: 0;
+  min-height: 30px;
+  padding: 5px 8px;
+  font-size: 11px;
 }
 
 .summer-day-list,
@@ -8496,24 +8519,30 @@ body.focus-mode #view {
 
 .summer-example-box {
   display: grid;
-  gap: 9px;
+  gap: 7px;
   margin-left: 34px;
-  padding: 10px;
+  padding: 8px;
   border: 1px solid rgba(74, 69, 128, 0.12);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.7);
 }
 
+.summer-example-box.compact {
+  margin-top: -2px;
+  padding: 7px 8px;
+  background: rgba(255, 255, 255, 0.56);
+}
+
 .summer-example-head {
   display: grid;
-  grid-template-columns: 24px minmax(0, 1fr);
-  gap: 8px;
-  align-items: start;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 6px;
+  align-items: center;
 }
 
 .summer-example-head .material-symbols-outlined {
   color: var(--physics);
-  font-size: 22px;
+  font-size: 18px;
 }
 
 .summer-example-head strong {
@@ -8525,26 +8554,26 @@ body.focus-mode #view {
 .summer-example-head p {
   margin: 2px 0 0;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.45;
 }
 
 .summer-example-actions {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 8px;
+  grid-template-columns: minmax(120px, 1fr) auto auto;
+  gap: 6px;
   align-items: stretch;
 }
 
 .summer-example-paste {
   display: grid;
-  grid-template-columns: 24px minmax(0, 1fr);
-  gap: 6px 8px;
+  grid-template-columns: 18px auto minmax(0, 1fr);
+  gap: 5px;
   align-items: center;
-  min-height: 64px;
-  padding: 9px 10px;
+  min-height: 32px;
+  padding: 5px 8px;
   border: 1px dashed rgba(74, 69, 128, 0.35);
-  border-radius: 12px;
+  border-radius: 10px;
   color: var(--text-secondary);
   background: var(--surface-low);
   cursor: text;
@@ -8557,32 +8586,39 @@ body.focus-mode #view {
 }
 
 .summer-example-paste .material-symbols-outlined {
-  grid-row: span 2;
   color: var(--physics);
-  font-size: 22px;
+  font-size: 17px;
 }
 
 .summer-example-paste strong {
   color: var(--physics);
-  font-size: 13px;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .summer-example-paste small {
   color: var(--text-tertiary);
   font-size: 11px;
   line-height: 1.35;
+  white-space: nowrap;
 }
 
 .summer-example-file {
   align-self: stretch;
   justify-content: center;
   margin: 0;
+  min-height: 32px;
+  padding: 5px 8px;
+  font-size: 11px;
 }
 
 .summer-example-quiz {
   align-self: stretch;
   justify-content: center;
   margin: 0;
+  min-height: 32px;
+  padding: 5px 8px;
+  font-size: 11px;
 }
 
 .summer-example-empty {
@@ -9093,7 +9129,12 @@ body.focus-mode #view {
   }
 
   .summer-route-hero {
-    align-items: center;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .summer-hero-stats {
+    grid-template-columns: 1fr;
   }
 
   .summer-route-grid {

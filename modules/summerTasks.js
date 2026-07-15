@@ -8,6 +8,7 @@
   const XHS_LEVEL_URL = "https://www.xiaohongshu.com/explore/697b4bd8000000000a02f417";
   const EXAMPLE_DB_NAME = "mochi_summer_examples";
   const EXAMPLE_STORE = "images";
+  let examplePointerAnchor = null;
   const ONE_ROUND_BVS = {
     kinematics: "BV1D54y1m7Av",
     balance: "BV1vD4y1U7k4",
@@ -700,21 +701,23 @@
     const completedDetailed = TASKS.filter((task) => taskState(state, task.id).completed).length;
     const remainingDetailed = TASKS.length - completedDetailed;
     const pendingRoute = ROUTE_DAYS.find((day) => day.day === Number(state.pendingRouteDay || 0));
+    const hero = buildHeroSummary(state, queue, planDay, remainingDetailed, pendingRoute);
     return `
       <section class="card summer-task-card">
         <div class="summer-route-hero">
           <div>
             <p class="summer-kicker">暑假物理滚动任务</p>
-            <h3>${queue.length ? "先把最前面的任务清掉" : planDay ? `第 ${planDay.day} 天学习单` : "28 天物理路线已完成"}</h3>
-            <p>${queue.length
-              ? "没做完的不会消失，会自动排在最前面；提前做完就自动解锁下一组。"
-              : planDay
-                ? `${escapeHtml(planDay.title)} · ${escapeHtml(planDay.subtitle)}`
-                : "可以导出学习档案，回看最卡的 3 个点，再决定下一轮。"
-            }</p>
+            <h3>${escapeHtml(hero.title)}</h3>
+            <p>${escapeHtml(hero.description)}</p>
           </div>
-          <div class="summer-progress-ring" aria-label="详细任务已完成 ${completedDetailed}/${TASKS.length}">
-            <strong>${completedDetailed}</strong><span>/${TASKS.length}</span>
+          <div class="summer-hero-stats" aria-label="今日暑假物理任务概览">
+            ${hero.stats.map((item) => `
+              <div class="summer-hero-stat">
+                <span>${escapeHtml(item.label)}</span>
+                <strong>${escapeHtml(item.value)}</strong>
+                ${item.note ? `<small>${escapeHtml(item.note)}</small>` : ""}
+              </div>
+            `).join("")}
           </div>
         </div>
         <div class="summer-route-meta">
@@ -728,10 +731,54 @@
             <button class="btn btn-soft btn-sm" data-summer-action="route-auto" type="button">回到自动顺延</button>
           </div>
         ` : ""}
-        <div class="summer-progress-track"><div class="summer-progress-fill" style="width:${Math.round((completedDetailed / TASKS.length) * 100)}%"></div></div>
         ${queue.length ? renderRollingQueue(queue, state, remainingDetailed) : renderRouteLearningSheet(planDay, state, { pendingRoute })}
       </section>
     `;
+  }
+
+  function buildHeroSummary(state, queue, planDay, remainingDetailed, pendingRoute) {
+    const currentDayNo = currentRouteDay(state);
+    const currentDay = ROUTE_DAYS.find((day) => day.day === currentDayNo);
+    if (queue.length) {
+      const queueDay = ROUTE_DAYS.find((day) => routeTasks(day).some((task) => task.id === queue[0]?.id)) || currentDay;
+      const dayTasks = queueDay ? routeTasks(queueDay) : [];
+      const completed = dayTasks.length ? dayTasks.filter((task) => taskState(state, task.id).completed).length : TASKS.length - remainingDetailed;
+      const total = dayTasks.length || TASKS.length;
+      const nextTask = queue.find((task) => !taskState(state, task.id).completed) || queue[0];
+      return {
+        title: queueDay ? `第 ${queueDay.day} 天：${queueDay.title}` : "先把最前面的任务清掉",
+        description: nextTask ? `下一步只盯一件事：${nextTask.title}` : "这一组已经完成，下一组会自动出现。",
+        stats: [
+          { label: "今日完成", value: `${completed} 项`, note: `共 ${total} 项` },
+          { label: "当前显示", value: `${queue.length} 项`, note: "先做最前面" },
+          { label: "剩余详细课", value: `${remainingDetailed} 节`, note: "完成后顺延" },
+        ],
+      };
+    }
+    if (planDay) {
+      const videos = routeVideos(planDay);
+      const tasks = videos.length ? videos.map((video) => routeVideoTask(planDay, video)) : [routeSheetTask(planDay)];
+      const exampleCount = tasks.reduce((sum, task) => sum + taskExamples(state, task.id).length, 0);
+      const completed = routeDayCompleted(planDay, state);
+      const pending = Number(pendingRoute?.day || 0) === planDay.day;
+      return {
+        title: `第 ${planDay.day} 天：${planDay.title}`,
+        description: planDay.subtitle,
+        stats: [
+          { label: "今日资源", value: videos.length ? `${videos.length} 个视频` : "1 张学习单", note: videos.length ? "按顺序看" : "按资料执行" },
+          { label: "例题截图", value: `${exampleCount} 张`, note: "看课时收集" },
+          { label: "学习记录", value: completed ? "已导入" : pending ? "待粘贴" : "未导入", note: "导入才算完成" },
+        ],
+      };
+    }
+    return {
+      title: "28 天物理路线已完成",
+      description: "可以导出学习档案，回看最卡的 3 个点，再决定下一轮。",
+      stats: [
+        { label: "路线", value: "已跑完", note: "准备复盘" },
+        { label: "下一步", value: "导出档案", note: "看卡点" },
+      ],
+    };
   }
 
   function renderRouteOverviewCard() {
@@ -852,7 +899,6 @@
         </div>
         ${videos.map((video) => {
           const task = routeVideoTask(day, video);
-          const examples = taskExamples(state, task.id);
           return `
             <article class="summer-route-video-card" data-summer-task-id="${escapeHtml(task.id)}">
               <div class="summer-route-video-main">
@@ -869,9 +915,6 @@
                 </a>
                 <button class="btn btn-soft btn-sm" data-summer-action="focus" data-task-id="${escapeHtml(task.id)}" type="button">
                   <span class="material-symbols-outlined">timer</span>开始专注
-                </button>
-                <button class="btn btn-primary btn-sm" data-summer-action="copy-example-quiz" data-task-id="${escapeHtml(task.id)}" type="button" ${examples.length ? "" : "disabled"}>
-                  <span class="material-symbols-outlined">auto_awesome</span>${examples.length ? "同类测验" : "先贴例题"}
                 </button>
               </div>
             </article>
@@ -1200,12 +1243,13 @@
 
   function renderExampleCollector(task, state, options = {}) {
     const examples = taskExamples(state, task.id);
-    const title = options.compact ? "本视频例题截图" : "视频例题截图";
+    const compact = Boolean(options.compact);
+    const title = compact ? "例题截图" : "视频例题截图";
     const helper = examples.length
       ? `已收集 ${examples.length} 张。点“同类测验包”，再把这些截图一起发给 AI。`
-      : "看视频时截 1-3 张代表性例题，直接粘到这里。收集后可以让 AI 定制同类测试。";
+      : compact ? "截老师讲的代表题，粘贴后再生成同类测验。" : "看视频时截 1-3 张代表性例题，直接粘到这里。收集后可以让 AI 定制同类测试。";
     return `
-      <section class="summer-example-box">
+      <section class="summer-example-box ${compact ? "compact" : ""}" data-summer-example-task-id="${escapeHtml(task.id)}">
         <div class="summer-example-head">
           <span class="material-symbols-outlined">add_photo_alternate</span>
           <div>
@@ -1216,15 +1260,15 @@
         <div class="summer-example-actions">
           <div class="summer-example-paste" tabindex="0" data-example-paste data-task-id="${escapeHtml(task.id)}" role="button" aria-label="粘贴${escapeHtml(task.title)}的视频例题截图">
             <span class="material-symbols-outlined">content_paste</span>
-            <strong>点这里后 Ctrl+V 粘贴截图</strong>
-            <small>默认标记为“半会”，保存后可改成会/不会。</small>
+            <strong>粘贴截图</strong>
+            <small>点后 Ctrl+V</small>
           </div>
           <label class="btn btn-soft btn-sm summer-example-file">
-            <span class="material-symbols-outlined">upload_file</span>上传图片
+            <span class="material-symbols-outlined">upload_file</span>上传
             <input data-example-file data-task-id="${escapeHtml(task.id)}" type="file" accept="image/*" hidden>
           </label>
           <button class="btn btn-primary btn-sm summer-example-quiz" data-summer-action="copy-example-quiz" data-task-id="${escapeHtml(task.id)}" type="button" ${examples.length ? "" : "disabled"}>
-            <span class="material-symbols-outlined">auto_awesome</span>${examples.length ? "复制同类测验包" : "先贴例题"}
+            <span class="material-symbols-outlined">auto_awesome</span>${examples.length ? "测验包" : "先贴图"}
           </button>
         </div>
         ${examples.length ? `
@@ -1370,7 +1414,41 @@
     container.querySelectorAll("[data-example-file]").forEach((el) => {
       el.addEventListener("change", handleExampleFile);
     });
+    container.querySelectorAll(".summer-example-statuses button").forEach((el) => {
+      el.addEventListener("pointerdown", captureExamplePointerAnchor);
+      el.addEventListener("mousedown", (event) => event.preventDefault());
+    });
     hydrateExampleImages(container);
+  }
+
+  function captureExamplePointerAnchor(event) {
+    const box = event.currentTarget?.closest?.("[data-summer-example-task-id]");
+    if (!box) return;
+    examplePointerAnchor = {
+      selector: `[data-summer-example-task-id="${escapeSelectorAttr(box.dataset.summerExampleTaskId || "")}"]`,
+      top: box.getBoundingClientRect().top,
+      scrollX: window.scrollX,
+      scrollY: window.scrollY,
+    };
+  }
+
+  function restoreExamplePointerAnchor() {
+    const anchor = examplePointerAnchor;
+    examplePointerAnchor = null;
+    if (!anchor?.selector || !Number.isFinite(anchor.top)) return;
+    const restore = () => {
+      const next = document.querySelector(anchor.selector);
+      if (!next) {
+        window.scrollTo(anchor.scrollX || 0, anchor.scrollY || 0);
+        return;
+      }
+      const delta = next.getBoundingClientRect().top - anchor.top;
+      if (Math.abs(delta) > 0.5) window.scrollTo(window.scrollX, window.scrollY + delta);
+    };
+    requestAnimationFrame(() => {
+      restore();
+      setTimeout(restore, 80);
+    });
   }
 
   async function handleAction(event) {
@@ -1451,7 +1529,8 @@
       const exampleId = event.currentTarget.dataset.exampleId || "";
       const status = event.currentTarget.dataset.exampleStatus || "半会";
       updateExampleMeta(task.id, exampleId, { status });
-      refreshHome(taskAnchorOptions(task.id, event.currentTarget));
+      updateExampleStatusInPlace(event.currentTarget, status);
+      restoreExamplePointerAnchor();
       return;
     }
     if (action === "example-delete") {
@@ -1722,6 +1801,20 @@
     ));
     setTaskExamples(state, taskId, next);
     writeState(state);
+  }
+
+  function updateExampleStatusInPlace(trigger, status) {
+    const item = trigger?.closest?.(".summer-example-item");
+    if (!item) return;
+    item.querySelectorAll("[data-example-status]").forEach((button) => {
+      button.classList.toggle("selected", button.dataset.exampleStatus === status);
+    });
+    const title = item.querySelector(".summer-example-meta strong");
+    if (title) {
+      const parts = String(title.textContent || "").split("·");
+      const timeText = parts.slice(1).join("·").trim() || "刚刚";
+      title.textContent = `${status} · ${timeText}`;
+    }
   }
 
   async function deleteExample(taskId, exampleId, refreshOptions = { preserveScroll: true }) {
@@ -2009,6 +2102,11 @@
   }
 
   function taskAnchorOptions(taskId, trigger) {
+    const exampleBox = trigger?.closest?.("[data-summer-example-task-id]");
+    if (exampleBox) {
+      const selector = `[data-summer-example-task-id="${escapeSelectorAttr(taskId)}"]`;
+      return elementAnchorOptions(exampleBox, selector);
+    }
     const card = trigger?.closest?.("[data-summer-task-id]");
     const selector = `[data-summer-task-id="${escapeSelectorAttr(taskId)}"]`;
     return elementAnchorOptions(card || trigger, selector);
@@ -2044,6 +2142,8 @@
         restoreAnchor();
         requestAnimationFrame(restoreAnchor);
       });
+      setTimeout(restoreAnchor, 80);
+      setTimeout(restoreAnchor, 220);
       return;
     }
     if (options.preserveScroll) {
