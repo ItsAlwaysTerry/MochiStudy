@@ -9170,6 +9170,43 @@ body.focus-mode #view {
   padding-top: 8px;
 }
 
+.summer-reflection-extra {
+  border: 1px solid rgba(74, 69, 128, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.summer-reflection-extra > summary {
+  padding: 8px 10px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 1000;
+  cursor: pointer;
+  list-style: none;
+}
+
+.summer-reflection-extra > summary::-webkit-details-marker {
+  display: none;
+}
+
+.summer-reflection-extra > summary::after {
+  content: "expand_more";
+  float: right;
+  font-family: "Material Symbols Outlined";
+  font-size: 17px;
+  line-height: 1;
+}
+
+.summer-reflection-extra[open] > summary::after {
+  content: "expand_less";
+}
+
+.summer-reflection-extra > div {
+  display: grid;
+  gap: 8px;
+  padding: 0 10px 10px;
+}
+
 .summer-example-empty {
   margin: 0;
   color: var(--text-tertiary);
@@ -9363,6 +9400,10 @@ body.focus-mode #view {
   gap: 6px;
 }
 
+.summer-reflection-choice.task > div {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .summer-reflection-dialog.daily .summer-reflection-choice > div {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
@@ -9389,6 +9430,13 @@ body.focus-mode #view {
   font-size: 12px;
   font-weight: 1000;
   cursor: pointer;
+}
+
+.summer-reflection-choice.task label span {
+  min-height: 42px;
+  padding-inline: 10px;
+  text-align: center;
+  line-height: 1.25;
 }
 
 .summer-reflection-choice input:checked + span {
@@ -9434,6 +9482,56 @@ body.focus-mode #view {
   outline: none;
   border-color: var(--physics);
   box-shadow: 0 0 0 3px rgba(74, 69, 128, 0.1);
+}
+
+.summer-stuck-tags {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.summer-stuck-tags legend {
+  margin-bottom: 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.summer-stuck-tags > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.summer-stuck-tags label {
+  min-width: 0;
+}
+
+.summer-stuck-tags input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.summer-stuck-tags label span {
+  display: inline-grid;
+  place-items: center;
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid rgba(74, 69, 128, 0.14);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  background: #fff;
+  font-size: 12px;
+  font-weight: 1000;
+  cursor: pointer;
+}
+
+.summer-stuck-tags input:checked + span {
+  color: var(--physics);
+  border-color: rgba(74, 69, 128, 0.32);
+  background: color-mix(in srgb, var(--secondary-container) 36%, #fff);
 }
 
 .summer-reflection-message {

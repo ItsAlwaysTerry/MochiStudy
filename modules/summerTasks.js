@@ -968,19 +968,63 @@
   }
 
   function renderUnderstandingPicker(selected) {
+    const selectedValue = normalizeUnderstanding(selected);
     const options = [
-      { value: "clear", label: "会一点" },
-      { value: "partial", label: "半懂" },
-      { value: "lost", label: "还是懵" },
+      { value: "independent", label: "会了，能独立做同类题" },
+      { value: "with-example", label: "看例题能做" },
+      { value: "understood", label: "听懂但不会做" },
+      { value: "lost", label: "还没听懂" },
     ];
     return `
-      <fieldset class="summer-reflection-choice">
-        <legend>这节课现在感觉</legend>
+      <fieldset class="summer-reflection-choice task">
+        <legend>现在做到哪一步</legend>
         <div>
           ${options.map((item) => `
             <label>
-              <input type="radio" name="understanding" value="${item.value}" ${selected === item.value ? "checked" : ""}>
+              <input type="radio" name="understanding" value="${item.value}" ${selectedValue === item.value ? "checked" : ""}>
               <span>${item.label}</span>
+            </label>
+          `).join("")}
+        </div>
+      </fieldset>
+    `;
+  }
+
+  function normalizeUnderstanding(value) {
+    const map = {
+      clear: "with-example",
+      partial: "understood",
+      lost: "lost",
+      independent: "independent",
+      "with-example": "with-example",
+      understood: "understood",
+    };
+    return map[value] || "";
+  }
+
+  function understandingLabel(value) {
+    const labels = {
+      independent: "能独立做同类题",
+      "with-example": "看例题能做",
+      understood: "听懂但不会做",
+      lost: "还没听懂",
+      clear: "看例题能做",
+      partial: "听懂但不会做",
+    };
+    return labels[value] || "已记录";
+  }
+
+  function renderStuckTagPicker(selected = []) {
+    const selectedSet = new Set(Array.isArray(selected) ? selected : []);
+    const tags = ["读题", "图像", "公式", "受力", "概念", "计算", "单位", "都顺"];
+    return `
+      <fieldset class="summer-stuck-tags">
+        <legend>哪里最需要回看（可选）</legend>
+        <div>
+          ${tags.map((tag) => `
+            <label>
+              <input type="checkbox" name="stuckTags" value="${escapeHtml(tag)}" ${selectedSet.has(tag) ? "checked" : ""}>
+              <span>${escapeHtml(tag)}</span>
             </label>
           `).join("")}
         </div>
@@ -1384,13 +1428,15 @@
   }
 
   function renderSavedTaskReflection(reflection) {
-    const labels = { clear: "会一点", partial: "半懂", lost: "还是懵" };
+    const cue = reflection.reviewCue || reflection.takeaway || "";
+    const tags = Array.isArray(reflection.stuckTags) ? reflection.stuckTags : [];
     return `
       <div class="summer-saved-reflection">
-        <strong>学习收尾 · ${escapeHtml(labels[reflection.understanding] || "已记录")}</strong>
-        ${reflection.takeaway ? `<p><span>收获</span>${escapeHtml(reflection.takeaway)}</p>` : ""}
-        ${reflection.stuckPoint ? `<p><span>卡点</span>${escapeHtml(reflection.stuckPoint)}</p>` : ""}
-        ${reflection.reviewCue ? `<p><span>复习</span>${escapeHtml(reflection.reviewCue)}</p>` : ""}
+        <strong>学习收尾 · ${escapeHtml(understandingLabel(reflection.understanding))}</strong>
+        ${cue ? `<p><span>下次提醒</span>${escapeHtml(cue)}</p>` : ""}
+        ${tags.length ? `<p><span>卡点标签</span>${escapeHtml(tags.join(" / "))}</p>` : ""}
+        ${reflection.stuckPoint ? `<p><span>补充</span>${escapeHtml(reflection.stuckPoint)}</p>` : ""}
+        ${reflection.takeaway && reflection.takeaway !== cue ? `<p><span>旧收获</span>${escapeHtml(reflection.takeaway)}</p>` : ""}
       </div>
     `;
   }
@@ -1516,7 +1562,7 @@
           <span class="material-symbols-outlined">${readiness.ready ? "edit_note" : "lock"}</span>
           <div>
             <strong>本节收尾</strong>
-            <p>${readiness.ready ? "做完 AI 练题后，在这里写一句收获和一句卡点，写完这个节点变绿。" : `先完成：${escapeHtml(readiness.missing.filter((item) => item !== "本节收尾").join(" / ") || "前面步骤")}`}</p>
+            <p>${readiness.ready ? "做完 AI 练题后，只留一句给未来自己的提醒，写完这个节点变绿。" : `先完成：${escapeHtml(readiness.missing.filter((item) => item !== "本节收尾").join(" / ") || "前面步骤")}`}</p>
           </div>
         </div>
         <div class="summer-reflection-checks" aria-label="本节完成条件">
@@ -1529,17 +1575,19 @@
           <div class="summer-inline-reflection-body">
             ${renderUnderstandingPicker(reflection.understanding)}
             <label class="summer-reflection-field">
-              <span>一句话收获</span>
-              <textarea name="takeaway" rows="2" placeholder="例如：追及题要先找临界条件。">${escapeHtml(reflection.takeaway || "")}</textarea>
+              <span>下次看到这类题，先提醒自己什么？</span>
+              <textarea name="reviewCue" rows="2" placeholder="例如：先画 v-t 图，再用面积找位移。">${escapeHtml(reflection.reviewCue || reflection.takeaway || "")}</textarea>
             </label>
-            <label class="summer-reflection-field">
-              <span>一句话卡点</span>
-              <textarea name="stuckPoint" rows="2" placeholder="例如：v-t 图像面积还不会用。">${escapeHtml(reflection.stuckPoint || "")}</textarea>
-            </label>
-            <label class="summer-reflection-field compact">
-              <span>下次复习提醒</span>
-              <input name="reviewCue" value="${escapeHtml(reflection.reviewCue || "")}" placeholder="可选：下次先重看哪一步">
-            </label>
+            <details class="summer-reflection-extra">
+              <summary>可选：标一下卡点</summary>
+              <div>
+                ${renderStuckTagPicker(reflection.stuckTags)}
+                <label class="summer-reflection-field">
+                  <span>补充一句（可选）</span>
+                  <textarea name="stuckPoint" rows="2" placeholder="例如：图像面积什么时候取正负还不稳。">${escapeHtml(reflection.stuckPoint || "")}</textarea>
+                </label>
+              </div>
+            </details>
             <p class="summer-reflection-message" data-reflection-message></p>
             <button class="btn btn-primary summer-reflection-submit" data-summer-action="save-task-reflection" data-task-id="${escapeHtml(task.id)}" type="button">
               <span class="material-symbols-outlined">check_circle</span>保存本节收尾，节点变绿
@@ -2024,7 +2072,7 @@
       const target = card || event.currentTarget.closest(".summer-task") || event.currentTarget.closest(".summer-route-step");
       target?.scrollIntoView?.({ behavior: "smooth", block: "center" });
       setTimeout(() => {
-        const firstField = card?.querySelector?.("textarea, input[name='understanding']");
+        const firstField = card?.querySelector?.("[name='reviewCue'], textarea, input[name='understanding']");
         firstField?.focus?.({ preventScroll: true });
       }, 180);
       return;
@@ -2291,19 +2339,28 @@
       return;
     }
     const understanding = root.querySelector("input[name='understanding']:checked")?.value || "";
-    const takeaway = String(root.querySelector("[name='takeaway']")?.value || "").trim();
-    const stuckPoint = String(root.querySelector("[name='stuckPoint']")?.value || "").trim();
+    const normalizedUnderstanding = normalizeUnderstanding(understanding);
     const reviewCue = String(root.querySelector("[name='reviewCue']")?.value || "").trim();
-    if (!understanding) {
-      showReflectionMessage(root, "先选一下这节课现在的感觉。");
+    const stuckPoint = String(root.querySelector("[name='stuckPoint']")?.value || "").trim();
+    const stuckTags = Array.from(root.querySelectorAll("input[name='stuckTags']:checked")).map((item) => item.value);
+    if (!normalizedUnderstanding) {
+      showReflectionMessage(root, "先选一下现在能做到哪一步。");
       return;
     }
-    if ((takeaway + stuckPoint).trim().length < 4) {
-      showReflectionMessage(root, "至少写一句收获或一句卡点，真的一句就行。");
+    if (reviewCue.length < 4) {
+      showReflectionMessage(root, "只写一句下次提醒就行，例如：先画图，再列式。");
       return;
     }
     const now = new Date().toISOString();
-    const reflection = { understanding, takeaway, stuckPoint, reviewCue, createdAt: now, updatedAt: now };
+    const reflection = {
+      understanding: normalizedUnderstanding,
+      reviewCue,
+      stuckTags,
+      stuckPoint,
+      takeaway: reviewCue,
+      createdAt: now,
+      updatedAt: now,
+    };
     const state = readState();
     const current = taskState(state, task.id);
     state.tasks[task.id] = {
@@ -2314,7 +2371,7 @@
       reflectionRequired: true,
       reflectionDone: true,
       reflection,
-      studyNote: current.studyNote || [takeaway, stuckPoint].filter(Boolean).join("；"),
+      studyNote: current.studyNote || [reviewCue, stuckTags.join(" / "), stuckPoint].filter(Boolean).join("；"),
       updatedAt: now,
     };
     writeState(state);
