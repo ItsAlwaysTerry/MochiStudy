@@ -4015,8 +4015,71 @@ git reset --hard origin/main</pre>
         </div>
       </section>
 
+      ${renderSummerRewardHistory()}
       ${renderLotteryHistory()}
     `;
+  }
+
+  function getSummerRewardHistory() {
+    const fromModule = window.MochiSummerTasks?.getRewardHistory?.();
+    if (Array.isArray(fromModule)) return fromModule;
+    const summerState = readJson("summer_task_state", {});
+    return Array.isArray(summerState?.reward?.history) ? summerState.reward.history.slice(0, 50) : [];
+  }
+
+  function renderSummerRewardHistory() {
+    const history = getSummerRewardHistory();
+    if (history.length === 0) {
+      return `
+        <section class="card summer-reward-history-card">
+          <div class="summer-reward-history-head">
+            <div>
+              <h3>暑假能量奖励</h3>
+              <p class="muted">完成暑假任务后，右下角能量浮窗抽到的奖励会记录在这里。</p>
+            </div>
+          </div>
+          <p class="muted" style="text-align:center;padding:14px 0">暂无暑假奖励记录</p>
+        </section>
+      `;
+    }
+    const totalAmount = history.reduce((sum, entry) => sum + Number(entry.amount || entry.prize?.amount || 0), 0);
+    const rows = history.map((entry) => {
+      const amount = Number(entry.amount || entry.prize?.amount || 0);
+      const tone = entry.tone || entry.prize?.tone || "coin";
+      const typeLabel = entry.type === "week" ? "周奖励" : "日奖励";
+      return `
+        <div class="summer-reward-history-item ${summerRewardToneClass(tone)}">
+          <div>
+            <span class="summer-reward-history-date">${escapeHtml(entry.date || "")}</span>
+            <strong>${escapeHtml(entry.label || entry.prize?.label || "奖励")}</strong>
+            <p>${escapeHtml(entry.claim || "暑假任务奖励")} · 骰子 ${escapeHtml(entry.finalDice || "-")} 点</p>
+          </div>
+          <div class="summer-reward-history-prize">
+            <span>${typeLabel}</span>
+            <strong>${amount > 0 ? `${amount} 元` : "继续攒"}</strong>
+          </div>
+        </div>
+      `;
+    }).join("");
+    return `
+      <section class="card summer-reward-history-card">
+        <div class="summer-reward-history-head">
+          <div>
+            <h3>暑假能量奖励</h3>
+            <p class="muted">右下角能量浮窗抽奖记录，方便回看和对账。</p>
+          </div>
+          <div class="summer-reward-history-total">
+            <span>累计</span>
+            <strong>${totalAmount} 元</strong>
+          </div>
+        </div>
+        <div class="summer-reward-history-list">${rows}</div>
+      </section>
+    `;
+  }
+
+  function summerRewardToneClass(value) {
+    return ["plain", "coin", "big", "jackpot"].includes(value) ? value : "coin";
   }
 
   function renderLotteryHistory() {
@@ -4869,7 +4932,13 @@ ${record.originalQuestion || "暂无原题描述。"}
   function returnToSummerTask(taskId = "") {
     if (taskId) {
       navigate("home");
-      setTimeout(() => window.MochiSummerTasks?.openTaskImportDock?.(taskId), 120);
+      setTimeout(() => {
+        if (window.MochiSummerTasks?.openTaskFollowup) {
+          window.MochiSummerTasks.openTaskFollowup(taskId, "followup");
+        } else {
+          window.MochiSummerTasks?.openTaskImportDock?.(taskId);
+        }
+      }, 120);
     } else {
       navigate("home");
     }
@@ -4883,10 +4952,12 @@ ${record.originalQuestion || "暂无原题描述。"}
       const c = activeCommitment();
       const round = roundImportSummary(timer.sessionId);
       const summer = isSummerCommitment(c);
-      const importedLine = round.count
-        ? `<p class="focus-commitment-imported">这一轮你导入了 <b>${round.count}</b> 张卡片${round.subjectText ? `（${round.subjectText}）` : ""}</p>`
-        : summer
-          ? `<p class="focus-commitment-imported">这节课的结果写在任务节点里的「本节收尾」就好。</p>`
+      const importedLine = summer
+        ? (round.count
+          ? `<p class="focus-commitment-imported">这一轮已经导入 <b>${round.count}</b> 条记录。回到这节课确认导入和收尾。</p>`
+          : `<p class="focus-commitment-imported">这节课的结果写在任务节点里的「本节收尾」就好。</p>`)
+        : round.count
+          ? `<p class="focus-commitment-imported">这一轮你导入了 <b>${round.count}</b> 张卡片${round.subjectText ? `（${round.subjectText}）` : ""}</p>`
           : `<p class="focus-commitment-imported">这一轮还没导入卡片；如果问懂了题，可以顺手粘回 MOCHI-RECORD。</p>`;
       // 有未反思的承诺 → 第一屏只有"填反思 + 选结果"，不给休息/结束的出口；
       // 选了结果（reflectCommitment）后重渲染，c 变 null，才进入第二屏的休息/结束。
@@ -4900,9 +4971,9 @@ ${record.originalQuestion || "暂无原题描述。"}
             ${summer ? `
               <p class="focus-commitment-goal-label">你这一轮的目标：<b>${escapeHtml(c.goal)}</b></p>
               ${importedLine}
-              <p class="focus-deciding-hint">回到当前任务，把 Gemini 的记录粘回去，再写一句本节收尾。</p>
+              <p class="focus-deciding-hint">回到这节课，继续粘 Gemini 记录或写本节收尾。</p>
               <div class="focus-commitment-reflect">
-                <button class="btn btn-primary" data-action="return-summer-task" type="button">回到当前任务</button>
+                <button class="btn btn-primary" data-action="return-summer-task" type="button">回到这节课</button>
                 <button class="btn btn-soft" data-action="confirm-rest" type="button">休息 ${restMins} 分钟</button>
               </div>
             ` : c ? `

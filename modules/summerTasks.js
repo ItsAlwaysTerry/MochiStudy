@@ -8,6 +8,18 @@
   const XHS_LEVEL_URL = "https://www.xiaohongshu.com/explore/697b4bd8000000000a02f417";
   const EXAMPLE_DB_NAME = "mochi_summer_examples";
   const EXAMPLE_STORE = "images";
+  const SUMMER_REWARD_CONFIG_KEY = "summer_reward_config";
+  const SUMMER_REWARD_PRIZES = [
+    { label: "再接再厉", amount: 0, weight: 40, tone: "plain" },
+    { label: "5 元小惊喜", amount: 5, weight: 30, tone: "coin" },
+    { label: "10 元奖励", amount: 10, weight: 20, tone: "coin" },
+    { label: "20 元奖励", amount: 20, weight: 7, tone: "coin" },
+    { label: "50 元大奖", amount: 50, weight: 2, tone: "big" },
+    { label: "100 元隐藏大奖", amount: 100, weight: 0.8, tone: "big" },
+    { label: "200 元超级大奖", amount: 200, weight: 0.2, tone: "jackpot" },
+  ];
+  const SUMMER_REWARD_BOARD_SIZE = 8;
+  let rewardAnimationTimer = null;
   let examplePointerAnchor = null;
   const ONE_ROUND_BVS = {
     kinematics: "BV1D54y1m7Av",
@@ -403,7 +415,7 @@
   ];
 
   function readState() {
-    const fallback = { pendingTaskId: "", pendingRouteDay: 0, pendingRouteTaskId: "", activeTaskId: "", activeRouteDay: 0, tasks: {}, routeDays: {}, routeDetailDay: 0, examples: {} };
+    const fallback = { pendingTaskId: "", pendingRouteDay: 0, pendingRouteTaskId: "", activeTaskId: "", activeRouteDay: 0, tasks: {}, routeDays: {}, routeDetailDay: 0, examples: {}, reward: {} };
     try {
       const saved = JSON.parse(localStorage.getItem(STATE_KEY) || "null");
       if (!saved || typeof saved !== "object") return fallback;
@@ -417,6 +429,7 @@
         routeDays: saved.routeDays && typeof saved.routeDays === "object" ? saved.routeDays : {},
         routeDetailDay: Number(saved.routeDetailDay || 0),
         examples: saved.examples && typeof saved.examples === "object" ? saved.examples : {},
+        reward: saved.reward && typeof saved.reward === "object" ? saved.reward : {},
       };
     } catch {
       return fallback;
@@ -772,12 +785,9 @@
     if (/磁场|安培力|洛伦兹|左手/.test(focusText)) add("一轮磁场基础合集", oneRoundVideoUrl("magneticBasic"));
     if (/电磁感应|磁通量|楞次/.test(focusText)) add("一轮电磁感应合集", oneRoundVideoUrl("induction"));
 
-    if (/力学|运动|受力|牛二|平抛|圆周|万有引力/.test(focusText)) add("基础课目录找当天关键词", BASIC_2045_URL);
-    if (/功|电|磁|波|热学|光学|原子/.test(focusText)) add("基础课目录找当天关键词", BASIC_2181_URL);
-    add("小红书基础题拿分公式", XHS_FORMULA_URL);
-    if (/实验|热学|光学|原子|磁场|电磁/.test(focusText)) add("小红书 60 分以下提分思路", XHS_STRATEGY_URL);
-    if (/综合|小卷|复盘|错题|下一轮|公式/.test(focusText)) add("小红书分数段视频汇总", XHS_LEVEL_URL);
-    return links.slice(0, 5);
+    if (/力学|运动|受力|牛二|平抛|圆周|万有引力/.test(focusText)) add("黄夫人基础课目录（力学）", BASIC_2045_URL);
+    if (/功|电|磁|波|热学|光学|原子/.test(focusText)) add("黄夫人基础课目录（电磁/选修）", BASIC_2181_URL);
+    return links.slice(0, 3);
   }
 
   function render() {
@@ -822,7 +832,270 @@
         ${queue.length ? renderRollingQueue(queue, state, remainingDetailed) : renderRouteLearningSheet(planDay, state, { pendingRoute })}
         ${dailyGate ? renderDailyReflectionOverlay(dailyGate, state) : ""}
         ${renderPendingImportFloat(state)}
+        ${renderSummerRewardFloat(state)}
       </section>
+    `;
+  }
+
+  function readSummerRewardConfig() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(SUMMER_REWARD_CONFIG_KEY) || "null");
+      const items = Array.isArray(saved?.items) ? saved.items : SUMMER_REWARD_PRIZES;
+      return {
+        items: items
+          .map((item) => ({
+            label: String(item.label || ""),
+            amount: Number(item.amount || 0),
+            weight: Math.max(0, Number(item.weight || 0)),
+            tone: String(item.tone || "coin"),
+          }))
+          .filter((item) => item.label && item.weight > 0),
+      };
+    } catch {
+      return { items: SUMMER_REWARD_PRIZES.slice() };
+    }
+  }
+
+  function rewardState(state) {
+    const reward = state.reward && typeof state.reward === "object" ? state.reward : {};
+    const boardCursor = Number(reward.boardCursor);
+    return {
+      collapsed: Boolean(reward.collapsed),
+      open: Boolean(reward.open),
+      position: reward.position && typeof reward.position === "object" ? reward.position : null,
+      claimed: reward.claimed && typeof reward.claimed === "object" ? reward.claimed : {},
+      history: Array.isArray(reward.history) ? reward.history.slice(0, 50) : [],
+      lastPrize: reward.lastPrize && typeof reward.lastPrize === "object" ? reward.lastPrize : null,
+      drawAnimation: reward.drawAnimation && typeof reward.drawAnimation === "object" ? reward.drawAnimation : null,
+      boardCursor: Number.isFinite(boardCursor) ? boardCursor : 0,
+    };
+  }
+
+  function writeRewardState(nextReward) {
+    const state = readState();
+    state.reward = { ...rewardState(state), ...nextReward };
+    writeState(state);
+  }
+
+  function todayIso() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function todayFocusMinutes() {
+    try {
+      const today = todayIso();
+      return (JSON.parse(localStorage.getItem("focus_log") || "[]") || [])
+        .filter((log) => log.type === "focus" && log.completed && log.date === today)
+        .reduce((sum, log) => sum + Number(log.actualMins || log.durationMins || 0), 0);
+    } catch {
+      return 0;
+    }
+  }
+
+  function todayImportedCount() {
+    try {
+      const today = todayIso();
+      return (JSON.parse(localStorage.getItem("study_log") || "[]") || [])
+        .filter((log) => log.date === today).length;
+    } catch {
+      return 0;
+    }
+  }
+
+  function rewardDay(state) {
+    const active = ROUTE_DAYS.find((day) => day.day === Number(state.activeRouteDay || 0));
+    if (active) return active;
+    return ROUTE_DAYS.find((day) => day.day === currentRouteDay(state)) || ROUTE_DAYS[0];
+  }
+
+  function taskStepScore(task, state) {
+    const info = taskState(state, task.id);
+    const examples = taskExamples(state, task.id);
+    const hasPractice = getPracticeItems(task).length > 0;
+    let score = 0;
+    if (info.startedAt || info.lastFocusedAt || info.watched) score += 1;
+    if (examples.length || hasPractice || info.practicingAt) score += 1;
+    if (info.exampleQuizPromptCopiedAt || info.promptCopiedAt || info.completed) score += 1;
+    if (taskReadyToAdvance(task, state)) score += 1;
+    return Math.min(4, score);
+  }
+
+  function rewardStats(state) {
+    const day = rewardDay(state);
+    const tasks = day ? routeVideoTasks(day) : [];
+    const totalSteps = Math.max(1, tasks.length * 4);
+    const doneSteps = tasks.reduce((sum, task) => sum + taskStepScore(task, state), 0);
+    const completedTasks = tasks.filter((task) => taskReadyToAdvance(task, state)).length;
+    const currentTask = tasks.find((task) => !taskReadyToAdvance(task, state)) || tasks[tasks.length - 1] || null;
+    const currentInfo = currentTask ? taskState(state, currentTask.id) : {};
+    const currentFlow = currentTask ? getTaskFlow(currentTask, currentInfo, state.pendingTaskId === currentTask.id || state.pendingRouteTaskId === currentTask.id) : null;
+    const claims = availableRewardClaims(state);
+    return {
+      day,
+      tasks,
+      completedTasks,
+      totalTasks: tasks.length,
+      doneSteps,
+      totalSteps,
+      pct: Math.min(100, Math.round((doneSteps / totalSteps) * 100)),
+      currentTask,
+      currentStep: currentFlow?.label || "已完成",
+      focusMins: todayFocusMinutes(),
+      importedCount: todayImportedCount(),
+      claims,
+    };
+  }
+
+  function availableRewardClaims(state) {
+    const reward = rewardState(state);
+    const claims = [];
+    ROUTE_DAYS.forEach((day) => {
+      if (routeDayCompleted(day, state)) {
+        const key = `day-${day.day}`;
+        if (!reward.claimed[key]) claims.push({ key, type: "day", label: `第 ${day.day} 天完成抽奖` });
+      }
+    });
+    [1, 2, 3, 4].forEach((week) => {
+      const days = ROUTE_DAYS.filter((day) => day.week === week);
+      if (days.length && days.every((day) => routeDayCompleted(day, state))) {
+        const key = `week-${week}`;
+        if (!reward.claimed[key]) claims.push({ key, type: "week", label: `第 ${week} 周完成抽奖` });
+      }
+    });
+    return claims;
+  }
+
+  function drawWeightedPrize(items) {
+    const total = items.reduce((sum, item) => sum + Number(item.weight || 0), 0);
+    let roll = Math.random() * total;
+    for (const item of items) {
+      roll -= Number(item.weight || 0);
+      if (roll <= 0) return item;
+    }
+    return items[items.length - 1];
+  }
+
+  function normalizeRewardPrize(item, fallbackIndex = 0) {
+    const fallback = SUMMER_REWARD_PRIZES[fallbackIndex % SUMMER_REWARD_PRIZES.length];
+    const amount = Number(item?.amount ?? fallback.amount ?? 0);
+    return {
+      label: String(item?.label || fallback.label || "奖励"),
+      amount: Number.isFinite(amount) ? amount : 0,
+      weight: Math.max(0, Number(item?.weight ?? fallback.weight ?? 1)),
+      tone: String(item?.tone || fallback.tone || "coin"),
+    };
+  }
+
+  function buildRewardBoard(items, prize, targetIndex) {
+    const source = (items && items.length ? items : SUMMER_REWARD_PRIZES).map((item, index) => normalizeRewardPrize(item, index));
+    const board = Array.from({ length: SUMMER_REWARD_BOARD_SIZE }, (_, index) => {
+      const item = source[index % source.length];
+      return { ...item, cellId: `reward-cell-${index}` };
+    });
+    board[targetIndex] = { ...normalizeRewardPrize(prize), cellId: `reward-cell-${targetIndex}` };
+    return board;
+  }
+
+  function rewardAmountText(amount) {
+    const value = Number(amount || 0);
+    return value > 0 ? `${value} 元` : "继续攒能量";
+  }
+
+  function rewardToneClass(value) {
+    return ["plain", "coin", "big", "jackpot"].includes(value) ? value : "coin";
+  }
+
+  function renderRewardBoard(boardState) {
+    if (!boardState) return "";
+    const board = Array.isArray(boardState.board) ? boardState.board : [];
+    if (!board.length) return "";
+    const phase = boardState.phase || "result";
+    const cursor = Number.isFinite(Number(boardState.cursor)) ? Number(boardState.cursor) : 0;
+    const targetIndex = Number.isFinite(Number(boardState.targetIndex)) ? Number(boardState.targetIndex) : -1;
+    const dice = Number(boardState.finalDice || boardState.dice || 0);
+    const prize = normalizeRewardPrize(boardState.prize || boardState);
+    const cells = board.map((item, index) => {
+      const isActive = index === cursor;
+      const isTarget = phase === "result" && index === targetIndex;
+      return `
+        <div class="summer-reward-cell ${rewardToneClass(item.tone)} ${isActive ? "active" : ""} ${isTarget ? "target" : ""}" data-reward-cell="${index}">
+          <span>${escapeHtml(rewardAmountText(item.amount))}</span>
+          <strong>${escapeHtml(item.label || "")}</strong>
+        </div>
+      `;
+    }).join("");
+    const phaseText = phase === "rolling" ? "骰子转动中" : phase === "moving" ? `骰子 ${dice || "-"} 点，正在走格` : "结果已定格";
+    return `
+      <div class="summer-reward-game ${escapeHtml(phase)}" data-reward-game>
+        <div class="summer-reward-game-head">
+          <div class="summer-reward-dice ${phase === "rolling" ? "rolling" : ""}" data-reward-dice>${dice || "?"}</div>
+          <div>
+            <strong data-reward-status>${escapeHtml(phaseText)}</strong>
+            <span data-reward-caption>${phase === "result" ? "结果会留在这里，方便截图发给家长。" : "慢慢走完，停在哪格算哪格。"}</span>
+          </div>
+        </div>
+        <div class="summer-reward-board" data-reward-board>
+          ${cells}
+        </div>
+        ${phase === "result" ? `
+          <div class="summer-reward-result ${rewardToneClass(prize.tone)}">
+            <span>${escapeHtml(boardState.claim?.label || boardState.claim || "暑假任务奖励")}</span>
+            <strong>${escapeHtml(prize.label)}</strong>
+            <em>${escapeHtml(rewardAmountText(prize.amount))}</em>
+            <button class="btn btn-soft btn-sm" data-summer-action="reward-clear-result" type="button">收起结果</button>
+          </div>
+        ` : `
+          <p class="summer-reward-claim">抽奖进行中，先别刷新页面。</p>
+        `}
+      </div>
+    `;
+  }
+
+  function renderSummerRewardFloat(state) {
+    const reward = rewardState(state);
+    const stats = rewardStats(state);
+    const style = reward.position && Number.isFinite(reward.position.x) && Number.isFinite(reward.position.y)
+      ? `style="left:${Math.max(8, Number(reward.position.x))}px;top:${Math.max(8, Number(reward.position.y))}px;right:auto;bottom:auto"`
+      : "";
+    const claimCount = stats.claims.length;
+    const activeDraw = reward.drawAnimation && reward.drawAnimation.active ? reward.drawAnimation : null;
+    const frozenBoard = activeDraw || reward.lastPrize;
+    return `
+      <aside class="summer-reward-float ${reward.collapsed ? "collapsed" : ""} ${claimCount ? "ready" : ""} ${activeDraw ? "drawing" : ""}" data-summer-reward ${style}>
+        <div class="summer-reward-head" data-summer-reward-drag>
+          <button class="summer-reward-icon" data-summer-action="reward-toggle" type="button" aria-label="展开今日能量">
+            <span class="material-symbols-outlined">${activeDraw ? "casino" : claimCount ? "redeem" : "savings"}</span>
+          </button>
+          <div>
+            <strong>${activeDraw ? "正在抽奖" : claimCount ? "可以抽奖了" : "今日能量"}</strong>
+            <span>视频 ${stats.completedTasks}/${stats.totalTasks || 0} · ${stats.focusMins} 分钟</span>
+          </div>
+          <button class="btn-icon summer-reward-collapse" data-summer-action="reward-collapse" type="button" aria-label="${reward.collapsed ? "展开" : "收起"}">
+            <span class="material-symbols-outlined">${reward.collapsed ? "keyboard_arrow_up" : "keyboard_arrow_down"}</span>
+          </button>
+        </div>
+        ${reward.collapsed ? "" : `
+          <div class="summer-reward-body">
+            <div class="summer-reward-track">
+              <div class="summer-reward-fill" style="width:${stats.pct}%"></div>
+            </div>
+            <div class="summer-reward-stats">
+              <span>本节：${escapeHtml(stats.currentStep)}</span>
+              <span>记录 ${stats.importedCount} 条</span>
+            </div>
+            ${renderRewardBoard(frozenBoard)}
+            ${claimCount ? `
+              <button class="summer-reward-draw" data-summer-action="reward-draw" type="button" ${activeDraw ? "disabled" : ""}>
+                <span class="material-symbols-outlined">casino</span>
+                ${activeDraw ? "抽奖中" : "抽一次奖励"}
+              </button>
+              <p class="summer-reward-claim">${escapeHtml(stats.claims[0].label)} · 还有 ${claimCount} 次</p>
+            ` : `
+              <p class="summer-reward-claim">完成今天所有节点并写总复盘后，这里会亮起抽奖。</p>
+            `}
+          </div>
+        `}
+      </aside>
     `;
   }
 
@@ -1082,31 +1355,51 @@
         <div>
           <strong>${completed ? "这张学习单已完成" : waitingReview ? "已导入，先写收尾复盘" : isPending ? "等你导入 MOCHI-RECORD" : "后续学习单已经可以执行"}</strong>
           <p>${escapeHtml(intro)}</p>
+          ${renderRouteSourceNote(day, videos)}
           ${focus.length ? `<div class="summer-route-focus">${focus.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>` : ""}
-        ${renderRouteVideos(day, state, videos)}
+          ${renderRouteVideos(day, state, videos)}
           <div class="summer-sheet-steps">
             <span>1 打开下方视频</span>
             <span>2 每个视频收集例题</span>
             <span>3 复制同类测验包做题</span>
             <span>4 写本节收尾变绿</span>
           </div>
-          ${renderUnifiedImportHint(day, state)}
-          <div class="summer-sheet-links">
-            ${resources.map((link) => `
-              <a class="btn btn-soft btn-sm" href="${escapeHtml(link.url)}" target="_blank" rel="noreferrer">
-                <span class="material-symbols-outlined">open_in_new</span>${escapeHtml(link.label)}
-              </a>
-            `).join("")}
-            <button class="btn btn-soft btn-sm" data-summer-action="route-focus" data-route-day="${day.day}" type="button">
-              <span class="material-symbols-outlined">timer</span>开始专注
-            </button>
-            <button class="btn btn-primary btn-sm" data-summer-action="route-import" data-route-day="${day.day}" type="button">
-              <span class="material-symbols-outlined">download_done</span>${isPending ? "去粘贴记录" : "统一导入记录"}
-            </button>
-          </div>
+          ${renderSupplementResources(resources)}
           ${routeInfo.lastImportedRecord ? `<p class="summer-import-done">已完成：${escapeHtml(routeInfo.lastImportedRecord.nodeLabel || "物理")} · ${"★".repeat(Number(routeInfo.lastImportedRecord.stars || 0))}</p>` : ""}
         </div>
       </div>
+    `;
+  }
+
+  function renderRouteSourceNote(day, videos = []) {
+    if (day.day <= 2 || !videos.length) return "";
+    const sources = [...new Set(videos.map((video) => video.source || "B站资源"))];
+    const huangCount = sources.filter((source) => /黄夫人/.test(source)).length || videos.filter((video) => /黄夫人/.test(video.source || "")).length;
+    const sourceText = huangCount ? "当前可点视频多为已买讲义配套的一轮/基础课兜底" : `当前视频来源：${sources.join(" / ")}`;
+    return `
+      <p class="summer-route-source-note">
+        主线主题按小红书攻略方向拆；${escapeHtml(sourceText)}。如果后面补到原帖推荐 BV，会在这里替换。
+      </p>
+    `;
+  }
+
+  function renderSupplementResources(resources = []) {
+    if (!resources.length) return "";
+    return `
+      <details class="summer-supplement-resources">
+        <summary>
+          <span class="material-symbols-outlined">travel_explore</span>
+          <strong>补充资料</strong>
+          <small>看不懂概念时再打开，不是今日必做</small>
+        </summary>
+        <div>
+          ${resources.map((link) => `
+            <a class="btn btn-soft btn-sm" href="${escapeHtml(link.url)}" target="_blank" rel="noreferrer">
+              <span class="material-symbols-outlined">open_in_new</span>${escapeHtml(link.label)}
+            </a>
+          `).join("")}
+        </div>
+      </details>
     `;
   }
 
@@ -1225,40 +1518,81 @@
           <strong>主线视频</strong>
           <small>${videos.length} 个资源，按顺序看；太长就先看前半段和例题段。</small>
         </div>
-        ${videos.map((video) => {
+        ${videos.map((video, index) => {
           const task = routeVideoTask(day, video);
+          const info = taskState(state, task.id);
           const step = routeVideoStepState(day, task, state);
+          const isPending = state.pendingRouteTaskId === task.id;
+          const needsReflection = Boolean(info.completed && info.reflectionRequired && !info.reflectionDone);
+          const firstOpenIndex = videos.findIndex((item) => !taskReadyToAdvance(routeVideoTask(day, item), state));
+          const isFutureByOrder = firstOpenIndex >= 0 && index > firstOpenIndex;
+          const isNext = !step.tone && index === firstOpenIndex;
           return `
-            <div class="summer-route-step ${step.tone}">
+            <div class="summer-route-step ${step.tone} ${isNext ? "next" : ""} ${isFutureByOrder ? "future-order" : ""}">
               <div class="summer-route-step-marker" aria-label="${escapeHtml(step.label)}">
                 <span class="material-symbols-outlined">${escapeHtml(step.icon)}</span>
               </div>
               <div class="summer-route-step-body">
                 <article class="summer-route-video-card" data-summer-task-id="${escapeHtml(task.id)}">
                   <div class="summer-route-video-main">
-                    <span class="summer-route-video-order">${escapeHtml(String(videos.indexOf(video) + 1))}</span>
+                    <span class="summer-route-video-order">${escapeHtml(String(index + 1))}</span>
                     <div>
                       <strong>${escapeHtml(video.title)}</strong>
                       <p>${escapeHtml(video.source || "B站资源")} · ${escapeHtml(video.duration || "按需观看")} · ${escapeHtml(video.part || video.title)}</p>
                       <small>${escapeHtml(step.label)} · ${escapeHtml(video.require || "截 1 张代表例题，后面用来生成同类测验。")}</small>
                     </div>
                   </div>
-                  <div class="summer-route-video-actions">
-                    <a class="btn btn-soft btn-sm" href="${escapeHtml(task.url)}" target="_blank" rel="noreferrer">
-                      <span class="material-symbols-outlined">open_in_new</span>打开视频
-                    </a>
-                    <button class="btn btn-soft btn-sm" data-summer-action="focus" data-task-id="${escapeHtml(task.id)}" type="button">
-                      <span class="material-symbols-outlined">timer</span>开始专注
-                    </button>
-                  </div>
+                  ${renderRouteVideoActions(task, state)}
                 </article>
-                ${renderExampleCollector(task, state, { compact: true })}
-                ${renderTaskImportDock(task, state, { compact: true })}
-                ${renderTaskReflectionPanel(task, state)}
+                ${renderTaskSupportDrawer(task, state, {
+                  selectedStep: step.tone === "active" || isPending || needsReflection ? 1 : 0,
+                  isPending,
+                  needsReflection,
+                  imported: Boolean(info.completed),
+                  compact: true,
+                })}
               </div>
             </div>
           `;
         }).join("")}
+      </div>
+    `;
+  }
+
+  function renderRouteVideoActions(task, state) {
+    const info = taskState(state, task.id);
+    const examples = taskExamples(state, task.id);
+    const completed = taskReadyToAdvance(task, state);
+    const needsReflection = Boolean(info.completed && !info.reflectionDone);
+    let main = { action: "start-task", icon: "play_arrow", label: "开始这节课", tone: "primary", disabled: false };
+    if (completed) {
+      main = { action: "open-task-support", icon: "visibility", label: "查看回顾", tone: "soft", disabled: false };
+    } else if (needsReflection || info.exampleQuizPromptCopiedAt || info.promptCopiedAt) {
+      main = { action: "open-reflection", icon: "edit_note", label: "写本节收尾", tone: "primary", disabled: false };
+    } else if (examples.length) {
+      main = { action: "copy-example-quiz", icon: "auto_awesome", label: "复制测验包", tone: "primary", disabled: false };
+    } else if (info.lastFocusedAt || info.watched || info.practicingAt) {
+      main = { action: "open-task-support", icon: "add_photo_alternate", label: "粘贴例题截图", tone: "primary", disabled: false };
+    }
+    return `
+      <div class="summer-route-video-actions">
+        <button class="btn btn-${main.tone} btn-sm summer-video-next-btn" data-summer-action="${escapeHtml(main.action)}" data-task-id="${escapeHtml(task.id)}" type="button" ${main.disabled ? "disabled" : ""}>
+          <span class="material-symbols-outlined">${escapeHtml(main.icon)}</span>${escapeHtml(main.label)}
+        </button>
+        ${completed ? "" : `<details class="summer-more-actions compact">
+          <summary>更多</summary>
+          <div>
+            <a class="btn btn-soft btn-sm" href="${escapeHtml(task.url)}" target="_blank" rel="noreferrer">
+              <span class="material-symbols-outlined">open_in_new</span>打开视频
+            </a>
+            <button class="btn btn-soft btn-sm" data-summer-action="focus" data-task-id="${escapeHtml(task.id)}" type="button">
+              <span class="material-symbols-outlined">timer</span>开始专注
+            </button>
+            <button class="btn btn-soft btn-sm" data-summer-action="watched" data-task-id="${escapeHtml(task.id)}" type="button">
+              <span class="material-symbols-outlined">visibility</span>标记看完
+            </button>
+          </div>
+        </details>`}
       </div>
     `;
   }
@@ -1544,6 +1878,7 @@
 
   function renderDayGroup(title, subtitle, tasks, state) {
     if (!tasks.length) return "";
+    const firstOpenIndex = tasks.findIndex((task) => !taskReadyToAdvance(task, state));
     return `
       <div class="summer-day-group">
         <div class="summer-day-title">
@@ -1551,13 +1886,15 @@
           <span>${escapeHtml(subtitle)}</span>
         </div>
         <div class="summer-task-list">
-          ${tasks.map((task) => renderTask(task, state)).join("")}
+          ${tasks.map((task, index) => renderTask(task, state, {
+            queueTone: firstOpenIndex >= 0 && index === firstOpenIndex ? "current" : firstOpenIndex >= 0 && index > firstOpenIndex ? "future" : "",
+          })).join("")}
         </div>
       </div>
     `;
   }
 
-  function renderTask(task, state) {
+  function renderTask(task, state, options = {}) {
     const s = taskState(state, task.id);
     const isPending = state.pendingTaskId === task.id;
     const completed = taskReadyToAdvance(task, state);
@@ -1567,7 +1904,7 @@
     const flow = getTaskFlow(task, s, isPending);
     const selectedStep = selectedTaskStep(s, flow);
     return `
-      <article class="summer-task ${completed ? "completed" : ""} ${isPending ? "pending-import" : ""} ${needsReflection ? "needs-reflection" : ""}" data-summer-task-id="${escapeHtml(task.id)}">
+      <article class="summer-task ${completed ? "completed" : ""} ${isPending ? "pending-import" : ""} ${needsReflection ? "needs-reflection" : ""} ${options.queueTone === "current" ? "queue-current" : ""} ${options.queueTone === "future" ? "queue-future" : ""}" data-summer-task-id="${escapeHtml(task.id)}">
         <div class="summer-task-main">
           <div class="summer-task-title-row">
             <span class="summer-task-check material-symbols-outlined">${needsReflection ? "rate_review" : completed ? "check_circle" : watched ? "radio_button_checked" : "radio_button_unchecked"}</span>
@@ -1578,14 +1915,74 @@
           </div>
           ${renderTaskStepper(task, flow, selectedStep)}
           ${renderTaskStepPanel(task, selectedStep, flow, s)}
-          ${renderExampleCollector(task, state)}
-          ${renderTaskImportDock(task, state)}
-          ${renderTaskReflectionPanel(task, state, { forceOpen: needsReflection })}
-          ${isPending ? `<p class="summer-import-waiting">测验包已关联这节课；AI 练题后的 MOCHI-RECORD 统一粘到页面导入框，收尾仍在这里写。</p>` : ""}
-          ${imported && s.lastImportedRecord ? `<p class="summer-import-done">${needsReflection ? "已归档，待本节收尾：" : "已归档："}${escapeHtml(s.lastImportedRecord.nodeLabel || "物理")} · ${"★".repeat(Number(s.lastImportedRecord.stars || 0))}</p>` : ""}
+          ${renderTaskSupportDrawer(task, state, { selectedStep, isPending, needsReflection, imported })}
         </div>
         ${renderTaskActions(task, flow)}
       </article>
+    `;
+  }
+
+  function renderTaskSupportDrawer(task, state, options = {}) {
+    const info = taskState(state, task.id);
+    const examples = taskExamples(state, task.id);
+    const hasRecord = Boolean(info.lastImportedRecord);
+    const completed = taskReadyToAdvance(task, state);
+    const open = !completed && (options.isPending || options.needsReflection || options.selectedStep >= 1 || hasRecord);
+    const status = completed
+      ? "已完成，可回看"
+      : options.needsReflection
+      ? "待写本节收尾"
+      : options.isPending
+        ? "等 Gemini 记录"
+        : hasRecord
+          ? "已有学习记录"
+          : examples.length
+            ? `${examples.length} 张例题`
+            : "截图 / 导入 / 收尾";
+    return `
+      <details class="summer-task-support" ${open ? "open" : ""} data-task-support="${escapeHtml(task.id)}">
+        <summary>
+          <span class="material-symbols-outlined">inventory_2</span>
+          <strong>学习材料与记录</strong>
+          <small>${escapeHtml(status)}</small>
+        </summary>
+        <div class="summer-task-support-body">
+          ${completed
+            ? renderCompletedTaskReview(task, state)
+            : `
+              ${renderExampleCollector(task, state, { compact: options.compact })}
+              ${renderTaskImportDock(task, state, { compact: options.compact })}
+              ${renderTaskReflectionPanel(task, state, { forceOpen: options.needsReflection })}
+              ${options.isPending ? `<p class="summer-import-waiting">这节课正在等 Gemini 的 MOCHI-RECORD。粘回来后，会自动切到“本节收尾”。</p>` : ""}
+              ${hasRecord ? `<p class="summer-import-done">${options.needsReflection ? "已归档，下一步写本节收尾：" : "已归档："}${escapeHtml(info.lastImportedRecord.nodeLabel || "物理")} · ${"★".repeat(Number(info.lastImportedRecord.stars || 0))}</p>` : ""}
+            `}
+        </div>
+      </details>
+    `;
+  }
+
+  function renderCompletedTaskReview(task, state) {
+    const info = taskState(state, task.id);
+    const examples = taskExamples(state, task.id);
+    return `
+      <section class="summer-completed-review">
+        <div class="summer-completed-head">
+          <span class="material-symbols-outlined">check_circle</span>
+          <div>
+            <strong>这节已经完成</strong>
+            <p>${info.lastImportedRecord ? `学习记录：${escapeHtml(info.lastImportedRecord.nodeLabel || "物理")} · ${"★".repeat(Number(info.lastImportedRecord.stars || 0))}` : "已写完本节收尾，可作为复习资料回看。"}</p>
+          </div>
+        </div>
+        ${info.reflectionDone ? renderSavedTaskReflection(info.reflection || {}) : ""}
+        ${examples.length ? `
+          <div class="summer-completed-examples">
+            <strong>已保存例题</strong>
+            <div class="summer-example-list">
+              ${examples.map((item) => renderExampleItem(task, item)).join("")}
+            </div>
+          </div>
+        ` : `<p class="summer-example-empty">这节课没有保存例题截图。</p>`}
+      </section>
     `;
   }
 
@@ -1671,7 +2068,7 @@
     const practicing = Boolean(taskInfo.practicingAt);
     const completed = Boolean(taskInfo.completed && (!taskInfo.reflectionRequired || taskInfo.reflectionDone));
     if (completed) {
-      return { step: 3, action: "done", label: "已完成", icon: "check_circle", tone: "done", hasPractice };
+      return { step: 3, action: "open-task-support", label: "查看回顾", icon: "visibility", tone: "done", hasPractice };
     }
     if (taskInfo.completed || isPending || taskInfo.exampleQuizPromptCopiedAt || taskInfo.promptCopiedAt) {
       return { step: 2, action: "open-reflection", label: "写本节收尾", icon: "edit_note", tone: "primary", hasPractice };
@@ -1699,7 +2096,7 @@
     return `
       <div class="summer-stepper" aria-label="任务步骤">
         ${steps.map((label, index) => `
-          <button class="${index < flow.step ? "done" : index === flow.step ? "active" : ""} ${index === selectedStep ? "selected" : ""}" data-summer-action="show-step" data-task-id="${escapeHtml(task.id)}" data-step="${index}" type="button" aria-pressed="${index === selectedStep ? "true" : "false"}">
+          <button class="${index < flow.step ? "done" : index === flow.step ? "active" : ""} ${index > flow.step ? "future" : ""} ${index === selectedStep ? "selected" : ""}" data-summer-action="show-step" data-task-id="${escapeHtml(task.id)}" data-step="${index}" type="button" aria-pressed="${index === selectedStep ? "true" : "false"}">
             <i>${index < flow.step ? "✓" : index + 1}</i>${label}
           </button>
         `).join("")}
@@ -1716,19 +2113,8 @@
             <span class="material-symbols-outlined">play_circle</span>
             <div>
               <strong>先看主线视频</strong>
-              <p>${escapeHtml(task.source)} · ${escapeHtml(task.duration)} · 建议专注 ${Number(task.focusMins || 25)} 分钟</p>
+              <p>${escapeHtml(task.source)} · ${escapeHtml(task.duration)} · 建议专注 ${Number(task.focusMins || 25)} 分钟。按主按钮开始，其他操作已收进抽屉。</p>
             </div>
-          </div>
-          <div class="summer-step-actions">
-            <a class="btn btn-primary btn-sm" href="${escapeHtml(task.url)}" target="_blank" rel="noreferrer">
-              <span class="material-symbols-outlined">open_in_new</span>打开资源
-            </a>
-            <button class="btn btn-soft btn-sm" data-summer-action="focus" data-task-id="${escapeHtml(task.id)}" type="button">
-              <span class="material-symbols-outlined">timer</span>开始专注
-            </button>
-            <button class="btn btn-soft btn-sm" data-summer-action="watched-next" data-task-id="${escapeHtml(task.id)}" type="button">
-              <span class="material-symbols-outlined">visibility</span>我看完了
-            </button>
           </div>
         </section>
       `;
@@ -1756,18 +2142,8 @@
             <span class="material-symbols-outlined">edit_note</span>
             <div>
               <strong>本节收尾</strong>
-              <p>${readyToReflect ? "回到下面的收尾卡，写一句收获和一句卡点；MOCHI-RECORD 统一粘到页面导入框归档。" : "先完成做题或复制同类测验包，再写本节收尾。"}</p>
+              <p>${readyToReflect ? "打开下面的“学习材料与记录”，粘回记录后写一句给未来自己的提醒。" : "先完成做题或复制同类测验包，再写本节收尾。"}</p>
             </div>
-          </div>
-          <div class="summer-step-actions">
-            <button class="btn btn-primary btn-sm" data-summer-action="open-reflection" data-task-id="${escapeHtml(task.id)}" type="button">
-              <span class="material-symbols-outlined">edit_note</span>去写本节收尾
-            </button>
-            ${practiceItems.length ? `
-              <button class="btn btn-soft btn-sm" data-summer-action="copy-first-prompt" data-task-id="${escapeHtml(task.id)}" type="button">
-                <span class="material-symbols-outlined">content_copy</span>复制第 1 题给 AI
-              </button>
-            ` : ""}
           </div>
         </section>
       `;
@@ -1793,7 +2169,7 @@
         <button class="btn ${primaryClass} btn-sm summer-next-btn" data-summer-action="${escapeHtml(flow.action)}" data-task-id="${escapeHtml(task.id)}" type="button"${disabled}>
           <span class="material-symbols-outlined">${escapeHtml(flow.icon)}</span>${escapeHtml(flow.label)}
         </button>
-        <details class="summer-more-actions">
+        ${flow.action === "open-task-support" && flow.tone === "done" ? "" : `<details class="summer-more-actions">
           <summary>更多操作</summary>
           <div>
             <a class="btn btn-soft btn-sm" href="${escapeHtml(task.url)}" target="_blank" rel="noreferrer">
@@ -1809,7 +2185,7 @@
               <span class="material-symbols-outlined">visibility</span>标记看完
             </button>
           </div>
-        </details>
+        </details>`}
       </div>
     `;
   }
@@ -2021,6 +2397,11 @@
     container.querySelectorAll(".summer-example-statuses button").forEach((el) => {
       el.addEventListener("pointerdown", captureExamplePointerAnchor);
     });
+    container.querySelectorAll("[data-summer-reward-drag]").forEach((el) => {
+      el.addEventListener("pointerdown", handleRewardDragStart);
+    });
+    const activeReward = rewardState(readState()).drawAnimation;
+    if (activeReward?.active) scheduleRewardAnimation(activeReward, 220);
     hydrateExampleImages(container);
   }
 
@@ -2138,6 +2519,29 @@
       saveDayReflection(dayNo, event.currentTarget);
       return;
     }
+    if (action === "reward-toggle") {
+      const state = readState();
+      const reward = rewardState(state);
+      writeRewardState({ collapsed: false, open: !reward.open });
+      refreshHome({ preserveScroll: true });
+      return;
+    }
+    if (action === "reward-collapse") {
+      const state = readState();
+      const reward = rewardState(state);
+      writeRewardState({ collapsed: !reward.collapsed });
+      refreshHome({ preserveScroll: true });
+      return;
+    }
+    if (action === "reward-draw") {
+      startSummerRewardDraw(event.currentTarget);
+      return;
+    }
+    if (action === "reward-clear-result") {
+      writeRewardState({ lastPrize: null, drawAnimation: null });
+      refreshHome({ preserveScroll: true });
+      return;
+    }
     if (!task) return;
     if (action === "open-pending-import") {
       openTaskImportDock(task.id);
@@ -2151,12 +2555,19 @@
       saveTaskReflection(task, event.currentTarget);
       return;
     }
+    if (action === "open-task-support") {
+      openTaskFollowup(task.id, "materials");
+      return;
+    }
     if (action === "open-reflection") {
       const card = document.querySelector(`[data-task-reflection-card="${escapeSelectorAttr(task.id)}"]`);
+      const support = card?.closest?.(".summer-task-support");
+      if (support) support.open = true;
       const details = card?.querySelector?.(".summer-inline-reflection");
       if (details) details.open = true;
       const target = card || event.currentTarget.closest(".summer-task") || event.currentTarget.closest(".summer-route-step");
-      target?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+      scrollIntoViewIfNeeded(target);
+      flashTaskCard(task.id);
       setTimeout(() => {
         const firstField = card?.querySelector?.("[name='reviewCue'], textarea, input[name='understanding']");
         firstField?.focus?.({ preventScroll: true });
@@ -2165,7 +2576,7 @@
     }
     if (action === "copy-example-image") {
       const exampleId = event.currentTarget.dataset.exampleId || "";
-      await copyExampleImage(task, exampleId);
+      await copyExampleImage(task, exampleId, event.currentTarget);
       return;
     }
     if (action === "example-status") {
@@ -2204,13 +2615,13 @@
         updatedAt: now,
       };
       writeState(state);
-      window.open(task.url, "_blank", "noopener,noreferrer");
       window.MochiApp?.startCommittedFocus?.(`暑假物理：看${task.title}`, task.focusMins, {
         source: "summer-task",
         taskId: task.id,
         routeDay: task.routeVideo ? task.day : undefined,
       });
       refreshHome(anchor);
+      window.MochiApp?.toast?.("已开始计时；需要视频时点“更多操作 → 打开视频”");
       return;
     }
     if (action === "watched-next") {
@@ -2357,7 +2768,9 @@
     const root = trigger.closest(".summer-import-dock");
     const textarea = root?.querySelector("[data-summer-record-paste]");
     const result = root?.querySelector("[data-summer-record-result]");
+    const hasRecordBlock = /---MOCHI-RECORD-END---/.test(textarea?.value || "");
     window.MochiApp?.parsePastedRecordEl?.(textarea, result);
+    if (hasRecordBlock) setTimeout(() => openTaskFollowup(task.id, "imported"), 120);
   }
 
   function handleTaskRecordPaste(event) {
@@ -2368,6 +2781,7 @@
         const root = event.currentTarget.closest(".summer-import-dock");
         markPendingImport(task);
         window.MochiApp?.parsePastedRecordEl?.(event.currentTarget, root?.querySelector("[data-summer-record-result]"));
+        setTimeout(() => openTaskFollowup(task.id, "imported"), 120);
       }
     }, 0);
   }
@@ -2378,9 +2792,12 @@
     const scrollToDock = () => {
       const dock = document.querySelector(`[data-summer-import-task-id="${escapeSelectorAttr(task.id)}"]`);
       if (!dock) return false;
+      const support = dock.closest(".summer-task-support");
+      if (support) support.open = true;
       const details = dock.querySelector("details");
       if (details) details.open = true;
-      dock.scrollIntoView({ behavior: "smooth", block: "center" });
+      scrollIntoViewIfNeeded(dock);
+      flashTaskCard(task.id);
       setTimeout(() => dock.querySelector("[data-summer-record-paste]")?.focus?.(), 220);
       return true;
     };
@@ -2393,6 +2810,303 @@
       refreshHome({ preserveScroll: true });
       setTimeout(scrollToDock, 80);
     }
+  }
+
+  function openTaskFollowup(taskId, reason = "followup") {
+    const task = findSummerTask(taskId);
+    if (!task) return;
+    const reveal = () => {
+      const card = document.querySelector(`[data-summer-task-id="${escapeSelectorAttr(task.id)}"]`);
+      if (!card) return false;
+      const support = document.querySelector(`[data-task-support="${escapeSelectorAttr(task.id)}"]`) || card.querySelector(".summer-task-support");
+      if (support) support.open = true;
+      const reflection = support?.querySelector?.(`[data-task-reflection-card="${escapeSelectorAttr(task.id)}"]`) || card.querySelector(`[data-task-reflection-card="${escapeSelectorAttr(task.id)}"]`);
+      const reflectionDetails = reflection?.querySelector?.(".summer-inline-reflection");
+      if (reflectionDetails && reason !== "import") reflectionDetails.open = true;
+      const dock = support?.querySelector?.(`[data-summer-import-task-id="${escapeSelectorAttr(task.id)}"] details`) || card.querySelector(`[data-summer-import-task-id="${escapeSelectorAttr(task.id)}"] details`);
+      if (dock && reason === "import") dock.open = true;
+      const exampleBox = support?.querySelector?.("[data-summer-example-task-id]") || card.querySelector("[data-summer-example-task-id]");
+      const target = reason === "import"
+        ? (dock?.closest(".summer-import-dock") || support || card)
+        : reason === "materials"
+          ? (exampleBox || support || card)
+          : (reflection || support || card);
+      scrollIntoViewIfNeeded(target);
+      flashTaskCard(task.id);
+      if (reason === "materials") {
+        window.MochiApp?.toast?.("已打开这节课的截图区：点粘贴框后 Ctrl+V");
+        setTimeout(() => exampleBox?.querySelector?.("[data-example-paste]")?.focus?.({ preventScroll: true }), 240);
+      }
+      if (reason === "imported") {
+        window.MochiApp?.toast?.("已回到这节课：下一步写本节收尾");
+        setTimeout(() => reflection?.querySelector?.("[name='reviewCue'], textarea")?.focus?.({ preventScroll: true }), 240);
+      }
+      return true;
+    };
+    if (reveal()) return;
+    if (task.routeVideo) {
+      const state = readState();
+      state.activeRouteDay = task.day;
+      state.routeDetailDay = task.day;
+      writeState(state);
+      refreshHome({ preserveScroll: true });
+      setTimeout(reveal, 80);
+    }
+  }
+
+  function flashTaskCard(taskId) {
+    const card = document.querySelector(`[data-summer-task-id="${escapeSelectorAttr(taskId)}"]`);
+    if (!card) return;
+    card.classList.remove("focus-flash");
+    void card.offsetWidth;
+    card.classList.add("focus-flash");
+    setTimeout(() => card.classList.remove("focus-flash"), 1600);
+  }
+
+  function scrollIntoViewIfNeeded(element) {
+    if (!element?.getBoundingClientRect) return;
+    const rect = element.getBoundingClientRect();
+    const topSafe = 86;
+    const bottomSafe = window.innerHeight - 96;
+    if (rect.top < topSafe || rect.bottom > bottomSafe) {
+      element.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }
+
+  function startSummerRewardDraw(trigger) {
+    const state = readState();
+    const claims = availableRewardClaims(state);
+    if (!claims.length) {
+      window.MochiApp?.toast?.("今天的能量还没充满，先把当前节点做完");
+      return;
+    }
+    const reward = rewardState(state);
+    if (reward.drawAnimation?.active) {
+      window.MochiApp?.toast?.("这次抽奖还在走格，等它停下来");
+      return;
+    }
+    const config = readSummerRewardConfig();
+    const prize = normalizeRewardPrize(drawWeightedPrize(config.items.length ? config.items : SUMMER_REWARD_PRIZES));
+    const claim = claims[0];
+    const finalDice = Math.floor(Math.random() * 6) + 1;
+    const startIndex = ((Number(reward.boardCursor || 0) % SUMMER_REWARD_BOARD_SIZE) + SUMMER_REWARD_BOARD_SIZE) % SUMMER_REWARD_BOARD_SIZE;
+    const targetIndex = (startIndex + finalDice) % SUMMER_REWARD_BOARD_SIZE;
+    const animation = {
+      active: true,
+      phase: "rolling",
+      dice: 0,
+      finalDice,
+      cursor: startIndex,
+      startIndex,
+      targetIndex,
+      board: buildRewardBoard(config.items, prize, targetIndex),
+      prize,
+      claim,
+      startedAt: new Date().toISOString(),
+    };
+    state.reward = {
+      ...reward,
+      collapsed: false,
+      open: true,
+      drawAnimation: animation,
+      lastPrize: null,
+    };
+    writeState(state);
+    refreshHome({ preserveScroll: true });
+    trigger?.blur?.();
+    scheduleRewardAnimation(animation, 120);
+  }
+
+  function scheduleRewardAnimation(animation, delay = 120) {
+    if (!animation?.active) return;
+    window.clearTimeout(rewardAnimationTimer);
+    rewardAnimationTimer = setTimeout(() => runSummerRewardAnimation(animation), delay);
+  }
+
+  function runSummerRewardAnimation(animation) {
+    window.clearTimeout(rewardAnimationTimer);
+    const root = document.querySelector("[data-summer-reward]");
+    if (!root) {
+      rewardAnimationTimer = setTimeout(() => finishSummerRewardDraw(animation), 1600);
+      return;
+    }
+    const rollValues = [1, 4, 2, 6, 3, 5, animation.finalDice];
+    let rollIndex = 0;
+    const rollDice = () => {
+      setRewardDice(rollValues[rollIndex], true);
+      playRewardTick(rollIndex % 2 ? 520 : 620);
+      rollIndex += 1;
+      if (rollIndex < rollValues.length) {
+        rewardAnimationTimer = setTimeout(rollDice, 135);
+        return;
+      }
+      setRewardDice(animation.finalDice, false);
+      moveRewardCursor(animation, 0, animation.startIndex);
+    };
+    rollDice();
+  }
+
+  function moveRewardCursor(animation, step, cursor) {
+    if (step >= animation.finalDice) {
+      finishSummerRewardDraw({ ...animation, cursor: animation.targetIndex, phase: "result" });
+      return;
+    }
+    const nextCursor = (cursor + 1) % SUMMER_REWARD_BOARD_SIZE;
+    setRewardCursor(nextCursor);
+    playRewardTick(740 + step * 30);
+    rewardAnimationTimer = setTimeout(() => moveRewardCursor(animation, step + 1, nextCursor), 520);
+  }
+
+  function setRewardDice(value, rolling) {
+    const dice = document.querySelector("[data-reward-dice]");
+    const game = document.querySelector("[data-reward-game]");
+    const status = document.querySelector("[data-reward-status]");
+    const caption = document.querySelector("[data-reward-caption]");
+    if (dice) {
+      dice.textContent = String(value || "?");
+      dice.classList.toggle("rolling", Boolean(rolling));
+    }
+    if (status) status.textContent = rolling ? "骰子转动中" : `骰子 ${value || "-"} 点，正在走格`;
+    if (caption) caption.textContent = rolling ? "先摇出点数，再按点数走格。" : "一格一格走，停下后才结算。";
+    if (game) {
+      game.classList.toggle("rolling", Boolean(rolling));
+      game.classList.toggle("moving", !rolling);
+    }
+  }
+
+  function setRewardCursor(index) {
+    document.querySelectorAll("[data-reward-cell]").forEach((cell) => {
+      cell.classList.toggle("active", Number(cell.dataset.rewardCell) === index);
+    });
+  }
+
+  function finishSummerRewardDraw(animation) {
+    window.clearTimeout(rewardAnimationTimer);
+    rewardAnimationTimer = null;
+    const state = readState();
+    const reward = rewardState(state);
+    const claim = animation.claim || {};
+    const prize = normalizeRewardPrize(animation.prize);
+    if (claim.key && reward.claimed[claim.key]) {
+      writeRewardState({ drawAnimation: null });
+      refreshHome({ preserveScroll: true });
+      return;
+    }
+    const entry = {
+      id: `summer_reward_${Date.now()}`,
+      date: todayIso(),
+      claimKey: claim.key || "",
+      claim: claim.label || "暑假任务奖励",
+      type: claim.type || "day",
+      board: Array.isArray(animation.board) ? animation.board : [],
+      cursor: Number(animation.targetIndex || 0),
+      targetIndex: Number(animation.targetIndex || 0),
+      finalDice: Number(animation.finalDice || 0),
+      phase: "result",
+      prize,
+      ...prize,
+      createdAt: new Date().toISOString(),
+    };
+    state.reward = {
+      ...reward,
+      collapsed: false,
+      open: true,
+      claimed: claim.key ? { ...reward.claimed, [claim.key]: entry.createdAt } : reward.claimed,
+      boardCursor: entry.targetIndex,
+      drawAnimation: null,
+      lastPrize: entry,
+      history: [entry, ...reward.history].slice(0, 50),
+    };
+    writeState(state);
+    refreshHome({ preserveScroll: true });
+    setTimeout(() => {
+      const float = document.querySelector("[data-summer-reward]");
+      if (float) {
+        float.classList.add("drawn");
+        window.MochiApp?.sparkle?.(float, Number(prize.amount || 0) >= 50 ? "★" : "¥");
+        setTimeout(() => float.classList.remove("drawn"), 900);
+      }
+      playRewardSound(prize.tone);
+    }, 80);
+    window.MochiApp?.toast?.(`抽中了：${prize.label}`);
+  }
+
+  function playRewardTick(freq = 640) {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.035, now + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.11);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.13);
+      setTimeout(() => ctx.close?.(), 260);
+    } catch {
+      // 音效只是反馈，失败不影响学习流程。
+    }
+  }
+
+  function playRewardSound(tone = "coin") {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const now = ctx.currentTime;
+      const notes = tone === "jackpot" ? [523, 659, 784, 1046] : tone === "big" ? [523, 659, 880] : [660, 880];
+      notes.forEach((freq, index) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, now + index * 0.09);
+        gain.gain.exponentialRampToValueAtTime(0.08, now + index * 0.09 + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + index * 0.09 + 0.16);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now + index * 0.09);
+        osc.stop(now + index * 0.09 + 0.18);
+      });
+      setTimeout(() => ctx.close?.(), 900);
+    } catch {
+      // Sound is a bonus; ignore browsers that block it.
+    }
+  }
+
+  function handleRewardDragStart(event) {
+    if (event.target.closest("[data-summer-action]")) return;
+    const float = event.currentTarget.closest("[data-summer-reward]");
+    if (!float) return;
+    event.preventDefault();
+    const rect = float.getBoundingClientRect();
+    const offsetX = event.clientX - rect.left;
+    const offsetY = event.clientY - rect.top;
+    float.setPointerCapture?.(event.pointerId);
+    const move = (moveEvent) => {
+      const width = float.offsetWidth || rect.width;
+      const height = float.offsetHeight || rect.height;
+      const x = Math.min(Math.max(8, moveEvent.clientX - offsetX), window.innerWidth - width - 8);
+      const y = Math.min(Math.max(8, moveEvent.clientY - offsetY), window.innerHeight - height - 8);
+      float.style.left = `${x}px`;
+      float.style.top = `${y}px`;
+      float.style.right = "auto";
+      float.style.bottom = "auto";
+    };
+    const up = () => {
+      float.removeEventListener("pointermove", move);
+      float.removeEventListener("pointerup", up);
+      float.removeEventListener("pointercancel", up);
+      const nextRect = float.getBoundingClientRect();
+      writeRewardState({ position: { x: Math.round(nextRect.left), y: Math.round(nextRect.top) } });
+    };
+    float.addEventListener("pointermove", move);
+    float.addEventListener("pointerup", up);
+    float.addEventListener("pointercancel", up);
   }
 
   async function copyPracticePrompt(task, itemIndex, refreshOptions = { preserveScroll: true }) {
@@ -2536,7 +3250,7 @@
       updatedAt: now,
     };
     writeState(state);
-    refreshHome({ preserveScroll: true });
+    refreshHome(taskAnchorOptions(task.id, trigger));
     window.MochiApp?.toast?.("学习收尾已保存，下一步已解锁");
   }
 
@@ -2653,7 +3367,7 @@
     window.MochiApp?.toast?.("已删除这张例题截图");
   }
 
-  async function copyExampleImage(task, exampleId) {
+  async function copyExampleImage(task, exampleId, trigger = null) {
     const state = readState();
     const examples = taskExamples(state, task.id);
     const targetId = exampleId || examples[0]?.id || "";
@@ -2670,7 +3384,7 @@
       }
       const ok = await copyImageBlob(blob);
       if (ok) {
-        refreshHome({ preserveScroll: true });
+        refreshHome(taskAnchorOptions(task.id, trigger));
         window.MochiApp?.toast?.("例题图片已复制。现在回 Gemini 对话里粘贴图片。");
         return;
       }
@@ -3057,7 +3771,9 @@
     progress,
     renderRouteOverviewCard,
     getTasks: () => TASKS.slice(),
+    getRewardHistory: () => rewardState(readState()).history,
     loadDemoState,
     openTaskImportDock,
+    openTaskFollowup,
   };
 })();

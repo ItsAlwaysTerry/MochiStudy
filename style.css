@@ -3169,6 +3169,103 @@ body.sidebar-expanded .side-nav .nav-item:hover {
   white-space: nowrap;
 }
 
+.summer-reward-history-card {
+  display: grid;
+  gap: 12px;
+}
+
+.summer-reward-history-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.summer-reward-history-head h3 {
+  margin: 0 0 4px;
+}
+
+.summer-reward-history-total {
+  display: grid;
+  justify-items: end;
+  min-width: 86px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(255, 225, 120, 0.26);
+}
+
+.summer-reward-history-total span {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.summer-reward-history-total strong {
+  color: #8a4f13;
+  font-size: 18px;
+  font-weight: 1000;
+}
+
+.summer-reward-history-list {
+  display: grid;
+  gap: 8px;
+}
+
+.summer-reward-history-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid rgba(154, 98, 34, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 252, 245, 0.8);
+}
+
+.summer-reward-history-item.big,
+.summer-reward-history-item.jackpot {
+  border-color: rgba(178, 51, 54, 0.16);
+  background: linear-gradient(135deg, rgba(255, 244, 188, 0.78), rgba(255, 225, 204, 0.62));
+}
+
+.summer-reward-history-date {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.summer-reward-history-item strong {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 1000;
+}
+
+.summer-reward-history-item p {
+  margin: 3px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.summer-reward-history-prize {
+  display: grid;
+  justify-items: end;
+  min-width: 68px;
+}
+
+.summer-reward-history-prize span {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.summer-reward-history-prize strong {
+  color: #a2601d;
+  font-size: 15px;
+}
+
 .badge-summary {
   display: flex;
   align-items: center;
@@ -7783,6 +7880,17 @@ body.focus-mode #view {
   font-weight: 800;
 }
 
+.summer-route-source-note {
+  margin: 8px 0 0;
+  padding: 7px 9px;
+  border-left: 3px solid rgba(154, 98, 34, 0.34);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  background: rgba(255, 248, 232, 0.82);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .summer-route-overview {
   margin-top: 12px;
 }
@@ -8275,14 +8383,54 @@ body.focus-mode #view {
   font-weight: 900;
 }
 
-.summer-sheet-links {
+.summer-supplement-resources {
+  margin-top: 10px;
+  border: 1px solid rgba(74, 69, 128, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.summer-supplement-resources summary {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  gap: 7px;
+  align-items: center;
+  padding: 8px 10px;
+  color: var(--text-secondary);
+  list-style: none;
+  cursor: pointer;
+}
+
+.summer-supplement-resources summary::-webkit-details-marker {
+  display: none;
+}
+
+.summer-supplement-resources summary .material-symbols-outlined {
+  color: var(--text-tertiary);
+  font-size: 18px;
+}
+
+.summer-supplement-resources summary strong {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.summer-supplement-resources summary small {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.summer-supplement-resources > div {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 10px;
+  padding: 0 10px 10px;
 }
 
-.summer-sheet-links .btn {
+.summer-supplement-resources .btn {
   margin: 0;
 }
 
@@ -8380,7 +8528,7 @@ body.focus-mode #view {
 .summer-route-step {
   position: relative;
   display: grid;
-  grid-template-columns: 26px minmax(0, 1fr);
+  grid-template-columns: 30px minmax(0, 1fr);
   gap: 8px;
   padding-bottom: 10px;
 }
@@ -8388,12 +8536,12 @@ body.focus-mode #view {
 .summer-route-step::before {
   content: "";
   position: absolute;
-  top: 26px;
+  top: 30px;
   bottom: 0;
-  left: 12px;
-  width: 2px;
+  left: 13px;
+  width: 4px;
   border-radius: 999px;
-  background: rgba(74, 69, 128, 0.14);
+  background: rgba(74, 69, 128, 0.2);
 }
 
 .summer-route-step:last-child {
@@ -8409,12 +8557,13 @@ body.focus-mode #view {
   z-index: 1;
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   color: var(--physics);
   background: #fff;
-  border: 2px solid rgba(74, 69, 128, 0.22);
+  border: 3px solid rgba(74, 69, 128, 0.26);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.9);
 }
 
 .summer-route-step-marker .material-symbols-outlined {
@@ -8422,7 +8571,7 @@ body.focus-mode #view {
 }
 
 .summer-route-step.done::before {
-  background: rgba(47, 106, 63, 0.26);
+  background: rgba(47, 106, 63, 0.58);
 }
 
 .summer-route-step.done .summer-route-step-marker {
@@ -8431,10 +8580,31 @@ body.focus-mode #view {
   background: var(--tertiary);
 }
 
+.summer-route-step:not(.active):not(.done):not(.next) {
+  opacity: 0.55;
+}
+
+.summer-route-step.future-order,
+.summer-route-step.future-order:not(.active):not(.next) {
+  opacity: 0.46;
+  filter: grayscale(0.2);
+}
+
+.summer-route-step.future-order:hover,
+.summer-route-step.future-order:focus-within {
+  opacity: 0.82;
+}
+
+.summer-route-step.next .summer-route-step-marker {
+  border-color: rgba(74, 69, 128, 0.34);
+  background: #fff;
+}
+
 .summer-route-step.active .summer-route-step-marker {
   color: #fff;
   border-color: var(--physics);
   background: var(--physics);
+  box-shadow: 0 0 0 5px rgba(197, 194, 240, 0.38);
 }
 
 .summer-route-step-body {
@@ -8494,17 +8664,25 @@ body.focus-mode #view {
 }
 
 .summer-route-video-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 5px;
+  display: grid;
+  align-content: center;
+  gap: 6px;
+  width: 132px;
 }
 
 .summer-route-video-actions .btn {
+  justify-content: center;
   margin: 0;
-  min-height: 30px;
+  min-height: 32px;
   padding: 5px 8px;
   font-size: 11px;
+  white-space: normal;
+}
+
+.summer-video-next-btn {
+  min-height: 42px !important;
+  border-radius: 12px;
+  font-weight: 1000;
 }
 
 .summer-day-list,
@@ -8523,10 +8701,10 @@ body.focus-mode #view {
   position: absolute;
   top: 16px;
   bottom: 16px;
-  left: 12px;
-  width: 2px;
+  left: 11px;
+  width: 5px;
   border-radius: 999px;
-  background: rgba(74, 69, 128, 0.14);
+  background: linear-gradient(180deg, rgba(74, 69, 128, 0.42), rgba(74, 69, 128, 0.14));
 }
 
 .summer-day-group {
@@ -8569,17 +8747,18 @@ body.focus-mode #view {
 .summer-task::before {
   content: "";
   position: absolute;
-  top: 18px;
-  left: -25px;
+  top: 16px;
+  left: -30px;
   z-index: 1;
   display: grid;
   place-items: center;
-  width: 20px;
-  height: 20px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   color: var(--physics);
   background: #fff;
-  border: 2px solid rgba(74, 69, 128, 0.22);
+  border: 3px solid rgba(74, 69, 128, 0.28);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.95);
   font-size: 12px;
   font-weight: 1000;
 }
@@ -8594,6 +8773,7 @@ body.focus-mode #view {
   color: #fff;
   border-color: var(--tertiary);
   background: var(--tertiary);
+  box-shadow: 0 0 0 4px rgba(224, 241, 222, 0.95);
 }
 
 .summer-task.pending-import {
@@ -8604,6 +8784,27 @@ body.focus-mode #view {
 .summer-task.pending-import::before {
   border-color: var(--physics);
   background: var(--physics);
+}
+
+.summer-task.queue-current:not(.completed) {
+  border-color: rgba(74, 69, 128, 0.34);
+  box-shadow: 0 12px 30px rgba(46, 35, 66, 0.08);
+}
+
+.summer-task.queue-current:not(.completed)::before {
+  border-color: var(--physics);
+  background: #fff;
+  box-shadow: 0 0 0 5px rgba(197, 194, 240, 0.42);
+}
+
+.summer-task.queue-future {
+  opacity: 0.5;
+  filter: grayscale(0.12);
+}
+
+.summer-task.queue-future:hover,
+.summer-task.queue-future:focus-within {
+  opacity: 0.86;
 }
 
 .summer-task.needs-reflection {
@@ -8617,6 +8818,23 @@ body.focus-mode #view {
   color: #fff;
   border-color: #9a6222;
   background: #9a6222;
+}
+
+.summer-task.focus-flash,
+.summer-route-video-card.focus-flash {
+  animation: summer-task-focus-flash 1.4s ease-out;
+}
+
+@keyframes summer-task-focus-flash {
+  0% {
+    box-shadow: 0 0 0 0 rgba(74, 69, 128, 0.34), 0 12px 34px rgba(46, 35, 66, 0.1);
+  }
+  55% {
+    box-shadow: 0 0 0 7px rgba(74, 69, 128, 0.14), 0 14px 34px rgba(46, 35, 66, 0.12);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(74, 69, 128, 0), 0 0 0 rgba(46, 35, 66, 0);
+  }
 }
 
 .summer-task-main {
@@ -8677,6 +8895,11 @@ body.focus-mode #view {
   cursor: pointer;
 }
 
+.summer-stepper button.future {
+  opacity: 0.48;
+  filter: grayscale(0.35);
+}
+
 .summer-stepper i {
   display: grid;
   place-items: center;
@@ -8709,11 +8932,16 @@ body.focus-mode #view {
   box-shadow: 0 0 0 2px rgba(74, 69, 128, 0.14);
 }
 
+.summer-stepper button.future.selected {
+  opacity: 0.72;
+}
+
 .summer-step-panel {
   display: grid;
   gap: 9px;
   margin-left: 34px;
   padding: 10px;
+  border-left: 3px solid rgba(74, 69, 128, 0.22);
   border-radius: 12px;
   background: var(--surface-low);
 }
@@ -9126,6 +9354,115 @@ body.focus-mode #view {
   font-size: 15px;
 }
 
+.summer-task-support {
+  margin-left: 34px;
+  border: 1px solid rgba(74, 69, 128, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.summer-task-support[open] {
+  background: color-mix(in srgb, var(--surface-low) 58%, #fff);
+}
+
+.summer-task-support > summary {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto auto;
+  gap: 7px;
+  align-items: center;
+  padding: 9px 10px;
+  color: var(--text-secondary);
+  list-style: none;
+  cursor: pointer;
+}
+
+.summer-task-support > summary::-webkit-details-marker {
+  display: none;
+}
+
+.summer-task-support > summary .material-symbols-outlined {
+  color: var(--physics);
+  font-size: 19px;
+}
+
+.summer-task-support > summary strong {
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.summer-task-support > summary small {
+  max-width: 160px;
+  overflow: hidden;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.summer-task-support > summary::after {
+  content: "展开";
+  color: var(--physics);
+  font-size: 11px;
+  font-weight: 1000;
+}
+
+.summer-task-support[open] > summary::after {
+  content: "收起";
+}
+
+.summer-task-support-body {
+  display: grid;
+  gap: 9px;
+  padding: 0 9px 9px;
+}
+
+.summer-completed-review {
+  display: grid;
+  gap: 9px;
+}
+
+.summer-completed-head {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  padding: 9px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--tertiary-container) 28%, #fff);
+}
+
+.summer-completed-head .material-symbols-outlined {
+  color: var(--tertiary);
+  font-size: 22px;
+}
+
+.summer-completed-head strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 1000;
+}
+
+.summer-completed-head p {
+  margin: 2px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.summer-completed-examples {
+  display: grid;
+  gap: 7px;
+}
+
+.summer-completed-examples > strong {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 1000;
+}
+
 .summer-import-dock {
   border: 1px solid rgba(74, 69, 128, 0.12);
   border-radius: 12px;
@@ -9240,6 +9577,297 @@ body.focus-mode #view {
   font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.summer-reward-float {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 545;
+  width: min(320px, calc(100vw - 32px));
+  overflow: hidden;
+  border: 1px solid rgba(154, 98, 34, 0.2);
+  border-radius: 18px;
+  background: rgba(255, 252, 245, 0.97);
+  box-shadow: 0 18px 44px rgba(46, 35, 66, 0.2);
+  user-select: none;
+}
+
+.summer-reward-float.ready {
+  border-color: rgba(154, 98, 34, 0.36);
+  box-shadow: 0 18px 48px rgba(154, 98, 34, 0.22);
+}
+
+.summer-reward-float.drawn {
+  animation: summer-reward-pop 0.7s ease-out;
+}
+
+.summer-reward-float.drawing {
+  border-color: rgba(244, 155, 66, 0.45);
+}
+
+@keyframes summer-reward-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
+.summer-reward-float.collapsed {
+  width: auto;
+}
+
+.summer-reward-head {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 30px;
+  gap: 9px;
+  align-items: center;
+  padding: 10px;
+  cursor: grab;
+}
+
+.summer-reward-head:active {
+  cursor: grabbing;
+}
+
+.summer-reward-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 50%;
+  color: #6b421c;
+  background: linear-gradient(135deg, #ffe28a, #f3b75f);
+  box-shadow: inset 0 -2px 0 rgba(104, 65, 28, 0.14);
+  cursor: pointer;
+}
+
+.summer-reward-icon .material-symbols-outlined {
+  font-size: 24px;
+}
+
+.summer-reward-head strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 1000;
+}
+
+.summer-reward-head span:not(.material-symbols-outlined) {
+  display: block;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.summer-reward-collapse {
+  color: var(--text-tertiary);
+}
+
+.summer-reward-body {
+  display: grid;
+  gap: 8px;
+  padding: 0 10px 10px;
+}
+
+.summer-reward-track {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(154, 98, 34, 0.12);
+}
+
+.summer-reward-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #77b255, #ffd15c, #f49b42);
+  transition: width 0.35s ease;
+}
+
+.summer-reward-stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.summer-reward-draw {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 42px;
+  border: 0;
+  border-radius: 14px;
+  color: #3f2918;
+  background: linear-gradient(135deg, #ffe178, #ffb04d);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 1000;
+  box-shadow: 0 10px 24px rgba(154, 98, 34, 0.22);
+  cursor: pointer;
+}
+
+.summer-reward-draw:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.summer-reward-claim {
+  margin: 0;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.summer-reward-game {
+  display: grid;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid rgba(154, 98, 34, 0.14);
+  border-radius: 14px;
+  background: rgba(255, 248, 228, 0.75);
+}
+
+.summer-reward-game-head {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+}
+
+.summer-reward-dice {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 2px solid rgba(111, 68, 24, 0.28);
+  border-radius: 12px;
+  color: #5a3516;
+  background: linear-gradient(145deg, #fff8dc, #ffd26a);
+  font-size: 25px;
+  font-weight: 1000;
+  line-height: 1;
+  box-shadow: inset 0 -3px 0 rgba(111, 68, 24, 0.12), 0 8px 16px rgba(154, 98, 34, 0.14);
+}
+
+.summer-reward-dice.rolling {
+  animation: summer-reward-dice-roll 0.18s ease-in-out infinite alternate;
+}
+
+@keyframes summer-reward-dice-roll {
+  from { transform: rotate(-5deg) scale(0.96); }
+  to { transform: rotate(5deg) scale(1.04); }
+}
+
+.summer-reward-game-head strong {
+  display: block;
+  color: #8a4f13;
+  font-size: 13px;
+  font-weight: 1000;
+}
+
+.summer-reward-game-head span {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.summer-reward-board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.summer-reward-cell {
+  display: grid;
+  align-content: center;
+  min-height: 44px;
+  padding: 6px 5px;
+  border: 1px solid rgba(154, 98, 34, 0.13);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--text-secondary);
+  text-align: center;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.summer-reward-cell span {
+  color: #a2601d;
+  font-size: 10px;
+  font-weight: 1000;
+  line-height: 1.1;
+}
+
+.summer-reward-cell strong {
+  overflow: hidden;
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.summer-reward-cell.big span,
+.summer-reward-cell.jackpot span {
+  color: #b23336;
+}
+
+.summer-reward-cell.active {
+  transform: translateY(-2px) scale(1.04);
+  border-color: rgba(64, 108, 58, 0.56);
+  background: linear-gradient(145deg, #efffed, #fff4bf);
+  box-shadow: 0 10px 18px rgba(64, 108, 58, 0.2);
+}
+
+.summer-reward-cell.target {
+  border-color: rgba(178, 51, 54, 0.38);
+  background: linear-gradient(145deg, #fff2b8, #ffe1b8);
+}
+
+.summer-reward-result {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 8px;
+  align-items: center;
+  padding: 9px;
+  border-radius: 12px;
+  background: rgba(255, 225, 120, 0.28);
+}
+
+.summer-reward-result span,
+.summer-reward-result em {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.summer-reward-result strong {
+  color: #8a4f13;
+  font-size: 15px;
+  font-weight: 1000;
+}
+
+.summer-reward-result .btn {
+  grid-row: span 2;
+  white-space: nowrap;
+}
+
+.summer-reward-result.big,
+.summer-reward-result.jackpot {
+  background: linear-gradient(135deg, rgba(255, 225, 120, 0.5), rgba(255, 176, 77, 0.32));
 }
 
 .summer-task-reflection-card {
@@ -9848,7 +10476,7 @@ body.focus-mode #view {
   grid-template-columns: 1fr;
   align-content: start;
   gap: 6px;
-  width: 148px;
+  width: 158px;
 }
 
 .summer-task-actions .btn {
@@ -9859,19 +10487,33 @@ body.focus-mode #view {
 }
 
 .summer-next-btn {
-  min-height: 42px;
+  min-height: 52px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 1000;
+  box-shadow: 0 10px 22px rgba(74, 69, 128, 0.14);
+}
+
+.summer-task.completed .summer-next-btn {
+  min-height: 38px;
+  border-radius: 10px;
+  box-shadow: none;
 }
 
 .summer-more-actions {
   border: 1px solid rgba(74, 69, 128, 0.12);
   border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.summer-more-actions.compact {
   background: var(--surface-low);
 }
 
 .summer-more-actions summary {
-  padding: 8px 10px;
+  padding: 7px 10px;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 900;
   text-align: center;
   cursor: pointer;
@@ -10207,11 +10849,10 @@ body.focus-mode #view {
   }
 
   .summer-route-video-actions {
-    justify-content: stretch;
+    width: 100%;
   }
 
   .summer-route-video-actions .btn {
-    flex: 1 1 120px;
     justify-content: center;
   }
 
@@ -10230,7 +10871,7 @@ body.focus-mode #view {
   }
 
   .summer-task::before {
-    left: -23px;
+    left: -26px;
   }
 
   .summer-task-actions {
@@ -10252,6 +10893,7 @@ body.focus-mode #view {
   }
 
   .summer-step-panel,
+  .summer-task-support,
   .summer-example-box,
   .summer-exit-box,
   .summer-import-waiting,
@@ -10267,13 +10909,14 @@ body.focus-mode #view {
     grid-template-columns: 82px minmax(0, 1fr);
   }
 
-  .summer-sheet-links .btn {
+  .summer-supplement-resources .btn {
     width: 100%;
     justify-content: center;
   }
 
   .focus-mini-dock,
-  .summer-pending-import-float {
+  .summer-pending-import-float,
+  .summer-reward-float {
     right: 10px;
     left: 10px;
     max-width: none;
@@ -10285,6 +10928,11 @@ body.focus-mode #view {
 
   .summer-pending-import-float {
     bottom: 146px;
+  }
+
+  .summer-reward-float {
+    bottom: 10px;
+    width: auto;
   }
 
   .summer-reflection-overlay {
