@@ -7701,16 +7701,18 @@ body.focus-mode #view {
 }
 
 .summer-hero-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
   gap: 8px;
 }
 
 .summer-hero-stat {
   display: grid;
   gap: 2px;
+  flex: 1 1 120px;
   min-width: 0;
-  padding: 9px 10px;
+  padding: 9px 12px;
   border: 1px solid rgba(74, 69, 128, 0.12);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.72);
