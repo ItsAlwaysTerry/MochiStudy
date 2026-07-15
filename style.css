@@ -11268,3 +11268,16 @@ body.focus-mode #view {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
   z-index: 2;
 }
+
+/* 今日总复盘：保存 + 先跳过 同排（#4 反思非阻塞） */
+.summer-reflection-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.summer-reflection-actions .summer-reflection-submit { flex: 1; }
+.summer-reflection-skip {
+  flex-shrink: 0;
+  color: var(--muted, #a08a90);
+}

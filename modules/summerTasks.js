@@ -1239,7 +1239,7 @@
             <div>
               <p class="summer-kicker">第 ${day.day} 天 · ${escapeHtml(day.title)}</p>
               <h3 id="summer-daily-reflection-title">今日总复盘</h3>
-              <p>这一组已经完成。先留下今天的总体感受，写完才会解锁下一组。</p>
+              <p>这一组已经完成。想的话留一句今天的感受；不想写，点“先跳过”也能解锁下一组。</p>
             </div>
           </div>
           ${renderMoodPicker(draft.mood)}
@@ -1252,9 +1252,12 @@
             <textarea name="hardest" rows="2" placeholder="例如：看到图像还是不知道读哪个量。">${escapeHtml(draft.hardest || "")}</textarea>
           </label>
           <p class="summer-reflection-message" data-reflection-message></p>
-          <button class="btn btn-primary summer-reflection-submit" data-summer-action="save-day-reflection" data-route-day="${day.day}" type="button">
-            <span class="material-symbols-outlined">arrow_forward</span>保存复盘，解锁下一组
-          </button>
+          <div class="summer-reflection-actions">
+            <button class="btn btn-primary summer-reflection-submit" data-summer-action="save-day-reflection" data-route-day="${day.day}" type="button">
+              <span class="material-symbols-outlined">arrow_forward</span>保存复盘，解锁下一组
+            </button>
+            <button class="btn btn-soft btn-sm summer-reflection-skip" data-summer-action="skip-day-reflection" data-route-day="${day.day}" type="button">先跳过</button>
+          </div>
         </form>
       </div>
     `;
@@ -2030,7 +2033,7 @@
           <span class="material-symbols-outlined">${readiness.ready ? "edit_note" : "lock"}</span>
           <div>
             <strong>本节收尾</strong>
-            <p>${readiness.ready ? "做完 AI 练题后，只留一句给未来自己的提醒，写完这个节点变绿。" : `先完成：${escapeHtml(readiness.missing.filter((item) => item !== "本节收尾").join(" / ") || "前面步骤")}`}</p>
+            <p>${readiness.ready ? "做完 AI 练题后，点一下现在能做到哪一步，节点就变绿。想多写一句更好，不写也行。" : `先完成：${escapeHtml(readiness.missing.filter((item) => item !== "本节收尾").join(" / ") || "前面步骤")}`}</p>
           </div>
         </div>
         <div class="summer-reflection-checks" aria-label="本节完成条件">
@@ -2043,8 +2046,8 @@
           <div class="summer-inline-reflection-body">
             ${renderUnderstandingPicker(reflection.understanding)}
             <label class="summer-reflection-field">
-              <span>下次看到这类题，先提醒自己什么？</span>
-              <textarea name="reviewCue" rows="2" placeholder="例如：先画 v-t 图，再用面积找位移。">${escapeHtml(reflection.reviewCue || reflection.takeaway || "")}</textarea>
+              <span>下次看到这类题，先提醒自己什么？（可选）</span>
+              <textarea name="reviewCue" rows="2" placeholder="想写再写，例如：先画 v-t 图，再用面积找位移。">${escapeHtml(reflection.reviewCue || reflection.takeaway || "")}</textarea>
             </label>
             <details class="summer-reflection-extra">
               <summary>可选：标一下卡点</summary>
@@ -2529,6 +2532,11 @@
     if (action === "save-day-reflection") {
       const dayNo = Number(event.currentTarget.dataset.routeDay || 0);
       saveDayReflection(dayNo, event.currentTarget);
+      return;
+    }
+    if (action === "skip-day-reflection") {
+      const dayNo = Number(event.currentTarget.dataset.routeDay || 0);
+      skipDayReflection(dayNo);
       return;
     }
     if (action === "reward-toggle") {
@@ -3256,11 +3264,7 @@
     const stuckPoint = String(root.querySelector("[name='stuckPoint']")?.value || "").trim();
     const stuckTags = Array.from(root.querySelectorAll("input[name='stuckTags']:checked")).map((item) => item.value);
     if (!normalizedUnderstanding) {
-      showReflectionMessage(root, "先选一下现在能做到哪一步。");
-      return;
-    }
-    if (reviewCue.length < 4) {
-      showReflectionMessage(root, "只写一句下次提醒就行，例如：先画图，再列式。");
+      showReflectionMessage(root, "点一下现在能做到哪一步就行。");
       return;
     }
     const now = new Date().toISOString();
@@ -3321,6 +3325,27 @@
     writeState(state);
     refreshHome({ preserveScroll: true });
     window.MochiApp?.toast?.("今日复盘已保存，下一组已解锁");
+  }
+
+  // 今日总复盘改为非阻塞：不想写也能直接跳过解锁下一组（标记 skipped，不写内容）
+  function skipDayReflection(dayNo) {
+    const day = ROUTE_DAYS.find((item) => item.day === Number(dayNo || 0));
+    if (!day) return;
+    const now = new Date().toISOString();
+    const state = readState();
+    const current = routeDayState(state, day.day);
+    state.routeDays[day.day] = {
+      ...current,
+      completed: true,
+      dailyReflectionRequired: true,
+      dailyReflectionDone: true,
+      dailyReflectionSkipped: true,
+      updatedAt: now,
+    };
+    if (Number(state.activeRouteDay || 0) === day.day && routeDayCompleted(day, state)) state.activeRouteDay = 0;
+    writeState(state);
+    refreshHome({ preserveScroll: true });
+    window.MochiApp?.toast?.("已跳过，下一组已解锁");
   }
 
   function showReflectionMessage(form, message) {
