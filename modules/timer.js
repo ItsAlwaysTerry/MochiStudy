@@ -275,6 +275,7 @@
     if (document.body.classList.contains("focus-mode")) {
       window.MochiApp?.tickFocusOverlay?.();
     } else {
+      window.MochiApp?.tickFocusMiniDock?.();
       window.MochiPet?.renderMiniState?.();
     }
   }
@@ -404,6 +405,8 @@
     updateTimerDom();
     if (document.body.classList.contains("focus-mode")) {
       window.MochiApp?.tickFocusOverlay?.();
+    } else {
+      window.MochiApp?.tickFocusMiniDock?.();
     }
   });
 

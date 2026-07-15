@@ -4572,7 +4572,8 @@ ${record.originalQuestion || "暂无原题描述。"}
   // ── 专注承诺门：每一轮专注前强制设目标 + 时长，结束对照留痕 ─────────────────
   const COMMITMENT_HISTORY_KEY = "commitment_history";
   // 当前这一轮的承诺（仅内存，跨刷新不保留——没反馈就丢，正常）
-  let _activeCommitment = null; // { goal, plannedMins, startTs, reflected }
+  let _activeCommitment = null; // { goal, plannedMins, startTs, reflected, context }
+  let _focusMinimized = false;
 
   function readCommitmentHistory() {
     try {
@@ -4728,7 +4729,7 @@ ${record.originalQuestion || "暂无原题描述。"}
       const goal = goalInput.value.trim();
       const mins = resolvedMins();
       if (goal.length < 2 || mins === null) return;
-      _activeCommitment = { goal, plannedMins: mins, startTs: Date.now(), reflected: false };
+      _activeCommitment = { goal, plannedMins: mins, startTs: Date.now(), reflected: false, context: { source: "manual" } };
       gate.remove();
       window.MochiTimer?.startFocusDirect?.(goal, mins);
     });
@@ -4736,14 +4737,14 @@ ${record.originalQuestion || "暂无原题描述。"}
     setTimeout(() => goalInput.focus(), 80);
   }
 
-  function startCommittedFocus(goal = "", durationMins = 25) {
+  function startCommittedFocus(goal = "", durationMins = 25, context = {}) {
     if (!isHolidayToday()) {
       toast("今天不是学习日，想专注的话可以直接用番茄钟");
       return startFocusFreeFallback();
     }
     const safeGoal = String(goal || "暑假学习任务").trim().slice(0, 40);
     const mins = Math.max(5, Math.min(180, Number(durationMins) || 25));
-    _activeCommitment = { goal: safeGoal, plannedMins: mins, startTs: Date.now(), reflected: false };
+    _activeCommitment = { goal: safeGoal, plannedMins: mins, startTs: Date.now(), reflected: false, context: context || {} };
     window.MochiTimer?.startFocusDirect?.(safeGoal, mins);
   }
 
@@ -4764,6 +4765,8 @@ ${record.originalQuestion || "暂无原题描述。"}
   // ── end 专注承诺门 ────────────────────────────────────────────────────────
 
   function enterFocusMode() {
+    _focusMinimized = false;
+    removeFocusMiniDock();
     document.body.classList.add("focus-mode");
     const overlay = document.getElementById("focus-overlay");
     if (!overlay) return;
@@ -4773,12 +4776,83 @@ ${record.originalQuestion || "暂无原题描述。"}
   }
 
   function exitFocusMode() {
+    _focusMinimized = false;
+    removeFocusMiniDock();
     if (!document.body.classList.contains("focus-mode")) return;
     document.body.classList.remove("focus-mode");
     const overlay = document.getElementById("focus-overlay");
     if (overlay) overlay.hidden = true;
     const viewEl = document.getElementById("view");
     if (viewEl && currentRoute() === "home") window.MochiFarm?.renderFarm?.(viewEl);
+  }
+
+  function minimizeFocusMode() {
+    const timer = window.MochiTimer?.getState?.() || {};
+    if (!["focusing", "deciding"].includes(timer.phase)) return;
+    _focusMinimized = true;
+    document.body.classList.remove("focus-mode");
+    const overlay = document.getElementById("focus-overlay");
+    if (overlay) overlay.hidden = true;
+    const viewEl = document.getElementById("view");
+    if (viewEl && currentRoute() === "home") window.MochiFarm?.renderFarm?.(viewEl);
+    renderFocusMiniDock();
+  }
+
+  function restoreFocusMode() {
+    _focusMinimized = false;
+    removeFocusMiniDock();
+    document.body.classList.add("focus-mode");
+    const overlay = document.getElementById("focus-overlay");
+    if (!overlay) return;
+    overlay.hidden = false;
+    overlay.innerHTML = renderFocusOverlay();
+    bindFocusOverlay(overlay);
+  }
+
+  function removeFocusMiniDock() {
+    document.getElementById("focus-mini-dock")?.remove();
+  }
+
+  function renderFocusMiniDock() {
+    const timer = window.MochiTimer?.getState?.() || {};
+    if (!_focusMinimized || !["focusing", "deciding"].includes(timer.phase)) {
+      removeFocusMiniDock();
+      return;
+    }
+    let dock = document.getElementById("focus-mini-dock");
+    if (!dock) {
+      dock = document.createElement("div");
+      dock.id = "focus-mini-dock";
+      dock.className = "focus-mini-dock";
+      document.body.appendChild(dock);
+    }
+    const elapsedSecs = Number(timer.elapsedSecs || timer.pendingActualMins * 60 || 0);
+    const mins = String(Math.floor(elapsedSecs / 60)).padStart(2, "0");
+    const secs = String(elapsedSecs % 60).padStart(2, "0");
+    const isDeciding = timer.phase === "deciding";
+    dock.innerHTML = `
+      <div>
+        <strong>${isDeciding ? "本轮已结束" : `${mins}:${secs}`}</strong>
+        <span>${escapeHtml(timer.microGoal || "专注中")}</span>
+      </div>
+      <button class="btn btn-soft btn-sm" data-focus-mini-action="restore" type="button">${isDeciding ? "处理" : "回到专注"}</button>
+      <button class="btn btn-primary btn-sm" data-focus-mini-action="${isDeciding ? "end" : "stop"}" type="button">${isDeciding ? "结束" : "结束"}</button>
+    `;
+    dock.querySelectorAll("[data-focus-mini-action]").forEach((button) => {
+      button.onclick = () => {
+        const action = button.dataset.focusMiniAction;
+        if (action === "restore") restoreFocusMode();
+        if (action === "stop") {
+          restoreFocusMode();
+          window.MochiTimer?.stopAndRest?.();
+        }
+        if (action === "end") {
+          const c = activeCommitment();
+          if (isSummerCommitment(c)) reflectCommitment("partial", "暑假任务专注；学习结果写在本节收尾。");
+          window.MochiTimer?.endToday?.();
+        }
+      };
+    });
   }
 
   function getFocusEncouragement(mins) {
@@ -4788,6 +4862,19 @@ ${record.originalQuestion || "暂无原题描述。"}
     return "这次真的很厉害，超长待机！🔥";
   }
 
+  function isSummerCommitment(commitment) {
+    return commitment?.context?.source === "summer-task";
+  }
+
+  function returnToSummerTask(taskId = "") {
+    if (taskId) {
+      navigate("home");
+      setTimeout(() => window.MochiSummerTasks?.openTaskImportDock?.(taskId), 120);
+    } else {
+      navigate("home");
+    }
+  }
+
   function renderFocusOverlay() {
     const timer = window.MochiTimer?.getState?.() || {};
     if (timer.phase === "deciding") {
@@ -4795,24 +4882,38 @@ ${record.originalQuestion || "暂无原题描述。"}
       const restMins = timer.pendingRestMins || 5;
       const c = activeCommitment();
       const round = roundImportSummary(timer.sessionId);
+      const summer = isSummerCommitment(c);
       const importedLine = round.count
         ? `<p class="focus-commitment-imported">这一轮你导入了 <b>${round.count}</b> 张卡片${round.subjectText ? `（${round.subjectText}）` : ""}</p>`
-        : `<p class="focus-commitment-imported">这一轮还没导入卡片——光想没动笔也算没搞定哦</p>`;
+        : summer
+          ? `<p class="focus-commitment-imported">这节课的结果写在任务节点里的「本节收尾」就好。</p>`
+          : `<p class="focus-commitment-imported">这一轮还没导入卡片；如果问懂了题，可以顺手粘回 MOCHI-RECORD。</p>`;
       // 有未反思的承诺 → 第一屏只有"填反思 + 选结果"，不给休息/结束的出口；
       // 选了结果（reflectCommitment）后重渲染，c 变 null，才进入第二屏的休息/结束。
-      const lock = Boolean(c);
+      const lock = Boolean(c && !summer);
       const lockAttr = lock ? "disabled" : "";
       return `
         <div class="focus-overlay-inner">
           <p class="focus-overlay-goal">🎉 你专注了 ${actualMins} 分钟</p>
           <p class="focus-overlay-encouragement">${getFocusEncouragement(actualMins)}</p>
           <div class="focus-deciding-card">
-            ${c ? `
+            ${summer ? `
               <p class="focus-commitment-goal-label">你这一轮的目标：<b>${escapeHtml(c.goal)}</b></p>
               ${importedLine}
-              <label class="focus-reflect-label" for="commitment-reflect-note">写两句这一轮的真实情况（你和家长都看得到）</label>
-              <textarea id="commitment-reflect-note" class="focus-reflect-input" rows="3" placeholder="搞懂了什么？卡在哪、为什么没完成、哪里花了太多时间……写下来，下次才知道怎么调整"></textarea>
-              <p class="focus-deciding-hint" id="reflect-lock-hint">先写两句，再选这一轮的结果</p>
+              <p class="focus-deciding-hint">回到当前任务，把 Gemini 的记录粘回去，再写一句本节收尾。</p>
+              <div class="focus-commitment-reflect">
+                <button class="btn btn-primary" data-action="return-summer-task" type="button">回到当前任务</button>
+                <button class="btn btn-soft" data-action="confirm-rest" type="button">休息 ${restMins} 分钟</button>
+              </div>
+            ` : c ? `
+              <p class="focus-commitment-goal-label">你这一轮的目标：<b>${escapeHtml(c.goal)}</b></p>
+              ${importedLine}
+              <label class="focus-reflect-label" for="commitment-reflect-note">这轮学了什么？</label>
+              <div class="focus-reflect-tags" aria-label="本轮学习类型">
+                ${["问懂一道题", "看视频", "复习旧题", "整理笔记", "其他"].map((tag) => `<button type="button" data-action="reflect-tag" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`).join("")}
+              </div>
+              <textarea id="commitment-reflect-note" class="focus-reflect-input" rows="2" placeholder="可选：例如，弄清楚了电场线方向和受力方向不是一回事。"></textarea>
+              <p class="focus-deciding-hint" id="reflect-lock-hint">选个结果就能休息；写一句以后回看更清楚。</p>
               <div class="focus-commitment-reflect">
                 <button class="btn btn-soft" data-action="commitment-done" type="button" ${lockAttr}>✓ 搞定了</button>
                 <button class="btn btn-soft" data-action="commitment-partial" type="button" ${lockAttr}>◐ 部分完成</button>
@@ -4874,6 +4975,10 @@ ${record.originalQuestion || "暂无原题描述。"}
             <span class="material-symbols-outlined">stop_circle</span>
             结束这一轮
           </button>
+          <button class="btn btn-soft btn-sm" data-action="minimize-focus" type="button">
+            <span class="material-symbols-outlined">collapse_content</span>
+            收起计时
+          </button>
           <button class="btn btn-ghost btn-sm" data-action="give-up" type="button" style="color:rgba(255,255,255,0.35);margin-top:4px">
             放弃本轮
           </button>
@@ -4904,11 +5009,19 @@ ${record.originalQuestion || "暂无原题描述。"}
         window.MochiTimer?.stopAndRest?.();
         return;
       }
+      if (action === "minimize-focus") {
+        minimizeFocusMode();
+        return;
+      }
       if (action === "confirm-rest") {
+        const c = activeCommitment();
+        if (isSummerCommitment(c)) reflectCommitment("partial", "暑假任务专注；学习结果写在本节收尾。");
         window.MochiTimer?.confirmRest?.();
         return;
       }
       if (action === "end-today") {
+        const c = activeCommitment();
+        if (isSummerCommitment(c)) reflectCommitment("partial", "暑假任务专注；学习结果写在本节收尾。");
         window.MochiTimer?.endToday?.();
         return;
       }
@@ -4918,9 +5031,23 @@ ${record.originalQuestion || "暂无原题描述。"}
       }
       if (action === "commitment-done" || action === "commitment-partial" || action === "commitment-none") {
         const outcome = action === "commitment-done" ? "done" : action === "commitment-partial" ? "partial" : "none";
-        const note = overlay.querySelector("#commitment-reflect-note")?.value?.trim() || "";
+        const tag = overlay.querySelector(".focus-reflect-tags button.selected")?.dataset.tag || "";
+        const noteText = overlay.querySelector("#commitment-reflect-note")?.value?.trim() || "";
+        const note = [tag ? `【${tag}】` : "", noteText].filter(Boolean).join(" ");
         reflectCommitment(outcome, note);
         refreshFocusOverlay();
+        return;
+      }
+      if (action === "reflect-tag") {
+        overlay.querySelectorAll(".focus-reflect-tags button").forEach((item) => item.classList.toggle("selected", item === button));
+        return;
+      }
+      if (action === "return-summer-task") {
+        const c = activeCommitment();
+        const taskId = c?.context?.taskId || "";
+        reflectCommitment("partial", "暑假任务专注；回到当前任务继续完成导入和本节收尾。");
+        window.MochiTimer?.endToday?.();
+        returnToSummerTask(taskId);
         return;
       }
       if (action === "toggle-focus-import") {
@@ -4945,15 +5072,14 @@ ${record.originalQuestion || "暂无原题描述。"}
         }, 0);
       });
     }
-    // 反思必填：没写够内容前，锁住所有下一步按钮（完成分类 / 休息 / 结束）
+    // 普通专注保留轻量小结入口，但不再硬锁，避免和暑假任务的本节收尾重复。
     const reflectInput = overlay.querySelector("#commitment-reflect-note");
     if (reflectInput) {
       const lockBtns = overlay.querySelectorAll('[data-action="commitment-done"],[data-action="commitment-partial"],[data-action="commitment-none"],[data-action="confirm-rest"],[data-action="end-today"]');
       const hint = overlay.querySelector("#reflect-lock-hint");
       const sync = () => {
-        const ok = reflectInput.value.trim().length >= 2;
-        lockBtns.forEach((b) => { b.disabled = !ok; });
-        if (hint) hint.textContent = ok ? "选一个这一轮的结果，再去休息" : "先写两句，再选这一轮的结果";
+        lockBtns.forEach((b) => { b.disabled = false; });
+        if (hint) hint.textContent = reflectInput.value.trim() ? "选一个这一轮的结果，再去休息" : "选个结果就能休息；写一句以后回看更清楚。";
       };
       reflectInput.addEventListener("input", sync);
       sync();
@@ -4999,6 +5125,10 @@ ${record.originalQuestion || "暂无原题描述。"}
       const overTime = !timer.freeMode && Number(timer.elapsedSecs || 0) >= focusMins * 60;
       statusEl.textContent = overTime ? "超额完成 🔥" : timer.freeMode ? "自由专注中" : "专注中";
     }
+  }
+
+  function tickFocusMiniDock() {
+    if (_focusMinimized) renderFocusMiniDock();
   }
 
   function readStorageJson(key, fallback) {
@@ -5900,8 +6030,11 @@ ${record.originalQuestion || "暂无原题描述。"}
     taskCompletionRate,
     enterFocusMode,
     exitFocusMode,
+    minimizeFocusMode,
+    restoreFocusMode,
     refreshFocusOverlay,
     tickFocusOverlay,
+    tickFocusMiniDock,
     parsePastedRecordEl,
     applyMochiRecord,
     readStudyLogs,

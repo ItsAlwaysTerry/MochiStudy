@@ -821,6 +821,7 @@
         ` : ""}
         ${queue.length ? renderRollingQueue(queue, state, remainingDetailed) : renderRouteLearningSheet(planDay, state, { pendingRoute })}
         ${dailyGate ? renderDailyReflectionOverlay(dailyGate, state) : ""}
+        ${renderPendingImportFloat(state)}
       </section>
     `;
   }
@@ -1082,7 +1083,7 @@
           <strong>${completed ? "这张学习单已完成" : waitingReview ? "已导入，先写收尾复盘" : isPending ? "等你导入 MOCHI-RECORD" : "后续学习单已经可以执行"}</strong>
           <p>${escapeHtml(intro)}</p>
           ${focus.length ? `<div class="summer-route-focus">${focus.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>` : ""}
-          ${renderRouteVideos(day, state, videos)}
+        ${renderRouteVideos(day, state, videos)}
           <div class="summer-sheet-steps">
             <span>1 打开下方视频</span>
             <span>2 每个视频收集例题</span>
@@ -1129,6 +1130,68 @@
     `;
   }
 
+  function taskHasLinkedRecord(info) {
+    return Array.isArray(info?.linkedLogIds) && info.linkedLogIds.length > 0;
+  }
+
+  function taskNeedsImportDock(task, state) {
+    const info = taskState(state, task.id);
+    const pending = state.pendingTaskId === task.id || state.pendingRouteTaskId === task.id;
+    const copiedForAi = Boolean(info.exampleQuizPromptCopiedAt || info.promptCopiedAt);
+    return pending || (copiedForAi && !taskHasLinkedRecord(info));
+  }
+
+  function pendingImportTask(state) {
+    const direct = findSummerTask(state.pendingTaskId || state.pendingRouteTaskId || "");
+    if (direct) return direct;
+    return TASKS.concat(ROUTE_DAYS.flatMap((day) => routeVideoTasks(day))).find((task) => taskNeedsImportDock(task, state)) || null;
+  }
+
+  function renderTaskImportDock(task, state, options = {}) {
+    if (!taskNeedsImportDock(task, state)) return "";
+    const info = taskState(state, task.id);
+    const isPending = state.pendingTaskId === task.id || state.pendingRouteTaskId === task.id;
+    const title = options.compact ? "粘回记录" : "Gemini 回来后粘贴学习记录";
+    const helper = taskHasLinkedRecord(info)
+      ? "这节已经归档过记录；如果 Gemini 又输出了新的 MOCHI-RECORD，也可以继续粘。"
+      : "把 Gemini 最后输出的 MOCHI-RECORD 粘这里，会自动归档到这节视频。";
+    return `
+      <section class="summer-import-dock ${isPending ? "pending" : ""}" data-summer-import-task-id="${escapeHtml(task.id)}">
+        <details ${isPending ? "open" : ""}>
+          <summary>
+            <span class="material-symbols-outlined">move_to_inbox</span>
+            <strong>${escapeHtml(title)}</strong>
+            <small>${escapeHtml(task.title)}</small>
+          </summary>
+          <div class="summer-import-dock-body">
+            <p>${escapeHtml(helper)}</p>
+            <textarea data-summer-record-paste data-task-id="${escapeHtml(task.id)}" rows="3" placeholder="把 Gemini 输出里从 ---MOCHI-RECORD-START--- 到 ---MOCHI-RECORD-END--- 的整段粘贴到这里"></textarea>
+            <button class="btn btn-primary btn-sm" data-summer-action="parse-task-record" data-task-id="${escapeHtml(task.id)}" type="button">
+              <span class="material-symbols-outlined">download_done</span>导入到这节课
+            </button>
+            <div class="summer-import-dock-result" data-summer-record-result hidden></div>
+          </div>
+        </details>
+      </section>
+    `;
+  }
+
+  function renderPendingImportFloat(state) {
+    const task = pendingImportTask(state);
+    if (!task) return "";
+    return `
+      <div class="summer-pending-import-float">
+        <div>
+          <strong>等待导入</strong>
+          <span>${escapeHtml(task.title)}</span>
+        </div>
+        <button class="btn btn-primary btn-sm" data-summer-action="open-pending-import" data-task-id="${escapeHtml(task.id)}" type="button">
+          <span class="material-symbols-outlined">move_to_inbox</span>粘贴记录
+        </button>
+      </div>
+    `;
+  }
+
   function renderRouteVideos(day, state, videos = routeVideos(day)) {
     if (!videos.length) {
       const task = routeSheetTask(day);
@@ -1148,6 +1211,7 @@
                 </div>
               </div>
               ${renderExampleCollector(task, state, { compact: true })}
+              ${renderTaskImportDock(task, state, { compact: true })}
               ${renderTaskReflectionPanel(task, state)}
             </div>
           </div>
@@ -1189,6 +1253,7 @@
                   </div>
                 </article>
                 ${renderExampleCollector(task, state, { compact: true })}
+                ${renderTaskImportDock(task, state, { compact: true })}
                 ${renderTaskReflectionPanel(task, state)}
               </div>
             </div>
@@ -1514,6 +1579,7 @@
           ${renderTaskStepper(task, flow, selectedStep)}
           ${renderTaskStepPanel(task, selectedStep, flow, s)}
           ${renderExampleCollector(task, state)}
+          ${renderTaskImportDock(task, state)}
           ${renderTaskReflectionPanel(task, state, { forceOpen: needsReflection })}
           ${isPending ? `<p class="summer-import-waiting">测验包已关联这节课；AI 练题后的 MOCHI-RECORD 统一粘到页面导入框，收尾仍在这里写。</p>` : ""}
           ${imported && s.lastImportedRecord ? `<p class="summer-import-done">${needsReflection ? "已归档，待本节收尾：" : "已归档："}${escapeHtml(s.lastImportedRecord.nodeLabel || "物理")} · ${"★".repeat(Number(s.lastImportedRecord.stars || 0))}</p>` : ""}
@@ -1946,6 +2012,9 @@
     container.querySelectorAll("[data-example-file]").forEach((el) => {
       el.addEventListener("change", handleExampleFile);
     });
+    container.querySelectorAll("[data-summer-record-paste]").forEach((el) => {
+      el.addEventListener("paste", handleTaskRecordPaste);
+    });
     container.querySelectorAll("[data-example-note]").forEach((el) => {
       el.addEventListener("blur", handleExampleNote);
     });
@@ -2038,7 +2107,12 @@
       };
       if (action === "route-focus") {
         writeState(state);
-        window.MochiApp?.startCommittedFocus?.(`暑假物理：${day.title}`, 45);
+        const primaryTask = routePrimaryTask(day, state);
+        window.MochiApp?.startCommittedFocus?.(`暑假物理：${day.title}`, 45, {
+          source: "summer-task",
+          taskId: primaryTask.id,
+          routeDay: day.day,
+        });
         return;
       }
       state.pendingTaskId = "";
@@ -2065,6 +2139,14 @@
       return;
     }
     if (!task) return;
+    if (action === "open-pending-import") {
+      openTaskImportDock(task.id);
+      return;
+    }
+    if (action === "parse-task-record") {
+      parseTaskRecord(task, event.currentTarget);
+      return;
+    }
     if (action === "save-task-reflection") {
       saveTaskReflection(task, event.currentTarget);
       return;
@@ -2123,7 +2205,11 @@
       };
       writeState(state);
       window.open(task.url, "_blank", "noopener,noreferrer");
-      window.MochiApp?.startCommittedFocus?.(`暑假物理：看${task.title}`, task.focusMins);
+      window.MochiApp?.startCommittedFocus?.(`暑假物理：看${task.title}`, task.focusMins, {
+        source: "summer-task",
+        taskId: task.id,
+        routeDay: task.routeVideo ? task.day : undefined,
+      });
       refreshHome(anchor);
       return;
     }
@@ -2190,7 +2276,11 @@
         updateTask(task.id, { watched: taskState(readState(), task.id).watched || false, lastFocusedAt: now, activeStep: 0 });
       }
       const goal = getPracticeItems(task).length ? `暑假物理：${task.title}过关小题` : `暑假物理：看${task.title}`;
-      window.MochiApp?.startCommittedFocus?.(goal, task.focusMins);
+      window.MochiApp?.startCommittedFocus?.(goal, task.focusMins, {
+        source: "summer-task",
+        taskId: task.id,
+        routeDay: task.routeVideo ? task.day : undefined,
+      });
       return;
     }
     if (action === "copy-first-prompt") {
@@ -2235,6 +2325,73 @@
         return;
       }
       window.MochiApp?.toast?.("已关联这条任务：粘贴 MOCHI-RECORD 后归档到这里");
+    }
+  }
+
+  function markPendingImport(task) {
+    const state = readState();
+    if (task.routeVideo) {
+      state.pendingTaskId = "";
+      state.pendingRouteDay = task.day;
+      state.pendingRouteTaskId = task.id;
+      state.routeDays[task.day] = {
+        ...routeDayState(state, task.day),
+        startedAt: routeDayState(state, task.day).startedAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    } else {
+      state.pendingTaskId = task.id;
+      state.pendingRouteDay = 0;
+      state.pendingRouteTaskId = "";
+      state.activeTaskId = task.id;
+    }
+    state.tasks[task.id] = {
+      ...taskState(state, task.id),
+      updatedAt: new Date().toISOString(),
+    };
+    writeState(state);
+  }
+
+  function parseTaskRecord(task, trigger) {
+    markPendingImport(task);
+    const root = trigger.closest(".summer-import-dock");
+    const textarea = root?.querySelector("[data-summer-record-paste]");
+    const result = root?.querySelector("[data-summer-record-result]");
+    window.MochiApp?.parsePastedRecordEl?.(textarea, result);
+  }
+
+  function handleTaskRecordPaste(event) {
+    const task = findSummerTask(event.currentTarget.dataset.taskId || "");
+    if (!task) return;
+    setTimeout(() => {
+      if (/---MOCHI-RECORD-END---/.test(event.currentTarget.value)) {
+        const root = event.currentTarget.closest(".summer-import-dock");
+        markPendingImport(task);
+        window.MochiApp?.parsePastedRecordEl?.(event.currentTarget, root?.querySelector("[data-summer-record-result]"));
+      }
+    }, 0);
+  }
+
+  function openTaskImportDock(taskId) {
+    const task = findSummerTask(taskId);
+    if (!task) return;
+    const scrollToDock = () => {
+      const dock = document.querySelector(`[data-summer-import-task-id="${escapeSelectorAttr(task.id)}"]`);
+      if (!dock) return false;
+      const details = dock.querySelector("details");
+      if (details) details.open = true;
+      dock.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => dock.querySelector("[data-summer-record-paste]")?.focus?.(), 220);
+      return true;
+    };
+    if (scrollToDock()) return;
+    if (task.routeVideo) {
+      const state = readState();
+      state.activeRouteDay = task.day;
+      state.routeDetailDay = task.day;
+      writeState(state);
+      refreshHome({ preserveScroll: true });
+      setTimeout(scrollToDock, 80);
     }
   }
 
@@ -2504,6 +2661,7 @@
       window.MochiApp?.toast?.("这节课还没有例题图片");
       return;
     }
+    markPendingImport(task);
     try {
       const blob = await getExampleImage(targetId);
       if (!blob) {
@@ -2512,6 +2670,7 @@
       }
       const ok = await copyImageBlob(blob);
       if (ok) {
+        refreshHome({ preserveScroll: true });
         window.MochiApp?.toast?.("例题图片已复制。现在回 Gemini 对话里粘贴图片。");
         return;
       }
@@ -2899,5 +3058,6 @@
     renderRouteOverviewCard,
     getTasks: () => TASKS.slice(),
     loadDemoState,
+    openTaskImportDock,
   };
 })();

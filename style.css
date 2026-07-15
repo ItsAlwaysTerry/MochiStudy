@@ -1766,6 +1766,33 @@ body.sidebar-expanded .side-nav .nav-item:hover {
 .focus-reflect-input::placeholder { color: rgba(255,255,255,0.4); }
 .focus-reflect-input:focus { border-color: var(--primary); background: rgba(255,255,255,0.12); }
 
+.focus-reflect-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 0 8px;
+}
+
+.focus-reflect-tags button {
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 999px;
+  color: rgba(255,255,255,0.72);
+  background: rgba(255,255,255,0.08);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.focus-reflect-tags button.selected {
+  color: #fff;
+  border-color: var(--primary);
+  background: rgba(255,255,255,0.18);
+}
+
 .focus-commitment-reflect {
   display: flex;
   gap: 10px;
@@ -6468,6 +6495,45 @@ body.focus-mode #view {
   background: rgba(255, 255, 255, 0.1);
 }
 
+.focus-mini-dock {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 560;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 10px;
+  border: 1px solid rgba(74, 69, 128, 0.16);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 16px 42px rgba(46, 35, 66, 0.18);
+}
+
+.focus-mini-dock > div {
+  min-width: 0;
+}
+
+.focus-mini-dock strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 1000;
+  font-variant-numeric: tabular-nums;
+}
+
+.focus-mini-dock span {
+  display: block;
+  max-width: 180px;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .focus-deciding-card {
   width: 100%;
   border-radius: 16px;
@@ -9060,6 +9126,122 @@ body.focus-mode #view {
   font-size: 15px;
 }
 
+.summer-import-dock {
+  border: 1px solid rgba(74, 69, 128, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.summer-import-dock.pending {
+  border-color: rgba(74, 69, 128, 0.24);
+  background: color-mix(in srgb, var(--secondary-container) 18%, #fff);
+}
+
+.summer-import-dock summary {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  gap: 7px;
+  align-items: center;
+  padding: 8px 9px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.summer-import-dock summary::-webkit-details-marker {
+  display: none;
+}
+
+.summer-import-dock summary .material-symbols-outlined {
+  color: var(--physics);
+  font-size: 18px;
+}
+
+.summer-import-dock summary strong {
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.summer-import-dock summary small {
+  max-width: 150px;
+  overflow: hidden;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.summer-import-dock-body {
+  display: grid;
+  gap: 8px;
+  padding: 0 9px 9px;
+}
+
+.summer-import-dock-body p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.summer-import-dock-body textarea {
+  width: 100%;
+  min-height: 72px;
+  padding: 9px 10px;
+  border: 1px solid rgba(74, 69, 128, 0.14);
+  border-radius: 10px;
+  color: var(--text-primary);
+  background: #fff;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.summer-import-dock-result {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.summer-pending-import-float {
+  position: fixed;
+  right: 18px;
+  bottom: 86px;
+  z-index: 540;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 10px;
+  border: 1px solid rgba(74, 69, 128, 0.15);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 16px 42px rgba(46, 35, 66, 0.16);
+}
+
+.summer-pending-import-float > div {
+  min-width: 0;
+}
+
+.summer-pending-import-float strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.summer-pending-import-float span:not(.material-symbols-outlined) {
+  display: block;
+  max-width: 180px;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .summer-task-reflection-card {
   display: grid;
   gap: 8px;
@@ -10088,6 +10270,21 @@ body.focus-mode #view {
   .summer-sheet-links .btn {
     width: 100%;
     justify-content: center;
+  }
+
+  .focus-mini-dock,
+  .summer-pending-import-float {
+    right: 10px;
+    left: 10px;
+    max-width: none;
+  }
+
+  .focus-mini-dock {
+    bottom: 78px;
+  }
+
+  .summer-pending-import-float {
+    bottom: 146px;
   }
 
   .summer-reflection-overlay {
