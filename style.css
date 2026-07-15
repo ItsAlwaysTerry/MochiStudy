@@ -7946,6 +7946,64 @@ body.focus-mode #view {
   border-color: rgba(74, 69, 128, 0.28);
 }
 
+.summer-route-preview-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.summer-route-preview-item {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid rgba(74, 69, 128, 0.12);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.summer-route-preview-item .material-symbols-outlined {
+  color: var(--physics);
+  font-size: 20px;
+}
+
+.summer-route-preview-item strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.summer-route-preview-item p,
+.summer-route-preview-item small {
+  display: block;
+  margin: 2px 0 0;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.summer-route-preview-item em {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.summer-route-preview-item.done {
+  border-color: rgba(47, 106, 63, 0.28);
+  background: color-mix(in srgb, var(--tertiary-container) 28%, #fff);
+}
+
+.summer-route-preview-item.done .material-symbols-outlined,
+.summer-route-preview-item.done em {
+  color: var(--tertiary);
+}
+
+.summer-route-preview-item.active {
+  border-color: rgba(74, 69, 128, 0.28);
+}
+
 .summer-route-detail-draft p {
   margin: 0;
   color: var(--text-secondary);
@@ -8025,7 +8083,7 @@ body.focus-mode #view {
 
 .summer-route-videos {
   display: grid;
-  gap: 8px;
+  gap: 0;
   margin-top: 12px;
 }
 
@@ -8052,6 +8110,72 @@ body.focus-mode #view {
   color: var(--text-tertiary);
   font-size: 12px;
   font-weight: 700;
+}
+
+.summer-route-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 8px;
+  padding-bottom: 10px;
+}
+
+.summer-route-step::before {
+  content: "";
+  position: absolute;
+  top: 26px;
+  bottom: 0;
+  left: 12px;
+  width: 2px;
+  border-radius: 999px;
+  background: rgba(74, 69, 128, 0.14);
+}
+
+.summer-route-step:last-child {
+  padding-bottom: 0;
+}
+
+.summer-route-step:last-child::before {
+  display: none;
+}
+
+.summer-route-step-marker {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: var(--physics);
+  background: #fff;
+  border: 2px solid rgba(74, 69, 128, 0.22);
+}
+
+.summer-route-step-marker .material-symbols-outlined {
+  font-size: 17px;
+}
+
+.summer-route-step.done::before {
+  background: rgba(47, 106, 63, 0.26);
+}
+
+.summer-route-step.done .summer-route-step-marker {
+  color: #fff;
+  border-color: var(--tertiary);
+  background: var(--tertiary);
+}
+
+.summer-route-step.active .summer-route-step-marker {
+  color: #fff;
+  border-color: var(--physics);
+  background: var(--physics);
+}
+
+.summer-route-step-body {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
 }
 
 .summer-route-video-card {
@@ -8124,6 +8248,22 @@ body.focus-mode #view {
   gap: 8px;
 }
 
+.summer-task-list {
+  position: relative;
+  padding-left: 28px;
+}
+
+.summer-task-list::before {
+  content: "";
+  position: absolute;
+  top: 16px;
+  bottom: 16px;
+  left: 12px;
+  width: 2px;
+  border-radius: 999px;
+  background: rgba(74, 69, 128, 0.14);
+}
+
 .summer-day-group {
   display: grid;
   gap: 6px;
@@ -8151,6 +8291,7 @@ body.focus-mode #view {
 }
 
 .summer-task {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
@@ -8160,14 +8301,44 @@ body.focus-mode #view {
   background: #fff;
 }
 
+.summer-task::before {
+  content: "";
+  position: absolute;
+  top: 18px;
+  left: -25px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: var(--physics);
+  background: #fff;
+  border: 2px solid rgba(74, 69, 128, 0.22);
+  font-size: 12px;
+  font-weight: 1000;
+}
+
 .summer-task.completed {
   border-color: rgba(47, 106, 63, 0.34);
   background: color-mix(in srgb, var(--tertiary-container) 22%, #fff);
 }
 
+.summer-task.completed::before {
+  content: "✓";
+  color: #fff;
+  border-color: var(--tertiary);
+  background: var(--tertiary);
+}
+
 .summer-task.pending-import {
   border-color: var(--physics);
   box-shadow: 0 0 0 3px rgba(74, 69, 128, 0.1);
+}
+
+.summer-task.pending-import::before {
+  border-color: var(--physics);
+  background: var(--physics);
 }
 
 .summer-task-main {
@@ -8619,6 +8790,46 @@ body.focus-mode #view {
   min-height: 32px;
   padding: 5px 8px;
   font-size: 11px;
+}
+
+.summer-example-ai-status {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 6px;
+  align-items: start;
+  padding: 6px 8px;
+  border-radius: 10px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.68);
+  border: 1px solid rgba(74, 69, 128, 0.1);
+}
+
+.summer-example-ai-status .material-symbols-outlined {
+  color: var(--physics);
+  font-size: 17px;
+}
+
+.summer-example-ai-status strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.summer-example-ai-status p {
+  margin: 2px 0 0;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.summer-example-ai-status.ready {
+  border-color: rgba(47, 106, 63, 0.18);
+  background: color-mix(in srgb, var(--tertiary-container) 22%, #fff);
+}
+
+.summer-example-ai-status.ready .material-symbols-outlined {
+  color: var(--tertiary);
 }
 
 .summer-example-empty {
@@ -9163,6 +9374,10 @@ body.focus-mode #view {
     grid-template-columns: 1fr;
   }
 
+  .summer-route-preview-list {
+    grid-template-columns: 1fr;
+  }
+
   .summer-route-video-card {
     grid-template-columns: 1fr;
   }
@@ -9184,6 +9399,14 @@ body.focus-mode #view {
 
   .summer-task {
     grid-template-columns: 1fr;
+  }
+
+  .summer-task-list {
+    padding-left: 24px;
+  }
+
+  .summer-task::before {
+    left: -23px;
   }
 
   .summer-task-actions {

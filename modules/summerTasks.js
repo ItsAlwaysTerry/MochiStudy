@@ -879,15 +879,25 @@
   function renderRouteVideos(day, state, videos = routeVideos(day)) {
     if (!videos.length) {
       const task = routeSheetTask(day);
+      const step = routeVideoStepState(day, task, state);
       return `
-        <div class="summer-route-mission">
-          <span class="material-symbols-outlined">assignment</span>
-          <div>
-            <strong>今天按资料/错题执行</strong>
-            <p>不用硬看新视频。打开下方资源或学校资料，选 1 个最贴近的小专题，收集例题截图后生成同类测验。</p>
+        <div class="summer-route-videos">
+          <div class="summer-route-step ${step.tone}">
+            <div class="summer-route-step-marker" aria-label="${escapeHtml(step.label)}">
+              <span class="material-symbols-outlined">${escapeHtml(step.icon)}</span>
+            </div>
+            <div class="summer-route-step-body">
+              <div class="summer-route-mission">
+                <span class="material-symbols-outlined">assignment</span>
+                <div>
+                  <strong>今天按资料/错题执行</strong>
+                  <p>${escapeHtml(step.label)} · 不用硬看新视频。打开下方资源或学校资料，选 1 个最贴近的小专题，收集例题截图后生成同类测验。</p>
+                </div>
+              </div>
+              ${renderExampleCollector(task, state, { compact: true })}
+            </div>
           </div>
         </div>
-        ${renderExampleCollector(task, state, { compact: true })}
       `;
     }
     return `
@@ -899,30 +909,56 @@
         </div>
         ${videos.map((video) => {
           const task = routeVideoTask(day, video);
+          const step = routeVideoStepState(day, task, state);
           return `
-            <article class="summer-route-video-card" data-summer-task-id="${escapeHtml(task.id)}">
-              <div class="summer-route-video-main">
-                <span class="summer-route-video-order">${escapeHtml(String(videos.indexOf(video) + 1))}</span>
-                <div>
-                  <strong>${escapeHtml(video.title)}</strong>
-                  <p>${escapeHtml(video.source || "B站资源")} · ${escapeHtml(video.duration || "按需观看")} · ${escapeHtml(video.part || video.title)}</p>
-                  <small>${escapeHtml(video.require || "截 1 张代表例题，后面用来生成同类测验。")}</small>
-                </div>
+            <div class="summer-route-step ${step.tone}">
+              <div class="summer-route-step-marker" aria-label="${escapeHtml(step.label)}">
+                <span class="material-symbols-outlined">${escapeHtml(step.icon)}</span>
               </div>
-              <div class="summer-route-video-actions">
-                <a class="btn btn-soft btn-sm" href="${escapeHtml(task.url)}" target="_blank" rel="noreferrer">
-                  <span class="material-symbols-outlined">open_in_new</span>打开视频
-                </a>
-                <button class="btn btn-soft btn-sm" data-summer-action="focus" data-task-id="${escapeHtml(task.id)}" type="button">
-                  <span class="material-symbols-outlined">timer</span>开始专注
-                </button>
+              <div class="summer-route-step-body">
+                <article class="summer-route-video-card" data-summer-task-id="${escapeHtml(task.id)}">
+                  <div class="summer-route-video-main">
+                    <span class="summer-route-video-order">${escapeHtml(String(videos.indexOf(video) + 1))}</span>
+                    <div>
+                      <strong>${escapeHtml(video.title)}</strong>
+                      <p>${escapeHtml(video.source || "B站资源")} · ${escapeHtml(video.duration || "按需观看")} · ${escapeHtml(video.part || video.title)}</p>
+                      <small>${escapeHtml(step.label)} · ${escapeHtml(video.require || "截 1 张代表例题，后面用来生成同类测验。")}</small>
+                    </div>
+                  </div>
+                  <div class="summer-route-video-actions">
+                    <a class="btn btn-soft btn-sm" href="${escapeHtml(task.url)}" target="_blank" rel="noreferrer">
+                      <span class="material-symbols-outlined">open_in_new</span>打开视频
+                    </a>
+                    <button class="btn btn-soft btn-sm" data-summer-action="focus" data-task-id="${escapeHtml(task.id)}" type="button">
+                      <span class="material-symbols-outlined">timer</span>开始专注
+                    </button>
+                  </div>
+                </article>
+                ${renderExampleCollector(task, state, { compact: true })}
               </div>
-            </article>
-            ${renderExampleCollector(task, state, { compact: true })}
+            </div>
           `;
         }).join("")}
       </div>
     `;
+  }
+
+  function routeVideoStepState(day, task, state) {
+    const info = taskState(state, task.id);
+    const examples = taskExamples(state, task.id);
+    if (routeDayCompleted(day, state) || info.completed) {
+      return { tone: "done", icon: "check_circle", label: "已完成" };
+    }
+    if (info.exampleQuizPromptCopiedAt) {
+      return { tone: "done", icon: "check_circle", label: "已生成测验包" };
+    }
+    if (examples.length) {
+      return { tone: "done", icon: "check_circle", label: `已收 ${examples.length} 张例题` };
+    }
+    if (info.lastFocusedAt || info.practicingAt || info.watched) {
+      return { tone: "active", icon: "radio_button_checked", label: "进行中" };
+    }
+    return { tone: "", icon: "radio_button_unchecked", label: "未开始" };
   }
 
   function renderTodayRoute(day, state) {
@@ -1024,9 +1060,46 @@
             ${tasks.map((task) => renderRouteDetailTask(task, state)).join("")}
           </div>
         ` : `
-          ${renderRouteLearningSheet(day, state)}
+          ${renderRoutePreview(day, state)}
         `}
       </section>
+    `;
+  }
+
+  function renderRoutePreview(day, state) {
+    const videos = routeVideos(day);
+    const completed = routeDayCompleted(day, state);
+    const routeStarted = routeDayStarted(day, state);
+    const items = videos.length
+      ? videos.map((video) => {
+        const task = routeVideoTask(day, video);
+        const info = taskState(state, task.id);
+        const examples = taskExamples(state, task.id);
+        const status = completed ? "已完成" : info.exampleQuizPromptCopiedAt ? "已生成测验" : examples.length ? `已收 ${examples.length} 图` : info.lastFocusedAt ? "已开始" : "未开始";
+        const tone = completed || info.exampleQuizPromptCopiedAt || examples.length ? "done" : info.lastFocusedAt ? "active" : "";
+        return { title: video.title, meta: `${video.source || "B站资源"} · ${video.duration || "按需观看"}`, note: video.require || video.part || "", status, tone };
+      })
+      : [{
+        title: day.title,
+        meta: "当天学习单 · 按需执行",
+        note: day.mission || "按资源/资料选择最贴近的小专题，收集例题后导入记录。",
+        status: completed ? "已完成" : routeStarted ? "已开始" : "未开始",
+        tone: completed ? "done" : routeStarted ? "active" : "",
+      }];
+    return `
+      <div class="summer-route-preview-list">
+        ${items.map((item) => `
+          <article class="summer-route-preview-item ${item.tone}">
+            <span class="material-symbols-outlined">${item.tone === "done" ? "check_circle" : item.tone === "active" ? "radio_button_checked" : "radio_button_unchecked"}</span>
+            <div>
+              <strong>${escapeHtml(item.title)}</strong>
+              <p>${escapeHtml(item.meta)}</p>
+              ${item.note ? `<small>${escapeHtml(item.note)}</small>` : ""}
+            </div>
+            <em>${escapeHtml(item.status)}</em>
+          </article>
+        `).join("")}
+      </div>
     `;
   }
 
@@ -1271,6 +1344,7 @@
             <span class="material-symbols-outlined">auto_awesome</span>${examples.length ? "测验包" : "先贴图"}
           </button>
         </div>
+        ${renderExampleAiStatus(task, examples)}
         ${examples.length ? `
           <div class="summer-example-list">
             ${examples.map((item) => renderExampleItem(task, item)).join("")}
@@ -1279,6 +1353,22 @@
           <p class="summer-example-empty">还没有收集这节课的视频例题。看视频时遇到老师讲的代表题，就截一张贴进来。</p>
         `}
       </section>
+    `;
+  }
+
+  function renderExampleAiStatus(task, examples) {
+    const hasExamples = examples.length > 0;
+    return `
+      <div class="summer-example-ai-status ${hasExamples ? "ready" : ""}">
+        <span class="material-symbols-outlined">${hasExamples ? "checklist" : "info"}</span>
+        <div>
+          <strong>${hasExamples ? "下一步：复制测验包，再把截图一起发给 Gemini" : "当前：网站先保存截图，还没有自动识图"}</strong>
+          <p>${hasExamples
+            ? "如果 AI 说没看到图片，就回到这里确认截图在本视频下面，再重新复制测验包。"
+            : "以后接多模态 API 后，这里会显示“识别中 / 识别失败 / 需要手动补图”，不会只靠几秒钟 toast 提醒。"
+          }</p>
+        </div>
+      </div>
     `;
   }
 
@@ -1416,7 +1506,6 @@
     });
     container.querySelectorAll(".summer-example-statuses button").forEach((el) => {
       el.addEventListener("pointerdown", captureExamplePointerAnchor);
-      el.addEventListener("mousedown", (event) => event.preventDefault());
     });
     hydrateExampleImages(container);
   }
@@ -1528,6 +1617,7 @@
     if (action === "example-status") {
       const exampleId = event.currentTarget.dataset.exampleId || "";
       const status = event.currentTarget.dataset.exampleStatus || "半会";
+      if (!examplePointerAnchor) captureExamplePointerAnchor(event);
       updateExampleMeta(task.id, exampleId, { status });
       updateExampleStatusInPlace(event.currentTarget, status);
       restoreExamplePointerAnchor();
