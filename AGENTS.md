@@ -61,7 +61,7 @@ mochi_debug_panel_open        — 调试面板展开状态
 mochi_debug_float_collapsed   — 右下角调试浮窗收起状态
 mochi_debug_tab               — 调试浮窗当前 Tab
 commitment_history            — 专注承诺历史，每轮一条 {id,date,goal,plannedMins,actualMins,outcome,ts}；最多 50 条；用于首页"说到做到"回看
-summer_task_state             — 暑假任务区状态，保存滚动任务队列中的 watched/completed/activeStep、当前展开任务 activeTaskId、待关联视频任务 pendingTaskId、待关联路线学习单 pendingRouteDay、28天路线详情 routeDetailDay、视频例题截图元信息 examples 和已关联学习记录 id；不改 study_log 字段。截图图片本体存在 IndexedDB `mochi_summer_examples`
+summer_task_state             — 暑假任务区状态，保存滚动任务队列中的 watched/completed/activeStep、当前展开任务 activeTaskId、用户锁定为今日任务的 activeRouteDay、待关联视频任务 pendingTaskId、待关联路线学习单 pendingRouteDay、28天路线详情 routeDetailDay、视频例题截图元信息 examples 和已关联学习记录 id；不改 study_log 字段。截图图片本体存在 IndexedDB `mochi_summer_examples`
 sidebar_expanded              — 桌面端侧边栏展开状态，"1" 为展开文字导航，默认收起为窄图标栏
 ```
 
@@ -604,3 +604,10 @@ v34 之后的改动：
 - **资源入口补齐**：后续学习单会按主题关键词自动给出一轮复习 B 站合集、基础课合集和小红书攻略入口；一轮合集 BV 来自 B 站公开 API，可直接点击。
 - **视频例题截图收集**：每个视频任务新增“视频例题截图”区，支持点击后 Ctrl+V 粘贴截图或上传图片，并标记“会 / 半会 / 不会”。元信息存入 `summer_task_state.examples`，图片本体存入 IndexedDB `mochi_summer_examples`，不污染 `study_log`。
 - **缓存版本号**：`index.html` 静态资源版本号更新为 `20260714l`。
+
+### V5.16 路线学习单可设为今日 + 开发测试场景（build `20260714m`）
+
+- **路线日可切入今日**：28 天总计划详情新增“设为今日任务”。点击后写入 `summer_task_state.activeRouteDay`，首页从自动顺延队列切到该日；第 1-2 天显示对应未完成视频任务，第 3-28 天显示该日学习单。首页显示“当前锁定”条，并可点“回到自动顺延”清除锁定。
+- **完成与顺延口径**：视频任务仍以导入 MOCHI-RECORD 完成并从滚动队列消失；路线学习单以 `pendingRouteDay` 关联导入记录，写入 `routeDays[day].completed` 后消失并顺延到下一天。
+- **开发体验数据**：`window.MochiSummerTasks.loadDemoState(name)` 新增演示状态：`reset`、`unfinished`、`unlock-day2`、`jump-day5`、`route-day3-pending`、`route-day3-done`，用于不用真实学习也能测试滚动、拖延、跳天、导入完成流程。
+- **缓存版本号**：`index.html` 静态资源版本号更新为 `20260714m`。

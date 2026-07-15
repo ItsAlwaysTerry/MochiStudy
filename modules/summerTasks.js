@@ -325,7 +325,7 @@
   ];
 
   function readState() {
-    const fallback = { pendingTaskId: "", pendingRouteDay: 0, activeTaskId: "", tasks: {}, routeDays: {}, routeDetailDay: 0, examples: {} };
+    const fallback = { pendingTaskId: "", pendingRouteDay: 0, activeTaskId: "", activeRouteDay: 0, tasks: {}, routeDays: {}, routeDetailDay: 0, examples: {} };
     try {
       const saved = JSON.parse(localStorage.getItem(STATE_KEY) || "null");
       if (!saved || typeof saved !== "object") return fallback;
@@ -333,6 +333,7 @@
         pendingTaskId: String(saved.pendingTaskId || ""),
         pendingRouteDay: Number(saved.pendingRouteDay || 0),
         activeTaskId: String(saved.activeTaskId || ""),
+        activeRouteDay: Number(saved.activeRouteDay || 0),
         tasks: saved.tasks && typeof saved.tasks === "object" ? saved.tasks : {},
         routeDays: saved.routeDays && typeof saved.routeDays === "object" ? saved.routeDays : {},
         routeDetailDay: Number(saved.routeDetailDay || 0),
@@ -461,6 +462,10 @@
     const pendingTask = findTask(state.pendingTaskId);
     const pendingDay = pendingTask && ROUTE_DAYS.find((day) => (day.taskIds || []).includes(pendingTask.id));
     if (pendingDay) return pendingDay.day;
+    const activeDay = ROUTE_DAYS.find((day) => day.day === Number(state.activeRouteDay || 0));
+    if (activeDay && !routeDayCompleted(activeDay, state)) return activeDay.day;
+    const pendingRouteDay = ROUTE_DAYS.find((day) => day.day === Number(state.pendingRouteDay || 0));
+    if (pendingRouteDay && !routeDayCompleted(pendingRouteDay, state)) return pendingRouteDay.day;
     const firstOpenDay = ROUTE_DAYS.find((day) => !routeDayCompleted(day, state));
     return firstOpenDay?.day || ROUTE_DAYS[ROUTE_DAYS.length - 1].day;
   }
@@ -477,12 +482,20 @@
 
   function rollingTasks(state, limit = 3) {
     const pending = findTask(state.pendingTaskId);
+    const activeDay = ROUTE_DAYS.find((day) => day.day === Number(state.activeRouteDay || 0));
+    if (activeDay && !routeDayCompleted(activeDay, state)) {
+      const activeTasks = routeTasks(activeDay).filter((task) => !taskState(state, task.id).completed);
+      if (activeTasks.length) return activeTasks.slice(0, limit);
+      return [];
+    }
     const openTasks = TASKS.filter((task) => !taskState(state, task.id).completed);
     const ordered = pending ? [pending, ...openTasks.filter((task) => task.id !== pending.id)] : openTasks;
     return ordered.slice(0, limit);
   }
 
   function nextRoutePlanDay(state) {
+    const activeDay = ROUTE_DAYS.find((day) => day.day === Number(state.activeRouteDay || 0));
+    if (activeDay && !routeTasks(activeDay).length && !routeDayCompleted(activeDay, state)) return activeDay;
     return ROUTE_DAYS.find((day) => !routeTasks(day).length && !routeDayCompleted(day, state)) || null;
   }
 
@@ -522,6 +535,7 @@
     const state = readState();
     const queue = rollingTasks(state, 3);
     const planDay = queue.length ? null : nextRoutePlanDay(state);
+    const activeDay = ROUTE_DAYS.find((day) => day.day === Number(state.activeRouteDay || 0));
     const completedDetailed = TASKS.filter((task) => taskState(state, task.id).completed).length;
     const remainingDetailed = TASKS.length - completedDetailed;
     const pendingRoute = ROUTE_DAYS.find((day) => day.day === Number(state.pendingRouteDay || 0));
@@ -547,6 +561,12 @@
           <span>看完视频要留例题截图</span>
           <span>导入 MOCHI-RECORD 才算完成</span>
         </div>
+        ${activeDay && !routeDayCompleted(activeDay, state) ? `
+          <div class="summer-active-day-bar">
+            <span>当前锁定：第 ${activeDay.day} 天 · ${escapeHtml(activeDay.title)}</span>
+            <button class="btn btn-soft btn-sm" data-summer-action="route-auto" type="button">回到自动顺延</button>
+          </div>
+        ` : ""}
         <div class="summer-progress-track"><div class="summer-progress-fill" style="width:${Math.round((completedDetailed / TASKS.length) * 100)}%"></div></div>
         ${queue.length ? renderRollingQueue(queue, state, remainingDetailed) : renderRouteLearningSheet(planDay, state, { pendingRoute })}
       </section>
@@ -719,6 +739,7 @@
     const tasks = routeTasks(day);
     const completed = tasks.filter((task) => taskState(state, task.id).completed).length;
     const isCurrent = day.day === currentDayNo;
+    const isActive = Number(state.activeRouteDay || 0) === day.day && !routeDayCompleted(day, state);
     const focus = Array.isArray(day.focus) ? day.focus : [];
     return `
       <section class="summer-route-detail">
@@ -728,7 +749,14 @@
             <h4>${escapeHtml(day.title)}</h4>
             <p>${escapeHtml(day.subtitle)}</p>
           </div>
-          ${tasks.length ? `<strong>${completed}/${tasks.length} 完成</strong>` : `<strong>${routeDayCompleted(day, state) ? "已完成" : "学习单"}</strong>`}
+          <div class="summer-route-detail-actions">
+            ${tasks.length ? `<strong>${completed}/${tasks.length} 完成</strong>` : `<strong>${routeDayCompleted(day, state) ? "已完成" : "学习单"}</strong>`}
+            ${routeDayCompleted(day, state) ? "" : `
+              <button class="btn ${isActive ? "btn-soft" : "btn-primary"} btn-sm" data-summer-action="route-activate" data-route-day="${day.day}" type="button">
+                <span class="material-symbols-outlined">${isActive ? "done" : "today"}</span>${isActive ? "已设为今日" : "设为今日任务"}
+              </button>
+            `}
+          </div>
         </div>
         ${tasks.length ? `
           <div class="summer-route-detail-tasks">
@@ -1135,6 +1163,31 @@
       }
       return;
     }
+    if (action === "route-auto") {
+      const state = readState();
+      state.activeRouteDay = 0;
+      writeState(state);
+      refreshHome({ preserveScroll: true });
+      window.MochiApp?.toast?.("已回到自动顺延：未完成任务会排在前面");
+      return;
+    }
+    if (action === "route-activate") {
+      const dayNo = Number(event.currentTarget.dataset.routeDay || 0);
+      const day = ROUTE_DAYS.find((item) => item.day === dayNo);
+      if (!day) return;
+      const state = readState();
+      state.activeRouteDay = day.day;
+      state.routeDetailDay = day.day;
+      state.routeDays[day.day] = {
+        ...routeDayState(state, day.day),
+        startedAt: routeDayState(state, day.day).startedAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      writeState(state);
+      refreshHome({ preserveScroll: true });
+      window.MochiApp?.toast?.(`已把第 ${day.day} 天设为今日任务`);
+      return;
+    }
     if (action === "route-focus" || action === "route-import") {
       const dayNo = Number(event.currentTarget.dataset.routeDay || 0);
       const day = ROUTE_DAYS.find((item) => item.day === dayNo);
@@ -1453,6 +1506,84 @@
     });
   }
 
+  function makeCompletedTaskState(task, stars = 2) {
+    const now = new Date().toISOString();
+    return {
+      watched: true,
+      completed: true,
+      startedAt: now,
+      completedAt: now,
+      activeStep: 3,
+      linkedLogIds: [`demo_${task.id}`],
+      lastImportedRecord: {
+        id: `demo_${task.id}`,
+        subject: "physics",
+        nodeLabel: task.nodeLabel || "物理",
+        stars,
+      },
+      updatedAt: now,
+    };
+  }
+
+  function loadDemoState(name = "reset") {
+    const state = {
+      pendingTaskId: "",
+      pendingRouteDay: 0,
+      activeTaskId: "",
+      activeRouteDay: 0,
+      tasks: {},
+      routeDays: {},
+      routeDetailDay: 0,
+      examples: {},
+    };
+    const now = new Date().toISOString();
+    if (name === "unfinished") {
+      state.tasks["kinematics-basic"] = makeCompletedTaskState(findTask("kinematics-basic"), 3);
+      state.tasks["newton-second-law"] = {
+        watched: true,
+        practicingAt: now,
+        activeStep: 1,
+        updatedAt: now,
+      };
+      state.activeTaskId = "newton-second-law";
+      state.examples["newton-second-law"] = {
+        items: [{
+          id: "demo_example_newton",
+          status: "不会",
+          note: "演示截图元信息；图片本体需要实际粘贴后才有预览。",
+          createdAt: now,
+        }],
+      };
+    } else if (name === "unlock-day2") {
+      TASKS.slice(0, 3).forEach((task) => { state.tasks[task.id] = makeCompletedTaskState(task, 3); });
+    } else if (name === "jump-day5") {
+      state.activeRouteDay = 5;
+      state.routeDetailDay = 5;
+      state.routeDays[5] = { startedAt: now, updatedAt: now };
+    } else if (name === "route-day3-pending") {
+      TASKS.forEach((task) => { state.tasks[task.id] = makeCompletedTaskState(task, 2); });
+      state.activeRouteDay = 3;
+      state.pendingRouteDay = 3;
+      state.routeDetailDay = 3;
+      state.routeDays[3] = { startedAt: now, updatedAt: now };
+    } else if (name === "route-day3-done") {
+      TASKS.forEach((task) => { state.tasks[task.id] = makeCompletedTaskState(task, 2); });
+      state.routeDetailDay = 4;
+      state.routeDays[3] = {
+        startedAt: now,
+        completed: true,
+        completedAt: now,
+        linkedLogIds: ["demo_route_3"],
+        lastImportedRecord: { id: "demo_route_3", subject: "physics", nodeLabel: "运动学", stars: 2 },
+        updatedAt: now,
+      };
+    }
+    writeState(state);
+    refreshHome();
+    window.MochiApp?.toast?.(`已载入暑假任务演示状态：${name}`);
+    return state;
+  }
+
   function focusImportBox() {
     const textarea = document.getElementById("record-paste");
     if (!textarea) return false;
@@ -1596,5 +1727,6 @@
     progress,
     renderRouteOverviewCard,
     getTasks: () => TASKS.slice(),
+    loadDemoState,
   };
 })();

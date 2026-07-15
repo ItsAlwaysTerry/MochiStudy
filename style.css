@@ -7577,6 +7577,30 @@ body.focus-mode #view {
   font-weight: 900;
 }
 
+.summer-active-day-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid rgba(74, 69, 128, 0.16);
+  border-radius: 12px;
+  background: rgba(197, 194, 240, 0.22);
+}
+
+.summer-active-day-bar span {
+  color: var(--physics);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.summer-active-day-bar .btn {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
 .summer-progress-track {
   height: 5px;
   overflow: hidden;
@@ -7817,6 +7841,26 @@ body.focus-mode #view {
   color: var(--physics);
   background: rgba(197, 194, 240, 0.42);
   font-size: 12px;
+}
+
+.summer-route-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.summer-route-detail-actions > strong {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border-radius: 999px;
+  color: var(--physics);
+  background: rgba(197, 194, 240, 0.42);
+  font-size: 12px;
+}
+
+.summer-route-detail-actions .btn {
+  margin: 0;
 }
 
 .summer-route-day-pill {
@@ -8936,6 +8980,15 @@ body.focus-mode #view {
   .summer-route-detail-head {
     flex-direction: column;
     gap: 8px;
+  }
+
+  .summer-route-detail-actions {
+    justify-content: flex-start;
+  }
+
+  .summer-active-day-bar {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .summer-route-detail-tasks {
