@@ -61,7 +61,7 @@ mochi_debug_panel_open        — 调试面板展开状态
 mochi_debug_float_collapsed   — 右下角调试浮窗收起状态
 mochi_debug_tab               — 调试浮窗当前 Tab
 commitment_history            — 专注承诺历史，每轮一条 {id,date,goal,plannedMins,actualMins,outcome,ts}；最多 50 条；用于首页"说到做到"回看
-summer_task_state             — 暑假任务区状态，保存滚动任务队列中的 watched/completed/activeStep、当前展开任务 activeTaskId、用户锁定为今日任务的 activeRouteDay、待关联视频任务 pendingTaskId、待关联路线学习单 pendingRouteDay、28天路线详情 routeDetailDay、视频例题截图元信息 examples 和已关联学习记录 id；不改 study_log 字段。截图图片本体存在 IndexedDB `mochi_summer_examples`
+summer_task_state             — 暑假任务区状态，保存滚动任务队列中的 watched/completed/activeStep/studyNote、当前展开任务 activeTaskId、用户锁定为今日任务的 activeRouteDay、待关联视频任务 pendingTaskId、待关联路线学习单 pendingRouteDay、28天路线详情 routeDetailDay、视频例题截图元信息 examples 和已关联学习记录 id；不改 study_log 字段。截图图片本体存在 IndexedDB `mochi_summer_examples`
 sidebar_expanded              — 桌面端侧边栏展开状态，"1" 为展开文字导航，默认收起为窄图标栏
 ```
 
@@ -635,3 +635,11 @@ v34 之后的改动：
 - **例题状态修复**：例题截图的“会 / 半会 / 不会”改为原地更新按钮选中态和标题，不再依赖整页重绘；删除后重新粘贴的新截图仍可重新选择掌握状态。
 - **AI 识图反馈占位**：例题截图区新增持久状态提示，明确当前网站只负责保存截图；已有截图时提示“复制测验包并把截图一起发给 Gemini”，后续接多模态 API 时可在同一区域显示“识别中 / 识别失败 / 需要手动补图”。
 - **缓存版本号**：`index.html` 静态资源版本号更新为 `20260714p`。
+
+### V5.20 无 API 例题图片复制 + 总计划回顾（build `20260714q`）
+
+- **同类测验包改成人工顺滑链路**：例题截图区新增“复制图片”按钮，直接从 IndexedDB 取已保存截图写入系统剪贴板。学生流程变成：复制测验包文字粘给 Gemini → 回 MochiStudy 点复制图片 → 到 Gemini 粘贴图片；不需要接多模态 API。
+- **图片复制兜底**：浏览器不允许图片剪贴板时，弹出可见的大图窗口，提示学生右键复制或拖进 Gemini，避免只靠短 toast。
+- **总计划回顾详情**：28 天总计划预览卡保持简洁，但每条视频/学习单新增“查看例题和笔记”折叠入口；展开后可回看本视频保存过的例题截图、掌握状态，并单独复制图片。
+- **学习备注**：总计划回顾里新增“学习备注 / 卡住点”输入框，离开输入框自动保存到 `summer_task_state.tasks[id].studyNote`，方便后续复习时看到学生自己的反馈。
+- **缓存版本号**：`index.html` 静态资源版本号更新为 `20260714q`。

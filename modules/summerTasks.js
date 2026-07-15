@@ -1077,9 +1077,10 @@
         const examples = taskExamples(state, task.id);
         const status = completed ? "已完成" : info.exampleQuizPromptCopiedAt ? "已生成测验" : examples.length ? `已收 ${examples.length} 图` : info.lastFocusedAt ? "已开始" : "未开始";
         const tone = completed || info.exampleQuizPromptCopiedAt || examples.length ? "done" : info.lastFocusedAt ? "active" : "";
-        return { title: video.title, meta: `${video.source || "B站资源"} · ${video.duration || "按需观看"}`, note: video.require || video.part || "", status, tone };
+        return { task, title: video.title, meta: `${video.source || "B站资源"} · ${video.duration || "按需观看"}`, note: video.require || video.part || "", status, tone };
       })
       : [{
+        task: routeSheetTask(day),
         title: day.title,
         meta: "当天学习单 · 按需执行",
         note: day.mission || "按资源/资料选择最贴近的小专题，收集例题后导入记录。",
@@ -1088,18 +1089,25 @@
       }];
     return `
       <div class="summer-route-preview-list">
-        ${items.map((item) => `
-          <article class="summer-route-preview-item ${item.tone}">
-            <span class="material-symbols-outlined">${item.tone === "done" ? "check_circle" : item.tone === "active" ? "radio_button_checked" : "radio_button_unchecked"}</span>
-            <div>
-              <strong>${escapeHtml(item.title)}</strong>
-              <p>${escapeHtml(item.meta)}</p>
-              ${item.note ? `<small>${escapeHtml(item.note)}</small>` : ""}
-            </div>
-            <em>${escapeHtml(item.status)}</em>
-          </article>
-        `).join("")}
+        ${items.map((item) => renderRoutePreviewItem(item, state)).join("")}
       </div>
+    `;
+  }
+
+  function renderRoutePreviewItem(item, state) {
+    return `
+      <article class="summer-route-preview-item ${item.tone}">
+        <div class="summer-route-preview-main">
+          <span class="material-symbols-outlined">${item.tone === "done" ? "check_circle" : item.tone === "active" ? "radio_button_checked" : "radio_button_unchecked"}</span>
+          <div>
+            <strong>${escapeHtml(item.title)}</strong>
+            <p>${escapeHtml(item.meta)}</p>
+            ${item.note ? `<small>${escapeHtml(item.note)}</small>` : ""}
+          </div>
+          <em>${escapeHtml(item.status)}</em>
+        </div>
+        ${renderRouteReviewPanel(item.task, state)}
+      </article>
     `;
   }
 
@@ -1115,7 +1123,60 @@
           <p>${escapeHtml(task.source)} · ${escapeHtml(task.duration)} · ${getPracticeItems(task).length || 0} 道小题</p>
         </div>
         <em>${status}</em>
+        ${renderRouteReviewPanel(task, state)}
       </div>
+    `;
+  }
+
+  function renderRouteReviewPanel(task, state) {
+    if (!task) return "";
+    const examples = taskExamples(state, task.id);
+    const info = taskState(state, task.id);
+    const note = String(info.studyNote || "");
+    const summaryBits = [
+      examples.length ? `${examples.length} 张例题` : "暂无例题",
+      note ? "已记笔记" : "可写笔记",
+    ];
+    return `
+      <details class="summer-route-review">
+        <summary>
+          <span>查看例题和笔记</span>
+          <small>${escapeHtml(summaryBits.join(" · "))}</small>
+        </summary>
+        <div class="summer-route-review-body">
+          <label class="summer-route-note">
+            <span>学习备注 / 卡住点</span>
+            <textarea data-example-note data-task-id="${escapeHtml(task.id)}" rows="2" placeholder="例如：追及题的临界条件不会找，后面要重看。">${escapeHtml(note)}</textarea>
+            <small>离开输入框自动保存，之后复习可以从总计划回看。</small>
+          </label>
+          ${examples.length ? `
+            <div class="summer-route-review-examples">
+              ${examples.map((item) => renderExampleReviewItem(task, item)).join("")}
+            </div>
+          ` : `
+            <p class="summer-route-review-empty">还没有给这节课保存例题截图。学习时粘贴截图后，这里会自动出现。</p>
+          `}
+        </div>
+      </details>
+    `;
+  }
+
+  function renderExampleReviewItem(task, item) {
+    const status = item.status || "半会";
+    return `
+      <article class="summer-route-review-example">
+        <div class="summer-example-thumb">
+          <img data-example-image-id="${escapeHtml(item.id)}" alt="${escapeHtml(task.title)} 例题截图" hidden>
+          <span class="material-symbols-outlined">image</span>
+        </div>
+        <div>
+          <strong>${escapeHtml(status)} · ${formatExampleDate(item.createdAt)}</strong>
+          <p>${escapeHtml(item.note || "视频例题截图")}</p>
+          <button class="btn btn-soft btn-sm" data-summer-action="copy-example-image" data-task-id="${escapeHtml(task.id)}" data-example-id="${escapeHtml(item.id)}" type="button">
+            <span class="material-symbols-outlined">content_copy</span>复制图片
+          </button>
+        </div>
+      </article>
     `;
   }
 
@@ -1343,6 +1404,9 @@
           <button class="btn btn-primary btn-sm summer-example-quiz" data-summer-action="copy-example-quiz" data-task-id="${escapeHtml(task.id)}" type="button" ${examples.length ? "" : "disabled"}>
             <span class="material-symbols-outlined">auto_awesome</span>${examples.length ? "测验包" : "先贴图"}
           </button>
+          <button class="btn btn-soft btn-sm summer-example-copy" data-summer-action="copy-example-image" data-task-id="${escapeHtml(task.id)}" data-example-id="${escapeHtml(examples[0]?.id || "")}" type="button" ${examples.length ? "" : "disabled"}>
+            <span class="material-symbols-outlined">content_copy</span>${examples.length > 1 ? "复制首图" : "复制图片"}
+          </button>
         </div>
         ${renderExampleAiStatus(task, examples)}
         ${examples.length ? `
@@ -1360,12 +1424,12 @@
     const hasExamples = examples.length > 0;
     return `
       <div class="summer-example-ai-status ${hasExamples ? "ready" : ""}">
-        <span class="material-symbols-outlined">${hasExamples ? "checklist" : "info"}</span>
+        <span class="material-symbols-outlined">${hasExamples ? "content_paste_go" : "info"}</span>
         <div>
-          <strong>${hasExamples ? "下一步：复制测验包，再把截图一起发给 Gemini" : "当前：网站先保存截图，还没有自动识图"}</strong>
+          <strong>${hasExamples ? "下一步：测验包粘给 Gemini，再回来复制图片粘过去" : "当前：先把视频里的例题截图存到这里"}</strong>
           <p>${hasExamples
-            ? "如果 AI 说没看到图片，就回到这里确认截图在本视频下面，再重新复制测验包。"
-            : "以后接多模态 API 后，这里会显示“识别中 / 识别失败 / 需要手动补图”，不会只靠几秒钟 toast 提醒。"
+            ? "不用接多模态 API。先点“测验包”复制文字，再点“复制图片”把截图贴到同一个 Gemini 对话里；多张图就逐张复制。"
+            : "网站只负责收集和回看截图；生成同类题时，把提示词和图片一起交给 Gemini。"
           }</p>
         </div>
       </div>
@@ -1387,6 +1451,7 @@
             ${["会", "半会", "不会"].map((label) => `
               <button class="${status === label ? "selected" : ""}" data-summer-action="example-status" data-task-id="${escapeHtml(task.id)}" data-example-id="${escapeHtml(item.id)}" data-example-status="${label}" type="button">${label}</button>
             `).join("")}
+            <button data-summer-action="copy-example-image" data-task-id="${escapeHtml(task.id)}" data-example-id="${escapeHtml(item.id)}" type="button">复制图</button>
             <button class="danger" data-summer-action="example-delete" data-task-id="${escapeHtml(task.id)}" data-example-id="${escapeHtml(item.id)}" type="button">删除</button>
           </div>
         </div>
@@ -1504,6 +1569,9 @@
     container.querySelectorAll("[data-example-file]").forEach((el) => {
       el.addEventListener("change", handleExampleFile);
     });
+    container.querySelectorAll("[data-example-note]").forEach((el) => {
+      el.addEventListener("blur", handleExampleNote);
+    });
     container.querySelectorAll(".summer-example-statuses button").forEach((el) => {
       el.addEventListener("pointerdown", captureExamplePointerAnchor);
     });
@@ -1614,6 +1682,11 @@
       return;
     }
     if (!task) return;
+    if (action === "copy-example-image") {
+      const exampleId = event.currentTarget.dataset.exampleId || "";
+      await copyExampleImage(task, exampleId);
+      return;
+    }
     if (action === "example-status") {
       const exampleId = event.currentTarget.dataset.exampleId || "";
       const status = event.currentTarget.dataset.exampleStatus || "半会";
@@ -1848,6 +1921,15 @@
     event.currentTarget.value = "";
   }
 
+  function handleExampleNote(event) {
+    const taskId = event.currentTarget.dataset.taskId || "";
+    if (!taskId) return;
+    const value = String(event.currentTarget.value || "").trim();
+    updateTask(taskId, { studyNote: value });
+    const hint = event.currentTarget.closest(".summer-route-note")?.querySelector("small");
+    if (hint) hint.textContent = value ? "已保存。复习时可以从总计划回看。" : "已清空备注，离开输入框会自动保存。";
+  }
+
   async function saveExampleFile(taskId, file, trigger) {
     const task = findSummerTask(taskId);
     if (!task || !file) return;
@@ -1919,6 +2001,77 @@
     }
     refreshHome(refreshOptions);
     window.MochiApp?.toast?.("已删除这张例题截图");
+  }
+
+  async function copyExampleImage(task, exampleId) {
+    const state = readState();
+    const examples = taskExamples(state, task.id);
+    const targetId = exampleId || examples[0]?.id || "";
+    if (!targetId) {
+      window.MochiApp?.toast?.("这节课还没有例题图片");
+      return;
+    }
+    try {
+      const blob = await getExampleImage(targetId);
+      if (!blob) {
+        window.MochiApp?.toast?.("图片本体没找到，重新粘贴一次截图会更稳");
+        return;
+      }
+      const ok = await copyImageBlob(blob);
+      if (ok) {
+        window.MochiApp?.toast?.("例题图片已复制。现在回 Gemini 对话里粘贴图片。");
+        return;
+      }
+      showImageCopyFallback(blob, task.title);
+    } catch (error) {
+      console.warn(error);
+      window.MochiApp?.toast?.("图片复制失败，已打开手动复制窗口");
+      try {
+        const blob = await getExampleImage(targetId);
+        if (blob) showImageCopyFallback(blob, task.title);
+      } catch { /* ignore fallback failure */ }
+    }
+  }
+
+  async function copyImageBlob(blob) {
+    try {
+      if (!navigator.clipboard?.write || !window.ClipboardItem) return false;
+      const imageBlob = await normalizeClipboardImage(blob);
+      await navigator.clipboard.write([
+        new ClipboardItem({ [imageBlob.type || "image/png"]: imageBlob }),
+      ]);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async function normalizeClipboardImage(blob) {
+    if ((blob.type || "").toLowerCase() === "image/png") return blob;
+    if (!window.createImageBitmap) return blob;
+    const bitmap = await createImageBitmap(blob);
+    const canvas = document.createElement("canvas");
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(bitmap, 0, 0);
+    bitmap.close?.();
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((nextBlob) => {
+        if (nextBlob) resolve(nextBlob);
+        else reject(new Error("convert image failed"));
+      }, "image/png");
+    });
+  }
+
+  function showImageCopyFallback(blob, title) {
+    const url = URL.createObjectURL(blob);
+    window.MochiApp?.modal?.(`
+      <h3>手动复制例题图片</h3>
+      <p class="muted">浏览器没有放行“直接复制图片”。右键下面图片复制，或者把图片拖到 Gemini 对话框里。</p>
+      <img class="summer-image-copy-fallback" src="${escapeHtml(url)}" alt="${escapeHtml(title || "例题图片")}">
+      <button class="btn btn-primary" data-action="close-modal" type="button" style="width:100%;margin-top:10px">我处理好了</button>
+    `);
   }
 
   function openExampleDb() {
@@ -2141,7 +2294,7 @@
       task.prep?.concepts?.length ? `本节相关概念：${task.prep.concepts.join("、")}。` : "",
       task.prep?.backup ? `卡住时备用范围：${task.prep.backup}。${backupLinks ? `资源链接：${backupLinks}。` : ""}` : "",
       "",
-      "我会把下面这些例题截图一起上传/粘贴给你。你必须先看截图；如果你没有看到图片，请先提醒我上传截图，不要凭空编题。",
+      "我会先粘贴这段文字，然后回 MochiStudy 点击“复制图片”，把例题截图粘到同一个 Gemini 对话里。你必须先看截图；如果你没有收到图片，请只提醒我继续粘贴图片，不要凭空编题。",
       exampleLines,
       "",
       "请按这个流程带我练：",

@@ -7904,7 +7904,7 @@ body.focus-mode #view {
 .summer-route-detail-task {
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr) auto;
-  align-items: center;
+  align-items: start;
   gap: 8px;
   padding: 9px;
   border: 1px solid rgba(74, 69, 128, 0.12);
@@ -7953,14 +7953,20 @@ body.focus-mode #view {
 }
 
 .summer-route-preview-item {
+  display: block;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid rgba(74, 69, 128, 0.12);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.summer-route-preview-main {
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
   padding: 9px;
-  border: 1px solid rgba(74, 69, 128, 0.12);
-  border-radius: 10px;
-  background: #fff;
 }
 
 .summer-route-preview-item .material-symbols-outlined {
@@ -8002,6 +8008,117 @@ body.focus-mode #view {
 
 .summer-route-preview-item.active {
   border-color: rgba(74, 69, 128, 0.28);
+}
+
+.summer-route-review {
+  grid-column: 1 / -1;
+  border-top: 1px solid rgba(74, 69, 128, 0.08);
+}
+
+.summer-route-review summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 9px;
+  color: var(--physics);
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+  list-style: none;
+}
+
+.summer-route-review summary::-webkit-details-marker {
+  display: none;
+}
+
+.summer-route-review summary::after {
+  content: "expand_more";
+  font-family: "Material Symbols Outlined";
+  font-size: 17px;
+  line-height: 1;
+}
+
+.summer-route-review[open] summary::after {
+  content: "expand_less";
+}
+
+.summer-route-review summary small {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.summer-route-review-body {
+  display: grid;
+  gap: 8px;
+  padding: 0 9px 9px;
+}
+
+.summer-route-note {
+  display: grid;
+  gap: 5px;
+}
+
+.summer-route-note span {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.summer-route-note textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 48px;
+  padding: 7px 8px;
+  border: 1px solid rgba(74, 69, 128, 0.16);
+  border-radius: 10px;
+  color: var(--text-primary);
+  background: var(--surface-low);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.summer-route-note textarea:focus {
+  outline: none;
+  border-color: var(--physics);
+  box-shadow: 0 0 0 3px rgba(74, 69, 128, 0.1);
+}
+
+.summer-route-note small,
+.summer-route-review-empty {
+  margin: 0;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.summer-route-review-examples {
+  display: grid;
+  gap: 7px;
+}
+
+.summer-route-review-example {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  gap: 8px;
+  padding: 7px;
+  border: 1px solid rgba(74, 69, 128, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.summer-route-review-example strong {
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.summer-route-review-example p {
+  margin: 2px 0 6px;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 .summer-route-detail-draft p {
@@ -8731,7 +8848,7 @@ body.focus-mode #view {
 
 .summer-example-actions {
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) auto auto;
+  grid-template-columns: minmax(120px, 1fr) auto auto auto;
   gap: 6px;
   align-items: stretch;
 }
@@ -8783,7 +8900,8 @@ body.focus-mode #view {
   font-size: 11px;
 }
 
-.summer-example-quiz {
+.summer-example-quiz,
+.summer-example-copy {
   align-self: stretch;
   justify-content: center;
   margin: 0;
@@ -8927,6 +9045,17 @@ body.focus-mode #view {
 
 .summer-example-statuses button.danger {
   color: #9d4258;
+}
+
+.summer-image-copy-fallback {
+  display: block;
+  width: 100%;
+  max-height: 58vh;
+  object-fit: contain;
+  margin-top: 10px;
+  border: 1px solid rgba(74, 69, 128, 0.16);
+  border-radius: 12px;
+  background: #fff;
 }
 
 .summer-diagram {
