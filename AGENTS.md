@@ -611,3 +611,11 @@ v34 之后的改动：
 - **完成与顺延口径**：视频任务仍以导入 MOCHI-RECORD 完成并从滚动队列消失；路线学习单以 `pendingRouteDay` 关联导入记录，写入 `routeDays[day].completed` 后消失并顺延到下一天。
 - **开发体验数据**：`window.MochiSummerTasks.loadDemoState(name)` 新增演示状态：`reset`、`unfinished`、`unlock-day2`、`jump-day5`、`route-day3-pending`、`route-day3-done`，用于不用真实学习也能测试滚动、拖延、跳天、导入完成流程。
 - **缓存版本号**：`index.html` 静态资源版本号更新为 `20260714m`。
+
+### V5.17 后续路线视频化 + 例题同类测验包（build `20260714n`）
+
+- **第 3-28 天主线视频化**：`modules/summerTasks.js` 新增 `ROUTE_VIDEO_LIBRARY`，把后续路线从单纯主题学习单升级为逐日主线视频清单。大部分资源来自黄夫人物理一轮/基础课的 B 站公开分 P 标题和时长；第 17 天补入机械振动/机械波基础视频；第 18 天暂按考试范围三选一执行，不硬塞未确认随机资源。
+- **每个路线视频独立收集例题**：路线学习单里每个视频都有自己的“本视频例题截图”区，使用 `route-day-{day}-{videoKey}` 作为截图桶 id，学生粘贴/上传截图时不会和其他视频混在一起；没有精确视频的学习单使用 `route-day-{day}-sheet` 作为当天资料截图桶。图片仍存 IndexedDB `mochi_summer_examples`，元信息仍存 `summer_task_state.examples`。
+- **同类测验包闭环**：视频截图区新增“复制同类测验包”。已有截图后会复制一段 Prompt，要求 AI 先识别截图考点，再按截图题型生成 2-4 道基础变式题，一次一题引导，最后输出 MOCHI-RECORD。路线视频复制测验包后会关联到当天学习单，粘回记录后完成该日。
+- **学生端去半成品文案**：学习单不再显示“具体视频之后补得更细”之类占位口径，改成“打开下方视频 / 每个视频收集例题 / 复制同类测验包 / 粘贴 MOCHI-RECORD”的明确步骤。
+- **缓存版本号**：`index.html` 静态资源版本号更新为 `20260714n`。

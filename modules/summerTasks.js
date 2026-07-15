@@ -23,6 +23,83 @@
     magneticCircle: "BV1Xb4y1Q7Eq",
     induction: "BV13i4y1N7RJ",
   };
+  const ROUTE_VIDEO_LIBRARY = {
+    "kin-chase-template": { source: "黄夫人物理一轮", bvKey: "kinematics", page: 8, duration: "10:35", title: "追及相遇通用解题模板", part: "8.【讲义10】【追及相遇】通用解题模板", require: "截 1 张追及/相遇临界例题" },
+    "kin-chase-critical": { source: "黄夫人物理一轮", bvKey: "kinematics", page: 9, duration: "17:15", title: "追及相遇临界讨论", part: "9.【讲义11】【追及相遇】临界讨论", require: "截 1 张临界条件题" },
+    "kin-image-basic": { source: "黄夫人物理一轮", bvKey: "kinematics", page: 11, duration: "14:23", title: "基础图像总结", part: "11.【讲义13】基础图像总结", require: "截 1 张 x-t 或 v-t 图像题" },
+    "kin-image-special": { source: "黄夫人物理一轮", bvKey: "kinematics", page: 12, duration: "10:51", title: "基础图像特殊问题", part: "12.【讲义14】基础图像特殊问题", require: "截 1 张特殊图像题" },
+    "kin-comprehensive": { source: "黄夫人物理一轮", bvKey: "kinematics", page: 10, duration: "24:46", title: "运动学综合例题讲解", part: "10.【讲义12】综合例题讲解", require: "截 1 张综合例题" },
+    "kin-paper-tape-basic": { source: "黄夫人物理基础课", bvid: "BV17y4y1V7N1", duration: "15:15", title: "打点计时器-纸带分析", part: "27.【匀变速直线运动】打点计时器-纸带分析", require: "截 1 张纸带/逐差法题" },
+    "kin-difference-method": { source: "黄夫人物理一轮", bvKey: "kinematics", page: 3, duration: "10:24", title: "比例式与逐差法", part: "3.【讲义5-6】比例式与逐差法", require: "截 1 张逐差法例题" },
+
+    "balance-elastic": { source: "黄夫人物理一轮", bvKey: "balance", page: 1, duration: "20:57", title: "弹力", part: "1.【讲义19】弹力1", require: "截 1 张弹力/接触面判断题" },
+    "balance-friction": { source: "黄夫人物理一轮", bvKey: "balance", page: 3, duration: "19:40", title: "摩擦力", part: "3.【讲义21】摩擦力", require: "截 1 张摩擦力方向判断题" },
+    "balance-static-single": { source: "黄夫人物理一轮", bvKey: "balance", page: 4, duration: "21:58", title: "单物体平衡静力学", part: "4.【讲义22-23】单物理平衡静力学", require: "截 1 张受力图题" },
+    "balance-dynamic-triangle": { source: "黄夫人物理一轮", bvKey: "balance", page: 9, duration: "13:00", title: "动态三角形", part: "9.【讲义27】【动态分析】动态三角形", require: "截 1 张动态平衡题" },
+
+    "newton-motion": { source: "黄夫人物理一轮", bvKey: "newton", page: 1, duration: "23:28", title: "牛二分析运动", part: "1.【讲义33】牛二分析运动", require: "截 1 张 F=ma 基础题" },
+    "newton-orthogonal": { source: "黄夫人物理一轮", bvKey: "newton", page: 3, duration: "19:21", title: "牛二正交分解", part: "3.【讲义34】牛二正交分解", require: "截 1 张正交分解题" },
+    "newton-method": { source: "黄夫人物理一轮", bvKey: "newton", page: 5, duration: "14:28", title: "动力学解题", part: "5.【讲义36】动力学解题", require: "截 1 张动力学步骤题" },
+    "newton-practice": { source: "黄夫人物理一轮", bvKey: "newton", page: 6, duration: "10:44", title: "动力学练习", part: "6.【讲义37】动力学练习", require: "截 1 张练习题" },
+    "newton-multi": { source: "黄夫人物理一轮", bvKey: "newton", page: 10, duration: "15:31", title: "多物体解题思路", part: "10.【讲义41】【多物体】解题思路", require: "截 1 张连接体题" },
+
+    "projectile-basic": { source: "黄夫人物理一轮", bvKey: "projectile", page: 1, duration: "23:03", title: "基础平抛", part: "1.【讲义8】基础平抛", require: "截 1 张基础平抛例题" },
+    "projectile-angle": { source: "黄夫人物理一轮", bvKey: "projectile", page: 2, duration: "22:43", title: "带角度平抛", part: "2.【讲义9】带角度平抛", require: "截 1 张角度关系题" },
+    "projectile-practice": { source: "黄夫人物理一轮", bvKey: "projectile", page: 3, duration: "24:00", title: "平抛练习", part: "3.【讲义10】【习题】平抛练习1", require: "截 1 张平抛练习题" },
+    "circular-basic": { source: "黄夫人物理一轮", bvKey: "circular", page: 1, duration: "21:05", title: "圆周运动基础概念", part: "1.【讲义15】圆周运动基础概念", require: "截 1 张圆周基础量题" },
+    "circular-newton": { source: "黄夫人物理一轮", bvKey: "circular", page: 2, duration: "13:45", title: "圆周运动中的牛二", part: "2.【讲义16】圆周运动中的牛二", require: "截 1 张向心力受力题" },
+    "circular-practice": { source: "黄夫人物理一轮", bvKey: "circular", page: 4, duration: "22:00", title: "基础圆周练习", part: "4.【讲义18】【习题】基础圆周练习", require: "截 1 张圆周练习题" },
+
+    "energy-basic": { source: "黄夫人物理一轮", bvKey: "energy", page: 1, duration: "19:08", title: "功能三个基础概念", part: "1.【讲义44】三个基础概念", require: "截 1 张做功/能量概念题" },
+    "energy-work-image": { source: "黄夫人物理一轮", bvKey: "energy", page: 3, duration: "6:51", title: "求功图像类", part: "3.【讲义46】【求功】图像类", require: "截 1 张图像求功题" },
+    "energy-power": { source: "黄夫人物理一轮", bvKey: "energy", page: 6, duration: "12:52", title: "求功功率类", part: "6.【讲义47】【求功】功率类", require: "截 1 张功率题" },
+    "energy-kinetic-method": { source: "黄夫人物理一轮", bvKey: "energy", page: 7, duration: "28:17", title: "动能定理解题思路", part: "7.【讲义48-49】【动能定理】解题思路", require: "截 1 张动能定理题" },
+    "energy-kinetic-practice": { source: "黄夫人物理一轮", bvKey: "energy", page: 10, duration: "30:07", title: "动能定理练习", part: "10.【讲义50】【动能定理】练习", require: "截 1 张动能定理练习题" },
+    "energy-kinetic-practice2": { source: "黄夫人物理一轮", bvKey: "energy", page: 11, duration: "21:26", title: "动能定理练习2", part: "11.【讲义51】【动能定理】练习2", require: "截 1 张变式练习题" },
+    "energy-relation": { source: "黄夫人物理一轮", bvKey: "energy", page: 12, duration: "25:11", title: "功能关系介绍", part: "12.【讲义52】【功能关系】介绍", require: "截 1 张功能关系题" },
+
+    "gravitation-law": { source: "黄夫人物理一轮", bvKey: "gravitation", page: 2, duration: "15:59", title: "万有引力定律", part: "2.【讲义27】万有引力定律", require: "截 1 张引力公式题" },
+    "gravitation-formulas": { source: "黄夫人物理一轮", bvKey: "gravitation", page: 3, duration: "21:01", title: "天体运动公式", part: "3.【讲义29-30】天体运动公式", require: "截 1 张天体公式题" },
+    "gravitation-sync": { source: "黄夫人物理一轮", bvKey: "gravitation", page: 5, duration: "10:11", title: "同步卫星看地面", part: "5.【讲义32】同步卫星看地面", require: "截 1 张同步卫星题" },
+    "gravitation-ratio": { source: "黄夫人物理一轮", bvKey: "gravitation", page: 9, duration: "9:42", title: "比值问题", part: "9.【讲义35】比值问题", require: "截 1 张比值题" },
+
+    "electric-basic": { source: "黄夫人物理一轮", bvKey: "electric", page: 1, duration: "18:52", title: "电场基础概念介绍", part: "1.【讲义3】基础概念介绍", require: "截 1 张电场概念题" },
+    "electric-field-practice1": { source: "黄夫人物理一轮", bvKey: "electric", page: 7, duration: "17:05", title: "场强电势练习一", part: "7.【讲义9】【场强电势篇】练习一", require: "截 1 张场强/电势题" },
+    "electric-field-practice2": { source: "黄夫人物理一轮", bvKey: "electric", page: 8, duration: "17:44", title: "场强电势练习二", part: "8.【讲义10】【场强电势篇】练习二", require: "截 1 张场强/电势变式题" },
+    "electric-uniform-concept": { source: "黄夫人物理一轮", bvKey: "electric", page: 11, duration: "28:18", title: "匀强电场电学概念", part: "11.【讲义13】【匀强电场篇】电学概念介绍", require: "截 1 张匀强电场概念题" },
+    "electric-uniform-practice": { source: "黄夫人物理一轮", bvKey: "electric", page: 12, duration: "20:43", title: "匀强电场电场类练习", part: "12.【讲义14】【匀强电场篇】电场类练习", require: "截 1 张匀强电场练习题" },
+    "electric-comprehensive": { source: "黄夫人物理一轮", bvKey: "electric", page: 17, duration: "16:15", title: "电场综合练习答案", part: "17.【讲义19-21】综合练习答案", require: "截 1 张电场综合题" },
+
+    "circuit-current": { source: "黄夫人物理基础课", bvid: "BV1oE411S7p4", duration: "11:41", title: "电流", part: "192.【高中电路】电流", require: "截 1 张电流概念题" },
+    "circuit-emf-internal": { source: "黄夫人物理基础课", bvid: "BV1ZE411S7Rj", duration: "13:15", title: "电动势与内阻", part: "193.【高中电路】电动势与内阻", require: "截 1 张电源内阻题" },
+    "circuit-serial": { source: "黄夫人物理基础课", bvid: "BV1FE411D7HH", duration: "9:45", title: "串并联电路规律", part: "194.【高中电路】串并联电路的规律", require: "截 1 张串并联判断题" },
+    "circuit-closed-basic": { source: "黄夫人物理基础课", bvid: "BV1SE411h71j", duration: "11:11", title: "认识闭合电路", part: "203.【高中电路】认识闭合电路", require: "截 1 张闭合电路概念题" },
+    "circuit-closed-calc": { source: "黄夫人物理基础课", bvid: "BV1SE411h7se", duration: "15:30", title: "闭合电路的计算", part: "208.【高中电路】闭合电路的计算", require: "截 1 张闭合电路计算题" },
+    "circuit-basic-practice": { source: "黄夫人物理一轮", bvKey: "experiment", page: 2, duration: "18:16", title: "电路基础练习", part: "2.【讲义24】【习题】电路基础练习", require: "截 1 张电路基础练习题" },
+
+    "experiment-circuit-basic": { source: "黄夫人物理一轮", bvKey: "experiment", page: 1, duration: "25:36", title: "电路基础内容", part: "1.【讲义23】电路基础内容", require: "截 1 张电路基础例题" },
+    "experiment-meter": { source: "黄夫人物理一轮", bvKey: "experiment", page: 3, duration: "17:38", title: "电表改装", part: "3.【讲义25】电表改装", require: "截 1 张电表改装题" },
+    "experiment-resistance": { source: "黄夫人物理一轮", bvKey: "experiment", page: 9, duration: "21:51", title: "测电阻内接法和外接法", part: "9.【讲义31】【测电阻】内接法和外接法", require: "截 1 张测电阻接法题" },
+    "experiment-touch": { source: "黄夫人物理一轮", bvKey: "experiment", page: 10, duration: "20:58", title: "测电阻试触法", part: "10.【讲义31】【测电阻】试触法", require: "截 1 张试触法题" },
+    "experiment-limit-divide": { source: "黄夫人物理一轮", bvKey: "experiment", page: 11, duration: "16:21", title: "限流式和分压式", part: "11.【讲义31】限流式和分压式", require: "截 1 张滑变接法题" },
+    "experiment-source": { source: "黄夫人物理一轮", bvKey: "experiment", page: 18, duration: "28:10", title: "测电源伏安法", part: "18.【讲义34】【测电源】伏安法", require: "截 1 张测电源题" },
+    "experiment-source-practice": { source: "黄夫人物理一轮", bvKey: "experiment", page: 25, duration: "34:56", title: "测电源练习", part: "25.【讲义42-45】【习题】测电源练习", require: "截 1 张测电源练习题" },
+    "experiment-reading-caliper": { source: "黄夫人物理一轮", bvKey: "experiment", page: 21, duration: "19:15", title: "游标卡尺读数", part: "21.【讲义36】【读数】游标卡尺", require: "截 1 张读数题" },
+
+    "vibration-basic": { source: "B站基础补充", bvid: "BV1VX4y167tf", page: 1, duration: "39:16", title: "机械振动和简谐运动", part: "【机械振动】1.机械振动和简谐运动（基础课）", require: "截 1 张振动概念题" },
+    "wave-basic": { source: "B站基础补充", bvid: "BV1VX4y167tf", page: 10, duration: "14:43", title: "波的产生和传播规律", part: "【机械波】1.波的产生和传播规律（基础课）", require: "截 1 张波传播题" },
+    "wave-image": { source: "B站基础补充", bvid: "BV1VX4y167tf", page: 11, duration: "20:44", title: "波形图", part: "【机械波】2.波形图（基础课）", require: "截 1 张波形图题" },
+
+    "magnetic-basic": { source: "黄夫人物理一轮", bvKey: "magneticBasic", page: 1, duration: "16:54", title: "磁场基础", part: "1.【讲义46】磁场基础", require: "截 1 张磁场方向题" },
+    "magnetic-ampere": { source: "黄夫人物理一轮", bvKey: "magneticBasic", page: 3, duration: "23:05", title: "安培力概念", part: "3.【讲义47】【安培力】概念", require: "截 1 张安培力题" },
+    "magnetic-ampere-practice": { source: "黄夫人物理一轮", bvKey: "magneticBasic", page: 4, duration: "14:07", title: "安培力基础练习", part: "4.【讲义48】【安培力】基础练习1", require: "截 1 张安培力练习题" },
+    "magnetic-lorentz": { source: "黄夫人物理一轮", bvKey: "magneticBasic", page: 6, duration: "15:46", title: "洛伦兹力概念", part: "6.【讲义50】【洛伦兹力】概念", require: "截 1 张洛伦兹力题" },
+    "induction-lenz-basic": { source: "黄夫人物理一轮", bvKey: "induction", page: 1, duration: "19:09", title: "楞次定律基础概念", part: "1.【讲义63】【楞次定律】基础概念", require: "截 1 张楞次定律题" },
+    "induction-lenz-result": { source: "黄夫人物理一轮", bvKey: "induction", page: 3, duration: "11:38", title: "楞次定律最终结论", part: "3.【讲义64】【楞次定律】最终结论", require: "截 1 张方向判断题" },
+    "induction-law": { source: "黄夫人物理一轮", bvKey: "induction", page: 5, duration: "12:30", title: "电磁感应定律介绍", part: "5.【讲义65】【电磁感应定律】介绍", require: "截 1 张感应电动势题" },
+    "induction-motion": { source: "黄夫人物理一轮", bvKey: "induction", page: 8, duration: "24:21", title: "动生电动势知识总结", part: "8.【讲义66】【动生电动势】知识总结", require: "截 1 张动生电动势题" },
+    "induction-practice": { source: "黄夫人物理一轮", bvKey: "induction", page: 4, duration: "16:05", title: "楞次定律练习", part: "4.【讲义72】【楞次定律】练习", require: "截 1 张楞次练习题" },
+  };
 
   const TASKS = [
     {
@@ -296,32 +373,32 @@
   const ROUTE_DAYS = [
     { day: 1, week: 1, title: "直线运动 + 受力起步", subtitle: "匀变速、牛二、正交分解", taskIds: ["kinematics-basic", "newton-second-law", "force-decomposition"] },
     { day: 2, week: 1, title: "功能、电路、曲线入门", subtitle: "功与功率、闭合电路、平抛、万有引力", taskIds: ["work-power", "closed-circuit-ohm", "projectile-motion", "universal-gravitation"] },
-    { day: 3, week: 1, title: "运动图像 + 追及相遇", subtitle: "把 x-t / v-t 图像和刹车追及补成拿分点", focus: ["运动图像", "刹车陷阱", "追及相遇"] },
-    { day: 4, week: 1, title: "受力分析回炉", subtitle: "重力、弹力、摩擦力、正交分解再做题", focus: ["受力图", "摩擦力", "动态平衡"] },
-    { day: 5, week: 1, title: "牛二基础题", subtitle: "斜面、连接体、简单多物体，不碰难模型", focus: ["F=ma", "斜面", "连接体"] },
-    { day: 6, week: 1, title: "平抛 + 圆周基础", subtitle: "曲线运动只抓分解和向心力", focus: ["平抛分解", "圆周运动", "向心力"] },
-    { day: 7, week: 1, title: "周测 + 错题回炉", subtitle: "用小卷检查第 1 周，错题导入记录", focus: ["限时小测", "错题复盘"] },
-    { day: 8, week: 2, title: "功与功率二刷", subtitle: "做功正负、平均功率、瞬时功率", focus: ["做功", "功率", "动能定理入口"] },
-    { day: 9, week: 2, title: "动能定理 + 机械能", subtitle: "先会列始末状态，再谈复杂过程", focus: ["动能定理", "机械能守恒"] },
-    { day: 10, week: 2, title: "万有引力 + 圆周综合", subtitle: "天体题只抓半径、周期、速度比较", focus: ["万有引力", "同步卫星", "轨道半径"] },
-    { day: 11, week: 2, title: "电场入门", subtitle: "电场强度、电势、电势能先会认量", focus: ["电场强度", "电势", "电势能"] },
-    { day: 12, week: 2, title: "恒定电流基础", subtitle: "串并联、电动势、内阻、路端电压", focus: ["串并联", "电动势", "内阻"] },
-    { day: 13, week: 2, title: "电学实验入门", subtitle: "仪器读数、伏安法、测电阻", focus: ["电表读数", "伏安法", "测电阻"] },
-    { day: 14, week: 2, title: "第 2 周小测", subtitle: "功能、天体、电路各抽基础题", focus: ["限时小测", "错题导入"] },
-    { day: 15, week: 3, title: "力学实验专项", subtitle: "打点计时器、纸带、图像处理", focus: ["纸带", "逐差法", "图像斜率"] },
-    { day: 16, week: 3, title: "电学实验专项", subtitle: "测电源电动势与内阻、仪器选择", focus: ["电源实验", "仪器选择", "误差分析"] },
-    { day: 17, week: 3, title: "振动与波", subtitle: "低分段先会读图、会判断基本量", focus: ["振动图像", "波形图", "周期频率"] },
-    { day: 18, week: 3, title: "热学/光学/原子择一", subtitle: "按考试范围挑最容易拿分的小专题", focus: ["热学", "光学", "原子结构"] },
-    { day: 19, week: 3, title: "磁场基础", subtitle: "安培力、洛伦兹力、左手定则", focus: ["安培力", "洛伦兹力", "左手定则"] },
-    { day: 20, week: 3, title: "电磁感应入门", subtitle: "磁通量变化、楞次定律先会判断方向", focus: ["磁通量", "楞次定律", "感应电流"] },
-    { day: 21, week: 3, title: "第 3 周错题回炉", subtitle: "实验题和小专题错题集中二刷", focus: ["实验错题", "概念错题"] },
-    { day: 22, week: 4, title: "选择题公式回炉", subtitle: "把高频公式和二级结论做成可用清单", focus: ["公式清单", "基础选择题"] },
-    { day: 23, week: 4, title: "力学综合小卷", subtitle: "运动、受力、能量混合但不追难题", focus: ["力学综合", "限时训练"] },
-    { day: 24, week: 4, title: "电学综合小卷", subtitle: "电场、电路、实验混合基础题", focus: ["电学综合", "限时训练"] },
-    { day: 25, week: 4, title: "实验专项二刷", subtitle: "把最容易得分的实验题再刷一轮", focus: ["力学实验", "电学实验"] },
-    { day: 26, week: 4, title: "限时小卷", subtitle: "按真实考试节奏做一套低压小卷", focus: ["限时", "选择题", "实验题"] },
-    { day: 27, week: 4, title: "错题二刷", subtitle: "只做曾经不会、半会、卡住的题", focus: ["错题复盘", "卡点修正"] },
-    { day: 28, week: 4, title: "总复盘 + 下一轮计划", subtitle: "导出学习档案，决定下一轮补哪 3 个点", focus: ["学习档案", "复盘报告", "下轮计划"] },
+    { day: 3, week: 1, title: "运动图像 + 追及相遇", subtitle: "把 x-t / v-t 图像和刹车追及补成拿分点", focus: ["运动图像", "刹车陷阱", "追及相遇"], videoKeys: ["kin-chase-template", "kin-chase-critical", "kin-image-basic", "kin-image-special"] },
+    { day: 4, week: 1, title: "受力分析回炉", subtitle: "重力、弹力、摩擦力、正交分解再做题", focus: ["受力图", "摩擦力", "动态平衡"], videoKeys: ["balance-elastic", "balance-friction", "balance-static-single", "balance-dynamic-triangle"] },
+    { day: 5, week: 1, title: "牛二基础题", subtitle: "斜面、连接体、简单多物体，不碰难模型", focus: ["F=ma", "斜面", "连接体"], videoKeys: ["newton-motion", "newton-orthogonal", "newton-method", "newton-multi"] },
+    { day: 6, week: 1, title: "平抛 + 圆周基础", subtitle: "曲线运动只抓分解和向心力", focus: ["平抛分解", "圆周运动", "向心力"], videoKeys: ["projectile-basic", "projectile-practice", "circular-basic", "circular-newton"] },
+    { day: 7, week: 1, title: "周测 + 错题回炉", subtitle: "用小卷检查第 1 周，错题导入记录", focus: ["限时小测", "错题复盘"], videoKeys: ["kin-comprehensive", "newton-practice", "projectile-practice", "circular-practice"], mission: "不强制新课。先用本周截图复制同类测验包，让 AI 出 6-8 道小题；做错的题再回看对应视频片段。" },
+    { day: 8, week: 2, title: "功与功率二刷", subtitle: "做功正负、平均功率、瞬时功率", focus: ["做功", "功率", "动能定理入口"], videoKeys: ["energy-basic", "energy-work-image", "energy-power"] },
+    { day: 9, week: 2, title: "动能定理 + 机械能", subtitle: "先会列始末状态，再谈复杂过程", focus: ["动能定理", "机械能守恒"], videoKeys: ["energy-kinetic-method", "energy-kinetic-practice", "energy-relation"] },
+    { day: 10, week: 2, title: "万有引力 + 圆周综合", subtitle: "天体题只抓半径、周期、速度比较", focus: ["万有引力", "同步卫星", "轨道半径"], videoKeys: ["gravitation-law", "gravitation-formulas", "gravitation-sync", "gravitation-ratio"] },
+    { day: 11, week: 2, title: "电场入门", subtitle: "电场强度、电势、电势能先会认量", focus: ["电场强度", "电势", "电势能"], videoKeys: ["electric-basic", "electric-field-practice1", "electric-field-practice2", "electric-uniform-concept"] },
+    { day: 12, week: 2, title: "恒定电流基础", subtitle: "串并联、电动势、内阻、路端电压", focus: ["串并联", "电动势", "内阻"], videoKeys: ["circuit-current", "circuit-emf-internal", "circuit-serial", "circuit-closed-basic", "circuit-closed-calc"] },
+    { day: 13, week: 2, title: "电学实验入门", subtitle: "仪器读数、伏安法、测电阻", focus: ["电表读数", "伏安法", "测电阻"], videoKeys: ["experiment-circuit-basic", "experiment-meter", "experiment-resistance", "experiment-limit-divide"] },
+    { day: 14, week: 2, title: "第 2 周小测", subtitle: "功能、天体、电路各抽基础题", focus: ["限时小测", "错题导入"], videoKeys: ["energy-kinetic-practice2", "gravitation-ratio", "electric-uniform-practice", "circuit-basic-practice"], mission: "用第 8-13 天截图生成小测。每个专题至少 1 题，错题必须导入 MOCHI-RECORD。" },
+    { day: 15, week: 3, title: "力学实验专项", subtitle: "打点计时器、纸带、图像处理", focus: ["纸带", "逐差法", "图像斜率"], videoKeys: ["kin-paper-tape-basic", "kin-difference-method", "kin-image-basic"] },
+    { day: 16, week: 3, title: "电学实验专项", subtitle: "测电源电动势与内阻、仪器选择", focus: ["电源实验", "仪器选择", "误差分析"], videoKeys: ["experiment-resistance", "experiment-touch", "experiment-limit-divide", "experiment-source", "experiment-reading-caliper"] },
+    { day: 17, week: 3, title: "振动与波", subtitle: "低分段先会读图、会判断基本量", focus: ["振动图像", "波形图", "周期频率"], videoKeys: ["vibration-basic", "wave-basic", "wave-image"] },
+    { day: 18, week: 3, title: "热学/光学/原子择一", subtitle: "按考试范围挑最容易拿分的小专题", focus: ["热学", "光学", "原子结构"], mission: "这天先不硬塞随机视频。按老师/考试范围三选一：热学、光学、原子。打开小红书提分思路或学校资料，截 1-3 张代表题，再用同类测验包生成练习。" },
+    { day: 19, week: 3, title: "磁场基础", subtitle: "安培力、洛伦兹力、左手定则", focus: ["安培力", "洛伦兹力", "左手定则"], videoKeys: ["magnetic-basic", "magnetic-ampere", "magnetic-ampere-practice", "magnetic-lorentz"] },
+    { day: 20, week: 3, title: "电磁感应入门", subtitle: "磁通量变化、楞次定律先会判断方向", focus: ["磁通量", "楞次定律", "感应电流"], videoKeys: ["induction-lenz-basic", "induction-lenz-result", "induction-law", "induction-motion"] },
+    { day: 21, week: 3, title: "第 3 周错题回炉", subtitle: "实验题和小专题错题集中二刷", focus: ["实验错题", "概念错题"], videoKeys: ["experiment-source-practice", "induction-practice", "magnetic-ampere-practice", "wave-image"], mission: "只看自己错题对应的片段。每个错题先说清楚卡点，再导入学习记录。" },
+    { day: 22, week: 4, title: "选择题公式回炉", subtitle: "把高频公式和二级结论做成可用清单", focus: ["公式清单", "基础选择题"], videoKeys: ["kin-image-basic", "newton-method", "energy-basic", "electric-basic", "magnetic-basic"], mission: "今天重点不是刷长课，而是把常用公式和二级结论写成清单；不会用的公式回看对应短片段。" },
+    { day: 23, week: 4, title: "力学综合小卷", subtitle: "运动、受力、能量混合但不追难题", focus: ["力学综合", "限时训练"], videoKeys: ["kin-comprehensive", "balance-static-single", "newton-practice", "energy-kinetic-practice"] },
+    { day: 24, week: 4, title: "电学综合小卷", subtitle: "电场、电路、实验混合基础题", focus: ["电学综合", "限时训练"], videoKeys: ["electric-comprehensive", "circuit-closed-calc", "experiment-source", "magnetic-ampere-practice"] },
+    { day: 25, week: 4, title: "实验专项二刷", subtitle: "把最容易得分的实验题再刷一轮", focus: ["力学实验", "电学实验"], videoKeys: ["kin-paper-tape-basic", "experiment-reading-caliper", "experiment-source", "experiment-source-practice"] },
+    { day: 26, week: 4, title: "限时小卷", subtitle: "按真实考试节奏做一套低压小卷", focus: ["限时", "选择题", "实验题"], videoKeys: ["projectile-practice", "energy-kinetic-practice2", "circuit-basic-practice", "induction-practice"], mission: "用网站里已收集的例题截图生成 8-10 道限时小卷。完成后只记录最卡的 2-3 题。" },
+    { day: 27, week: 4, title: "错题二刷", subtitle: "只做曾经不会、半会、卡住的题", focus: ["错题复盘", "卡点修正"], videoKeys: ["kin-image-special", "newton-multi", "energy-relation", "circuit-closed-calc", "induction-practice"], mission: "从学习档案挑 5 张低星/半会卡片，先自己重做，再用同类测验包补 1 道变式。" },
+    { day: 28, week: 4, title: "总复盘 + 下一轮计划", subtitle: "导出学习档案，决定下一轮补哪 3 个点", focus: ["学习档案", "复盘报告", "下轮计划"], videoKeys: ["kin-comprehensive", "energy-kinetic-practice", "electric-comprehensive", "experiment-source-practice"], mission: "不追新课。导出学习档案，看哪个专题反复低星，选出下一轮最该补的 3 个点。" },
   ];
 
   function readState() {
@@ -437,6 +514,90 @@
 
   function findTask(id) {
     return TASKS.find((task) => task.id === id) || null;
+  }
+
+  function routeVideos(day) {
+    return (day?.videoKeys || []).map((key) => {
+      const video = ROUTE_VIDEO_LIBRARY[key];
+      return video ? { key, ...video } : null;
+    }).filter(Boolean);
+  }
+
+  function routeVideoUrl(video) {
+    if (video.url) return video.url;
+    const bvid = video.bvid || ONE_ROUND_BVS[video.bvKey];
+    if (!bvid) return ONE_ROUND_URL;
+    return `https://www.bilibili.com/video/${bvid}/${video.page ? `?p=${video.page}` : ""}`;
+  }
+
+  function routeVideoTask(day, video) {
+    const concepts = Array.isArray(day.focus) ? day.focus : [];
+    return {
+      id: `route-day-${day.day}-${video.key}`,
+      title: video.title || day.title,
+      subject: "physics",
+      nodeLabel: inferRouteNodeLabel(day),
+      day: day.day,
+      source: video.source || "B站资源",
+      duration: video.duration || "按需观看",
+      url: routeVideoUrl(video),
+      videoTitle: video.part || video.title || day.title,
+      focusMins: 35,
+      routeVideo: true,
+      prep: {
+        concepts,
+        backup: day.subtitle,
+        backupLinks: routeResources(day).slice(0, 3),
+      },
+    };
+  }
+
+  function routeSheetTask(day) {
+    const concepts = Array.isArray(day.focus) ? day.focus : [];
+    return {
+      id: `route-day-${day.day}-sheet`,
+      title: day.title,
+      subject: "physics",
+      nodeLabel: inferRouteNodeLabel(day),
+      day: day.day,
+      source: "当天学习单",
+      duration: "按需执行",
+      url: routeResources(day)[0]?.url || ONE_ROUND_URL,
+      videoTitle: day.subtitle,
+      focusMins: 45,
+      routeVideo: true,
+      prep: {
+        concepts,
+        backup: day.subtitle,
+        backupLinks: routeResources(day).slice(0, 3),
+      },
+    };
+  }
+
+  function findRouteVideoTask(id) {
+    for (const day of ROUTE_DAYS) {
+      if (`route-day-${day.day}-sheet` === id) return routeSheetTask(day);
+      for (const video of routeVideos(day)) {
+        const task = routeVideoTask(day, video);
+        if (task.id === id) return task;
+      }
+    }
+    return null;
+  }
+
+  function findSummerTask(id) {
+    return findTask(id) || findRouteVideoTask(id);
+  }
+
+  function inferRouteNodeLabel(day) {
+    const text = [day.title, day.subtitle, ...(day.focus || [])].join(" ");
+    if (/电场|电势|电路|电流|电动势|电阻|实验/.test(text)) return "电场";
+    if (/磁场|安培|洛伦兹/.test(text)) return "磁场";
+    if (/电磁感应|楞次|磁通量|感应/.test(text)) return "电磁感应";
+    if (/功|能|动量|机械能/.test(text)) return "能量守恒";
+    if (/万有引力|圆周|平抛|运动|图像|追及|纸带|波|振动/.test(text)) return "运动学";
+    if (/受力|牛二|摩擦|平衡|斜面/.test(text)) return "动力学";
+    return "运动学";
   }
 
   function routeTasks(day) {
@@ -585,7 +746,7 @@
           <div>
             <p class="summer-kicker">暑假物理 28 天路线</p>
             <h3>总计划</h3>
-            <p>前 7 节是详细视频任务；后续每一天先按主题学习单执行，资源会自动给到一轮合集、基础课和小红书攻略入口。</p>
+            <p>前 7 节是完整视频任务；第 3-28 天在学习单里列主线视频、例题截图入口和导入记录按钮。</p>
           </div>
           <div class="summer-route-card-stats">
             <span>已完成 ${stat.completed}/28 天</span>
@@ -633,17 +794,21 @@
     const completed = Boolean(routeInfo.completed);
     const resources = routeResources(day);
     const focus = Array.isArray(day.focus) ? day.focus : [];
+    const videos = routeVideos(day);
+    const intro = day.mission || `${day.title}：按下方主线视频从上到下看。每看完一个视频，至少截 1 张老师讲的代表例题，再复制同类测验包做变式练习。`;
     return `
       <div class="summer-route-placeholder summer-route-sheet ${completed ? "done" : isPending ? "pending" : ""}">
         <span class="material-symbols-outlined">${completed ? "check_circle" : isPending ? "download_done" : "route"}</span>
         <div>
           <strong>${completed ? "这张学习单已完成" : isPending ? "等你导入 MOCHI-RECORD" : "后续学习单已经可以执行"}</strong>
-          <p>${escapeHtml(day.title)}：先按资源入口找当天主题，看 1 个最贴近的视频或片段，截 1-3 张例题，再做记录。具体视频之后补得更细，也不会影响今天执行。</p>
+          <p>${escapeHtml(intro)}</p>
           ${focus.length ? `<div class="summer-route-focus">${focus.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>` : ""}
+          ${renderRouteVideos(day, state, videos)}
           <div class="summer-sheet-steps">
-            <span>1 打开资源找当天主题</span>
-            <span>2 看视频时截例题</span>
-            <span>3 粘贴 MOCHI-RECORD 完成</span>
+            <span>1 打开下方视频</span>
+            <span>2 每个视频收集例题</span>
+            <span>3 复制同类测验包做题</span>
+            <span>4 粘贴 MOCHI-RECORD 完成</span>
           </div>
           <div class="summer-sheet-links">
             ${resources.map((link) => `
@@ -660,6 +825,59 @@
           </div>
           ${routeInfo.lastImportedRecord ? `<p class="summer-import-done">已完成：${escapeHtml(routeInfo.lastImportedRecord.nodeLabel || "物理")} · ${"★".repeat(Number(routeInfo.lastImportedRecord.stars || 0))}</p>` : ""}
         </div>
+      </div>
+    `;
+  }
+
+  function renderRouteVideos(day, state, videos = routeVideos(day)) {
+    if (!videos.length) {
+      const task = routeSheetTask(day);
+      return `
+        <div class="summer-route-mission">
+          <span class="material-symbols-outlined">assignment</span>
+          <div>
+            <strong>今天按资料/错题执行</strong>
+            <p>不用硬看新视频。打开下方资源或学校资料，选 1 个最贴近的小专题，收集例题截图后生成同类测验。</p>
+          </div>
+        </div>
+        ${renderExampleCollector(task, state, { compact: true })}
+      `;
+    }
+    return `
+      <div class="summer-route-videos">
+        <div class="summer-route-videos-title">
+          <span class="material-symbols-outlined">video_library</span>
+          <strong>主线视频</strong>
+          <small>${videos.length} 个资源，按顺序看；太长就先看前半段和例题段。</small>
+        </div>
+        ${videos.map((video) => {
+          const task = routeVideoTask(day, video);
+          const examples = taskExamples(state, task.id);
+          return `
+            <article class="summer-route-video-card" data-summer-task-id="${escapeHtml(task.id)}">
+              <div class="summer-route-video-main">
+                <span class="summer-route-video-order">${escapeHtml(String(videos.indexOf(video) + 1))}</span>
+                <div>
+                  <strong>${escapeHtml(video.title)}</strong>
+                  <p>${escapeHtml(video.source || "B站资源")} · ${escapeHtml(video.duration || "按需观看")} · ${escapeHtml(video.part || video.title)}</p>
+                  <small>${escapeHtml(video.require || "截 1 张代表例题，后面用来生成同类测验。")}</small>
+                </div>
+              </div>
+              <div class="summer-route-video-actions">
+                <a class="btn btn-soft btn-sm" href="${escapeHtml(task.url)}" target="_blank" rel="noreferrer">
+                  <span class="material-symbols-outlined">open_in_new</span>打开视频
+                </a>
+                <button class="btn btn-soft btn-sm" data-summer-action="focus" data-task-id="${escapeHtml(task.id)}" type="button">
+                  <span class="material-symbols-outlined">timer</span>开始专注
+                </button>
+                <button class="btn btn-primary btn-sm" data-summer-action="copy-example-quiz" data-task-id="${escapeHtml(task.id)}" type="button" ${examples.length ? "" : "disabled"}>
+                  <span class="material-symbols-outlined">auto_awesome</span>${examples.length ? "同类测验" : "先贴例题"}
+                </button>
+              </div>
+            </article>
+            ${renderExampleCollector(task, state, { compact: true })}
+          `;
+        }).join("")}
       </div>
     `;
   }
@@ -980,15 +1198,19 @@
     `;
   }
 
-  function renderExampleCollector(task, state) {
+  function renderExampleCollector(task, state, options = {}) {
     const examples = taskExamples(state, task.id);
+    const title = options.compact ? "本视频例题截图" : "视频例题截图";
+    const helper = examples.length
+      ? `已收集 ${examples.length} 张。点“同类测验包”，再把这些截图一起发给 AI。`
+      : "看视频时截 1-3 张代表性例题，直接粘到这里。收集后可以让 AI 定制同类测试。";
     return `
       <section class="summer-example-box">
         <div class="summer-example-head">
           <span class="material-symbols-outlined">add_photo_alternate</span>
           <div>
-            <strong>视频例题截图</strong>
-            <p>看视频时截 1-3 张代表性例题，直接粘到这里。以后可以拿这些图让 AI 定制同类测试。</p>
+            <strong>${escapeHtml(title)}</strong>
+            <p>${escapeHtml(helper)}</p>
           </div>
         </div>
         <div class="summer-example-actions">
@@ -1001,6 +1223,9 @@
             <span class="material-symbols-outlined">upload_file</span>上传图片
             <input data-example-file data-task-id="${escapeHtml(task.id)}" type="file" accept="image/*" hidden>
           </label>
+          <button class="btn btn-primary btn-sm summer-example-quiz" data-summer-action="copy-example-quiz" data-task-id="${escapeHtml(task.id)}" type="button" ${examples.length ? "" : "disabled"}>
+            <span class="material-symbols-outlined">auto_awesome</span>${examples.length ? "复制同类测验包" : "先贴例题"}
+          </button>
         </div>
         ${examples.length ? `
           <div class="summer-example-list">
@@ -1151,7 +1376,7 @@
   async function handleAction(event) {
     const action = event.currentTarget.dataset.summerAction;
     const id = event.currentTarget.dataset.taskId || "";
-    const task = TASKS.find((item) => item.id === id);
+    const task = findSummerTask(id);
     if (action === "route-day") {
       const dayNo = Number(event.currentTarget.dataset.routeDay || 0);
       if (ROUTE_DAYS.some((day) => day.day === dayNo)) {
@@ -1304,7 +1529,25 @@
       return;
     }
     if (action === "focus") {
-      updateTask(task.id, { watched: taskState(readState(), task.id).watched || false, lastFocusedAt: new Date().toISOString(), activeStep: 0 });
+      const now = new Date().toISOString();
+      if (task.routeVideo) {
+        const state = readState();
+        state.tasks[task.id] = {
+          ...taskState(state, task.id),
+          watched: taskState(state, task.id).watched || false,
+          lastFocusedAt: now,
+          activeStep: 0,
+          updatedAt: now,
+        };
+        state.routeDays[task.day] = {
+          ...routeDayState(state, task.day),
+          startedAt: routeDayState(state, task.day).startedAt || now,
+          updatedAt: now,
+        };
+        writeState(state);
+      } else {
+        updateTask(task.id, { watched: taskState(readState(), task.id).watched || false, lastFocusedAt: now, activeStep: 0 });
+      }
       const goal = getPracticeItems(task).length ? `暑假物理：${task.title}过关小题` : `暑假物理：看${task.title}`;
       window.MochiApp?.startCommittedFocus?.(goal, task.focusMins);
       return;
@@ -1318,7 +1561,27 @@
       await copyPracticePrompt(task, itemIndex, taskAnchorOptions(task.id, event.currentTarget));
       return;
     }
+    if (action === "copy-example-quiz") {
+      await copyExampleQuizPrompt(task, taskAnchorOptions(task.id, event.currentTarget));
+      return;
+    }
     if (action === "import") {
+      if (task.routeVideo) {
+        const state = readState();
+        state.pendingTaskId = "";
+        state.pendingRouteDay = task.day;
+        state.routeDays[task.day] = {
+          ...routeDayState(state, task.day),
+          startedAt: routeDayState(state, task.day).startedAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        writeState(state);
+        refreshHome({ preserveScroll: true });
+        if (focusImportBox()) {
+          window.MochiApp?.toast?.(`已关联第 ${task.day} 天学习单：粘贴 MOCHI-RECORD 后自动完成`);
+        }
+        return;
+      }
       setPendingTask(task.id, { activeStep: 2 });
       if (focusImportBox()) {
         window.MochiApp?.toast?.("已关联这条任务：粘贴 MOCHI-RECORD 后自动完成");
@@ -1357,6 +1620,48 @@
     }
   }
 
+  async function copyExampleQuizPrompt(task, refreshOptions = { preserveScroll: true }) {
+    const state = readState();
+    const examples = taskExamples(state, task.id);
+    if (!examples.length) {
+      window.MochiApp?.toast?.("先把这节视频里的例题截图贴进来");
+      return;
+    }
+    const prompt = buildExampleQuizPrompt(task, examples);
+    const ok = await copyText(prompt);
+    const now = new Date().toISOString();
+    const nextState = readState();
+    nextState.tasks[task.id] = {
+      ...taskState(nextState, task.id),
+      watched: true,
+      practicingAt: taskState(nextState, task.id).practicingAt || now,
+      exampleQuizPromptCopiedAt: now,
+      activeStep: 2,
+      updatedAt: now,
+    };
+    if (task.routeVideo) {
+      nextState.pendingTaskId = "";
+      nextState.pendingRouteDay = task.day;
+      nextState.routeDays[task.day] = {
+        ...routeDayState(nextState, task.day),
+        startedAt: routeDayState(nextState, task.day).startedAt || now,
+        updatedAt: now,
+      };
+    } else {
+      nextState.pendingTaskId = task.id;
+      nextState.pendingRouteDay = 0;
+      nextState.activeTaskId = task.id;
+    }
+    writeState(nextState);
+    refreshHome(refreshOptions);
+    if (ok) {
+      window.MochiApp?.toast?.("已复制同类测验包：把例题截图一起发给 AI，做完后粘回记录");
+    } else {
+      showPromptFallback(prompt);
+      window.MochiApp?.toast?.("已打开手动复制框，复制后连同截图发给 AI");
+    }
+  }
+
   async function handleExamplePaste(event) {
     const taskId = event.currentTarget.dataset.taskId || "";
     const items = Array.from(event.clipboardData?.items || []);
@@ -1375,7 +1680,7 @@
   }
 
   async function saveExampleFile(taskId, file, trigger) {
-    const task = findTask(taskId);
+    const task = findSummerTask(taskId);
     if (!task || !file) return;
     if (!String(file.type || "").startsWith("image/")) {
       window.MochiApp?.toast?.("请粘贴或上传图片截图");
@@ -1633,6 +1938,36 @@
       "请一步步问我，不要直接给答案；如果我不会，先用更简单的问题铺垫。",
       "最后请按 MochiStudy 格式输出一条 MOCHI-RECORD。",
     ].filter(Boolean).join("\n");
+  }
+
+  function buildExampleQuizPrompt(task, examples) {
+    const backupLinks = Array.isArray(task.prep?.backupLinks)
+      ? task.prep.backupLinks.map((link) => `${link.label || "资源"}：${link.url}`).join("；")
+      : "";
+    const exampleLines = examples.map((item, index) => {
+      const status = item.status || "半会";
+      const note = item.note || "视频例题截图";
+      return `例题截图 ${index + 1}：掌握状态=${status}；收集时间=${formatExampleDate(item.createdAt)}；备注=${note}`;
+    }).join("\n");
+    return [
+      `我要根据刚学的视频生成同类测验。`,
+      `视频/主题：${task.title}`,
+      task.source ? `来源：${task.source}${task.duration ? `，时长 ${task.duration}` : ""}` : "",
+      task.videoTitle ? `视频标题/分集：${task.videoTitle}` : "",
+      task.url ? `视频链接：${task.url}` : "",
+      task.prep?.concepts?.length ? `本节相关概念：${task.prep.concepts.join("、")}。` : "",
+      task.prep?.backup ? `卡住时备用范围：${task.prep.backup}。${backupLinks ? `资源链接：${backupLinks}。` : ""}` : "",
+      "",
+      "我会把下面这些例题截图一起上传/粘贴给你。你必须先看截图；如果你没有看到图片，请先提醒我上传截图，不要凭空编题。",
+      exampleLines,
+      "",
+      "请按这个流程带我练：",
+      "1. 先识别每张截图考的知识点、用到的方法、最容易错在哪里。",
+      "2. 基于截图里的题型，生成 2-4 道同类变式题，从最简单到稍微变式。题目必须适合基础很差的学生。",
+      "3. 如果题目依赖图像、受力图、电路图或函数图像，请把图形关系说清楚，必要时用简单 ASCII/文字标注；不要用抽象的 theta、v0 这类学生不直观的变量，尽量用中文量和具体数字。",
+      "4. 一次只给我一题，不要直接给答案。先让我写思路；我不会时，你用更小的问题一步步引导。",
+      "5. 全部练完后，请按 MochiStudy 格式输出一条 MOCHI-RECORD，卡点要写清楚是哪类方法没掌握。",
+    ].filter((line) => line !== "").join("\n");
   }
 
   async function copyText(text) {
