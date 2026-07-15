@@ -1452,8 +1452,8 @@
     const isPending = state.pendingTaskId === task.id || state.pendingRouteTaskId === task.id;
     const title = options.compact ? "粘回记录" : "Gemini 回来后粘贴学习记录";
     const helper = taskHasLinkedRecord(info)
-      ? "这节已经归档过记录；如果 Gemini 又输出了新的 MOCHI-RECORD，也可以继续粘。"
-      : "把 Gemini 最后输出的 MOCHI-RECORD 粘这里，会自动归档到这节视频。";
+      ? "这节已经归档过记录；Gemini 又给了新记录也能继续粘。"
+      : "把 Gemini 给你的记录整段粘进来，会自动归档到这节。";
     return `
       <section class="summer-import-dock ${isPending ? "pending" : ""}" data-summer-import-task-id="${escapeHtml(task.id)}">
         <details ${isPending ? "open" : ""}>
@@ -1464,7 +1464,7 @@
           </summary>
           <div class="summer-import-dock-body">
             <p>${escapeHtml(helper)}</p>
-            <textarea data-summer-record-paste data-task-id="${escapeHtml(task.id)}" rows="3" placeholder="把 Gemini 输出里从 ---MOCHI-RECORD-START--- 到 ---MOCHI-RECORD-END--- 的整段粘贴到这里"></textarea>
+            <textarea data-summer-record-paste data-task-id="${escapeHtml(task.id)}" rows="3" placeholder="把 Gemini 给你的记录整段粘进来，会自动导入"></textarea>
             <button class="btn btn-primary btn-sm" data-summer-action="parse-task-record" data-task-id="${escapeHtml(task.id)}" type="button">
               <span class="material-symbols-outlined">download_done</span>导入到这节课
             </button>
@@ -2200,8 +2200,8 @@
     const compact = Boolean(options.compact);
     const title = compact ? "例题截图" : "视频例题截图";
     const helper = examples.length
-      ? `已自动保存 ${examples.length} 张到本机。点“同类测验包”，再把这些截图一起发给 AI。`
-      : compact ? "截老师讲的代表题，点左侧后 Ctrl+V，会自动保存到本机。" : "看视频时截 1-3 张代表性例题，点左侧后 Ctrl+V，会自动保存到本机。";
+      ? `已存 ${examples.length} 张。点“复制测验包”，把题一起发给 Gemini。`
+      : "看视频时截 1-3 张代表题，点左侧后 Ctrl+V 存下来。";
     return `
       <section class="summer-example-box ${compact ? "compact" : ""}" data-summer-example-task-id="${escapeHtml(task.id)}">
         <div class="summer-example-head">
@@ -2222,15 +2222,12 @@
             <input data-example-file data-task-id="${escapeHtml(task.id)}" type="file" accept="image/*" hidden>
           </label>
           <button class="btn btn-primary btn-sm summer-example-quiz" data-summer-action="copy-example-quiz" data-task-id="${escapeHtml(task.id)}" type="button" ${examples.length ? "" : "disabled"}>
-            <span class="material-symbols-outlined">auto_awesome</span>${examples.length ? "测验包" : "先贴图"}
-          </button>
-          <button class="btn btn-soft btn-sm summer-example-copy" data-summer-action="copy-example-image" data-task-id="${escapeHtml(task.id)}" data-example-id="${escapeHtml(examples[0]?.id || "")}" type="button" ${examples.length ? "" : "disabled"}>
-            <span class="material-symbols-outlined">content_copy</span>${examples.length > 1 ? "复制首图" : "复制图片"}
+            <span class="material-symbols-outlined">auto_awesome</span>${examples.length ? "复制测验包" : "先贴图"}
           </button>
         </div>
         <p class="summer-example-local-note">
           <span class="material-symbols-outlined">save</span>
-          粘贴成功就已保存到本机浏览器；“从文件添加”只是备用，不会上传到 GitHub。
+          截图只存在你自己的浏览器里，不会上传。
         </p>
         ${renderExampleAiStatus(task, examples)}
         ${examples.length ? `
@@ -2250,10 +2247,10 @@
       <div class="summer-example-ai-status ${hasExamples ? "ready" : ""}">
         <span class="material-symbols-outlined">${hasExamples ? "content_paste_go" : "info"}</span>
         <div>
-          <strong>${hasExamples ? "下一步：测验包和图片发给 Gemini，练完写本节收尾" : "当前：先把视频里的例题截图存到这里"}</strong>
+          <strong>${hasExamples ? "下一步：复制测验包发给 Gemini" : "先把视频里的例题截图存到这里"}</strong>
           <p>${hasExamples
-            ? "不用接多模态 API。先点“测验包”复制文字，再点“复制图片”把截图贴到同一个 Gemini 对话里；练完回到下方收尾卡。"
-            : "截图保存在本机浏览器里；生成同类题时，把提示词和图片一起交给 Gemini。"
+            ? "点“复制测验包”→ 到 Gemini 粘文字、再 Ctrl+V 把截图贴进同一条对话 → 练完把记录粘回下面。"
+            : "截图只存在本机；等下和测验包一起发给 Gemini。"
           }</p>
         </div>
       </div>
@@ -3209,7 +3206,7 @@
     writeState(nextState);
     refreshHome(refreshOptions);
     if (ok) {
-      window.MochiApp?.toast?.("已复制测验包：发给 AI 练完后，回到本节点写收尾");
+      window.MochiApp?.toast?.("已复制测验包：到 Gemini 粘文字 + Ctrl+V 贴图，练完回来写收尾");
     } else {
       showPromptFallback(prompt);
       window.MochiApp?.toast?.("已打开手动复制框，复制后连同截图发给 AI，练完回本节点写收尾");
@@ -3699,7 +3696,7 @@
       task.prep?.concepts?.length ? `本节相关概念：${task.prep.concepts.join("、")}。` : "",
       task.prep?.backup ? `卡住时备用范围：${task.prep.backup}。${backupLinks ? `资源链接：${backupLinks}。` : ""}` : "",
       "",
-      "我会先粘贴这段文字，然后回 MochiStudy 点击“复制图片”，把例题截图粘到同一个 Gemini 对话里。你必须先看截图；如果你没有收到图片，请只提醒我继续粘贴图片，不要凭空编题。",
+      "我会先粘贴这段文字，然后直接把例题截图 Ctrl+V 粘到同一个对话里。你必须先看截图；如果没收到图片，请只提醒我继续粘图，不要凭空编题。",
       exampleLines,
       "",
       "请按这个流程带我练：",
