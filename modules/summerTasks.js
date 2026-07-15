@@ -21,6 +21,7 @@
   const SUMMER_REWARD_BOARD_SIZE = 8;
   let rewardAnimationTimer = null;
   let examplePointerAnchor = null;
+  let routeOverviewOpen = false;
   const ONE_ROUND_BVS = {
     kinematics: "BV1D54y1m7Av",
     balance: "BV1vD4y1U7k4",
@@ -818,11 +819,6 @@
             `).join("")}
           </div>
         </div>
-        <div class="summer-route-meta">
-          <span>未完成自动顺延</span>
-          <span>看完视频要留例题截图</span>
-          <span>写完本节收尾才会顺延</span>
-        </div>
         ${activeDay && !routeDayCompleted(activeDay, state) ? `
           <div class="summer-active-day-bar">
             <span>当前锁定：第 ${activeDay.day} 天 · ${escapeHtml(activeDay.title)}</span>
@@ -833,6 +829,7 @@
         ${dailyGate ? renderDailyReflectionOverlay(dailyGate, state) : ""}
         ${renderPendingImportFloat(state)}
         ${renderSummerRewardFloat(state)}
+        ${routeOverviewOpen ? renderRouteOverviewOverlay() : ""}
       </section>
     `;
   }
@@ -1114,9 +1111,7 @@
         title: `第 ${dailyGate.day} 天收尾复盘`,
         description: "这一组已经学完，先留下今天总感受，再进入下一组。",
         stats: [
-          { label: "今日任务", value: "已完成", note: "待复盘" },
-          { label: "复盘", value: "必填", note: "30 秒" },
-          { label: "下一组", value: "待解锁", note: "写完出现" },
+          { label: "复盘", value: "必填", note: "30 秒解锁下一组" },
         ],
       };
     }
@@ -1131,15 +1126,12 @@
         description: nextTask ? `下一步只盯一件事：${nextTask.title}` : "这一组已经完成，下一组会自动出现。",
         stats: [
           { label: "今日完成", value: `${completed} 项`, note: `共 ${total} 项` },
-          { label: "当前显示", value: `${queue.length} 项`, note: "先做最前面" },
-          { label: "剩余详细课", value: `${remainingDetailed} 节`, note: "完成后顺延" },
         ],
       };
     }
     if (planDay) {
       const videos = routeVideos(planDay);
       const tasks = routeVideoTasks(planDay);
-      const exampleCount = tasks.reduce((sum, task) => sum + taskExamples(state, task.id).length, 0);
       const completed = routeDayCompleted(planDay, state);
       const pending = Number(pendingRoute?.day || 0) === planDay.day;
       const readyCount = tasks.filter((task) => taskReadyToAdvance(task, state)).length;
@@ -1148,7 +1140,6 @@
         description: planDay.subtitle,
         stats: [
           { label: "今日资源", value: videos.length ? `${videos.length} 个视频` : "1 张学习单", note: videos.length ? "按顺序看" : "按资料执行" },
-          { label: "例题截图", value: `${exampleCount} 张`, note: "看课时收集" },
           { label: "本节收尾", value: completed ? "已完成" : `${readyCount}/${tasks.length}`, note: pending ? "有记录待归档" : "写完变绿" },
         ],
       };
@@ -1161,6 +1152,31 @@
         { label: "下一步", value: "导出档案", note: "看卡点" },
       ],
     };
+  }
+
+  // 首页一行入口：显示 28 天进度，点开进全屏总览
+  function renderRouteEntry() {
+    const stat = routeStats(readState());
+    return `
+      <button class="card home-status-drawer home-status-link" data-summer-action="open-route-overview" type="button">
+        <span class="material-symbols-outlined">calendar_month</span>
+        <span class="home-status-digest">28 天总路线 · ${stat.completed}/${stat.total}</span>
+        <span class="home-status-arrow material-symbols-outlined">chevron_right</span>
+      </button>
+    `;
+  }
+
+  function renderRouteOverviewOverlay() {
+    return `
+      <div class="summer-route-overlay" data-summer-route-overlay>
+        <div class="summer-route-overlay-inner">
+          <button class="summer-route-overlay-close" data-summer-action="close-route-overview" type="button" aria-label="关闭总览">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+          ${renderRouteOverviewCard()}
+        </div>
+      </div>
+    `;
   }
 
   function renderRouteOverviewCard() {
@@ -1358,7 +1374,6 @@
         <div>
           <strong>${completed ? "这张学习单已完成" : waitingReview ? "已导入，先写收尾复盘" : isPending ? "等你导入 MOCHI-RECORD" : "后续学习单已经可以执行"}</strong>
           <p>${escapeHtml(intro)}</p>
-          ${renderRouteSourceNote(day, videos)}
           ${focus.length ? `<div class="summer-route-focus">${focus.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>` : ""}
           ${renderRouteVideos(day, state, videos)}
           <div class="summer-sheet-steps">
@@ -1371,18 +1386,6 @@
           ${routeInfo.lastImportedRecord ? `<p class="summer-import-done">已完成：${escapeHtml(routeInfo.lastImportedRecord.nodeLabel || "物理")} · ${"★".repeat(Number(routeInfo.lastImportedRecord.stars || 0))}</p>` : ""}
         </div>
       </div>
-    `;
-  }
-
-  function renderRouteSourceNote(day, videos = []) {
-    if (day.day <= 2 || !videos.length) return "";
-    const sources = [...new Set(videos.map((video) => video.source || "B站资源"))];
-    const huangCount = sources.filter((source) => /黄夫人/.test(source)).length || videos.filter((video) => /黄夫人/.test(video.source || "")).length;
-    const sourceText = huangCount ? "当前可点视频多为已买讲义配套的一轮/基础课兜底" : `当前视频来源：${sources.join(" / ")}`;
-    return `
-      <p class="summer-route-source-note">
-        主线主题按小红书攻略方向拆；${escapeHtml(sourceText)}。如果后面补到原帖推荐 BV，会在这里替换。
-      </p>
     `;
   }
 
@@ -2450,6 +2453,16 @@
         writeState(state);
         refreshHome(anchor);
       }
+      return;
+    }
+    if (action === "open-route-overview") {
+      routeOverviewOpen = true;
+      refreshHome({ preserveScroll: true });
+      return;
+    }
+    if (action === "close-route-overview") {
+      routeOverviewOpen = false;
+      refreshHome({ preserveScroll: true });
       return;
     }
     if (action === "route-auto") {
@@ -3761,8 +3774,18 @@
     const anchor = options.preserveAnchor;
     const scrollX = window.scrollX;
     const scrollY = window.scrollY;
+    // 28 天总览覆盖层有自己的内部滚动；重渲染会把它重建到顶部，先记住再还原
+    const overlayScroll = document.querySelector(".summer-route-overlay")?.scrollTop || 0;
     const view = document.getElementById("view");
     if (view && view.querySelector(".home-flow")) window.MochiFarm?.renderFarm?.(view);
+    if (overlayScroll > 0) {
+      const restoreOverlay = () => {
+        const nextOverlay = document.querySelector(".summer-route-overlay");
+        if (nextOverlay) nextOverlay.scrollTop = overlayScroll;
+      };
+      requestAnimationFrame(restoreOverlay);
+      setTimeout(restoreOverlay, 60);
+    }
     if (anchor?.selector && Number.isFinite(anchor.top)) {
       const restoreAnchor = () => {
         const next = document.querySelector(anchor.selector);
@@ -3796,6 +3819,7 @@
     attachImportedRecord,
     progress,
     renderRouteOverviewCard,
+    renderRouteEntry,
     getTasks: () => TASKS.slice(),
     getRewardHistory: () => rewardState(readState()).history,
     loadDemoState,

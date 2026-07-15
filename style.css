@@ -11166,3 +11166,105 @@ body.focus-mode #view {
   gap: 4px;
   white-space: nowrap;
 }
+
+/* ===== 首页折叠留痕状态区（V 首页减负） ===== */
+.home-status-area {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.home-status-drawer {
+  padding: 0;
+  overflow: hidden;
+}
+/* summary 和 link 共用同一套横向行布局，保证图标/文字/箭头三者垂直居中不错位 */
+.home-status-summary,
+.home-status-link {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 14px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text, #3a2c30);
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+}
+.home-status-summary::-webkit-details-marker { display: none; }
+.home-status-link {
+  border: none;
+  background: var(--card-bg, #fff);
+  font-family: inherit;
+}
+.home-status-link:hover { background: var(--primary-soft, #faf0f3); }
+.home-status-summary > .material-symbols-outlined:first-child,
+.home-status-link > .material-symbols-outlined:first-child {
+  font-size: 21px;
+  line-height: 1;
+  color: var(--primary, #864d61);
+  flex-shrink: 0;
+}
+.home-status-digest {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.home-status-arrow {
+  font-size: 20px;
+  line-height: 1;
+  color: var(--muted, #a08a90);
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+.home-status-drawer[open] .home-status-arrow { transform: rotate(180deg); }
+.home-status-body {
+  padding: 2px 12px 12px;
+}
+.home-status-body > .card {
+  box-shadow: none;
+  border: 1px solid var(--border, #efe3e6);
+  margin: 0;
+}
+
+/* ===== 28 天总路线全屏总览覆盖层 ===== */
+.summer-route-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 640;
+  background: rgba(30, 20, 24, 0.55);
+  backdrop-filter: blur(3px);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  overflow-y: auto;
+  padding: 24px 12px 48px;
+  animation: fadeIn 0.18s ease;
+}
+.summer-route-overlay-inner {
+  position: relative;
+  width: 100%;
+  max-width: 760px;
+}
+.summer-route-overlay-close {
+  position: sticky;
+  top: 0;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  background: var(--card-bg, #fff);
+  color: var(--text, #3a2c30);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  z-index: 2;
+}

@@ -508,6 +508,109 @@
     `;
   }
 
+  // 近 7 天（含今天）导入卡片总数，用于折叠区一行摘要
+  function calcWeekTotal() {
+    const logs = window.MochiApp?.readStudyLogs?.() || [];
+    const today = new Date();
+    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6);
+    const startKey = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
+    return logs.filter((log) => String(log.date || "").slice(0, 10) >= startKey).length;
+  }
+
+  function calcThisWeekFocusCount() {
+    const focusLogs = (window.MochiApp?.readFocusLogs?.() || []).filter((l) => l.type === "focus" && l.completed);
+    const thisMon = weekStartKey(0);
+    return focusLogs.filter((l) => String(l.date) >= thisMon).length;
+  }
+
+  // 折叠留痕：一行摘要（带数字）+ 就地展开原内容，信息不丢只降视觉权重
+  function statusDrawer({ icon, digest, body, open = false }) {
+    return `
+      <details class="card home-status-drawer"${open ? " open" : ""}>
+        <summary class="home-status-summary">
+          <span class="material-symbols-outlined">${icon}</span>
+          <span class="home-status-digest">${escapeAttr(digest)}</span>
+          <span class="home-status-arrow material-symbols-outlined">expand_more</span>
+        </summary>
+        <div class="home-status-body">${body}</div>
+      </details>
+    `;
+  }
+
+  function statusLink({ icon, digest, route, action }) {
+    const attr = route ? `data-route="${route}"` : `data-summer-action="${action}"`;
+    return `
+      <button class="card home-status-drawer home-status-link" ${attr} type="button">
+        <span class="material-symbols-outlined">${icon}</span>
+        <span class="home-status-digest">${escapeAttr(digest)}</span>
+        <span class="home-status-arrow material-symbols-outlined">chevron_right</span>
+      </button>
+    `;
+  }
+
+  function renderHomeStatusArea(state, farmLv, nextLv, harvestPct, hasRecords) {
+    const drawers = [];
+
+    // 农场 + 本周趋势
+    const [m, p, c] = SUBJECTS.map((s) => state.plots[s]?.recordCount || 0);
+    const weekTotal = calcWeekTotal();
+    drawers.push(statusDrawer({
+      icon: "yard",
+      digest: `农场 Lv.${farmLv.level} · 数${m}物${p}化${c}${weekTotal ? ` · 本周${weekTotal}张` : ""}`,
+      body: `
+        <div class="mini-farm-header">
+          <span class="farm-level-badge">Lv.${farmLv.level} ${farmLv.name}</span>
+          <span class="farm-xp-hint">${nextLv ? `还需 ${nextLv.minHarvests - state.totalHarvests} 次收获` : "已达最高等级"}</span>
+        </div>
+        <div class="mini-farm-row">
+          ${SUBJECTS.map((subject) => renderMiniPlot(subject, state)).join("")}
+        </div>
+        <div class="mini-farm-xp-track">
+          <div class="mini-farm-xp-fill" style="width:${harvestPct}%"></div>
+        </div>
+        ${renderWeekTrend()}
+      `,
+    }));
+
+    // 今日复习（有复习进行中时自动展开，方便就地粘回）
+    if (hasRecords) {
+      const reviewState = window.MochiReviewEngine?.buildReviewState?.();
+      const dueCount = (reviewState?.todaySuggestions || []).length;
+      const reviewOpen = Boolean(HOME_REVIEW_STATE.activeKey || HOME_REVIEW_STATE.importResult);
+      drawers.push(statusDrawer({
+        icon: "rate_review",
+        digest: dueCount > 0 ? `今日复习 · ${dueCount} 条待复习` : "今日复习 · 暂无到期",
+        body: renderTodayReviewCard(),
+        open: reviewOpen,
+      }));
+    }
+
+    // 说到做到（只在有承诺/专注数据时出现）
+    const recapHtml = renderCommitmentRecap();
+    if (recapHtml) {
+      drawers.push(statusDrawer({
+        icon: "trending_up",
+        digest: `你的节奏 · 本周专注 ${calcThisWeekFocusCount()} 次`,
+        body: recapHtml,
+      }));
+    }
+
+    // 28 天总路线入口（点开进全屏总览，逻辑在 summerTasks）
+    const routeEntry = window.MochiSummerTasks?.renderRouteEntry?.();
+    if (routeEntry) drawers.push(routeEntry);
+
+    // 学习档案入口：进卡片收藏册看真正收集到的卡片（比赛季页的冷数字更贴合"爱收集陈列"）
+    if (hasRecords) {
+      drawers.push(statusLink({
+        icon: "collections_bookmark",
+        digest: `学习档案 · 收集了 ${(window.MochiApp?.readStudyLogs?.() || []).length} 张卡片`,
+        route: "map",
+      }));
+    }
+
+    return `<div class="home-status-area">${drawers.join("")}</div>`;
+  }
+
   function renderFarm(container) {
     const state = readState();
     const farmLv = getFarmLevel(state.totalHarvests);
@@ -516,19 +619,7 @@
     const holiday = window.MochiApp?.isHolidayToday?.() ?? true;
     const hasRecords = (window.MochiApp?.readStudyLogs?.() || []).length > 0;
 
-    const currentSeason = window.MochiApp?.loadCurrentSeason?.();
-    const seasonBanner = (currentSeason?.status === "active") ? (() => {
-      const today = new Date();
-      const end = new Date(`${currentSeason.endDate}T12:00:00`);
-      const daysLeft = Math.max(0, Math.ceil((end - today) / (1000 * 60 * 60 * 24)));
-      const isEndingSoon = daysLeft <= 3 && daysLeft > 0;
-      const icon = isEndingSoon ? "⚠️" : "🏆";
-      const countdown = daysLeft === 0 ? "今天结束" : isEndingSoon ? `还剩 ${daysLeft} 天` : `${daysLeft} 天`;
-      return `<button class="season-badge${isEndingSoon ? " ending-soon" : ""}" data-route="season" type="button">${icon} ${escapeAttr(currentSeason.name)} · ${countdown}</button>`;
-    })() : "";
-
     container.innerHTML = `
-      ${seasonBanner}
       <div class="home-flow">
         <div class="home-left-stack">
           ${renderStreakBanner()}
@@ -561,28 +652,13 @@
               </section>
             `
           }
-          ${hasRecords ? renderTodayReviewCard() : ""}
-          <section class="card mini-farm-card">
-            <div class="mini-farm-header">
-              <span class="farm-level-badge">Lv.${farmLv.level} ${farmLv.name}</span>
-              <span class="farm-xp-hint">${nextLv ? `还需 ${nextLv.minHarvests - state.totalHarvests} 次收获` : "已达最高等级"}</span>
-            </div>
-            <div class="mini-farm-row">
-              ${SUBJECTS.map((subject) => renderMiniPlot(subject, state)).join("")}
-            </div>
-            <div class="mini-farm-xp-track">
-              <div class="mini-farm-xp-fill" style="width:${harvestPct}%"></div>
-            </div>
-          </section>
-          ${hasRecords ? renderWeekTrend() : ""}
           <div class="home-focus-panel">
             ${window.MochiPet?.renderTimer?.(true) || ""}
           </div>
-          ${renderCommitmentRecap()}
+          ${renderHomeStatusArea(state, farmLv, nextLv, harvestPct, hasRecords)}
           ${hasRecords ? renderAiGuideCard(false) : ""}
         </div>
       </div>
-      ${window.MochiSummerTasks?.renderRouteOverviewCard?.() || ""}
     `;
 
     container.querySelectorAll("[data-farm-action]").forEach((button) => {
