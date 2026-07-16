@@ -1814,19 +1814,18 @@
 
   function route(routeName) {
     const rawRouteId = routeName || location.hash.replace("#", "") || "home";
-    const routeId = rawRouteId === "schedule" ? "season" : rawRouteId;
-    if (rawRouteId === "schedule" && location.hash === "#schedule") {
-      history.replaceState(null, "", "#season");
+    // 赛季已下架：#season / #schedule 一律重定向到首页（数据可视化改用学习档案 + 本周趋势）
+    const routeId = (rawRouteId === "season" || rawRouteId === "schedule") ? "home" : rawRouteId;
+    if ((rawRouteId === "season" || rawRouteId === "schedule") && (location.hash === "#season" || location.hash === "#schedule")) {
+      history.replaceState(null, "", "#home");
     }
     setActive(routeId);
     if (routeId === "home") window.MochiFarm?.renderFarm?.(view);
-    else if (routeId === "schedule") renderSeason(view);
     else if (routeId === "learn") renderLearn(view);
     else if (routeId === "today") renderLearn(view, "today");
     else if (routeId === "review") renderLearn(view, "review");
     else if (routeId === "map") renderLearn(view, "map");
     else if (routeId === "achievements") renderAchievements(view);
-    else if (routeId === "season") renderSeason(view);
     else if (routeId === "settings") renderSettings(view);
     else window.MochiFarm?.renderFarm?.(view);
     window.MochiPet.renderMiniState();
@@ -2879,7 +2878,6 @@
 
   function renderAdminSections() {
     return `
-      ${renderAdminSeasonSection()}
       ${renderAdminAchievementSection()}
       ${renderAdminTitleSection()}
       ${renderAdminLotterySection()}
