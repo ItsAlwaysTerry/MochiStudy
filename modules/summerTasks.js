@@ -6,7 +6,7 @@
   function subjectStateKey(subject = activeSubject) { return STATE_KEYS[subject] || STATE_KEYS.physics; }
   // 科目 Tab：数/物/化切换。activeSubject（上面）同时驱动状态 key 和内容包，保证"状态与内容同科"。
   const SUBJECT_TABS = [["math", "数学"], ["physics", "物理"], ["chemistry", "化学"]];
-  const SUBJECT_HAS_PLAN = { physics: true, math: true, chemistry: false };
+  const SUBJECT_HAS_PLAN = { physics: true, math: true, chemistry: true };
   const SUBJECT_LABEL = { physics: "物理", math: "数学", chemistry: "化学" };
   function currentSubjectLabel() { return SUBJECT_LABEL[activeSubject] || "物理"; }
   const BASIC_2045_URL = "https://space.bilibili.com/23630128/lists/2045?type=season";
@@ -481,11 +481,49 @@
     { day: 20, week: 4, title: "概率统计大题", subtitle: "概率大题分析与拔高", focus: ["概率统计"], videoKeys: ["prob-analysis", "prob-advanced"] },
   ];
 
+  const CHEM_ROUTE_VIDEO_LIBRARY = {
+    "atom-structure": { source: "一化儿", bvid: "BV17o6YBREY4", duration: "01:03:23", title: "【高一化学】原子结构+核素与同位素", part: "【高一化学】原子结构+核素与同位素", require: "截 1 张原子结构例题" },
+    "amount-concentration": { source: "一化儿", bvid: "BV1S2vkB9ETU", duration: "35:06", title: "【高一化学】物质的量浓度|零基础开始学", part: "【高一化学】物质的量浓度|零基础开始学", require: "截 1 张化学反应例题" },
+    "amount-gas-volume": { source: "一化儿", bvid: "BV1Yd23BqEWj", duration: "39:02", title: "【高一化学】物质的量——气体摩尔体积", part: "【高一化学】物质的量——气体摩尔体积", require: "截 1 张化学反应例题" },
+    "redox-law": { source: "一化儿", bvid: "BV1KmHJzBE3S", duration: "01:20:38", title: "【高一化学】氧化还原反应的普遍规律（重难点！）", part: "【高一化学】氧化还原反应的普遍规律（重难点！）", require: "截 1 张氧化还原反应例题" },
+    "sodium-element": { source: "一化儿", bvid: "BV1Sx2wBKEkG", duration: "01:15:04", title: "【高一化学】钠及其化合物——钠元素+钠单质+钠的氧化物", part: "【高一化学】钠及其化合物——钠元素+钠单质+钠的氧化物", require: "截 1 张氧化还原反应例题" },
+    "sodium-carbonate": { source: "一化儿", bvid: "BV1SGCuB7EZh", duration: "01:01:23", title: "【高一化学】钠及其化合物——碳酸钠+碳酸氢钠", part: "【高一化学】钠及其化合物——碳酸钠+碳酸氢钠", require: "截 1 张化学反应例题" },
+    "sulfur-oxide-physical": { source: "一化儿", bvid: "BV14RcjzCEHM", duration: "41:22", title: "【高一化学】硫及其化合物：硫单质 硫的氧化物—物理性质", part: "【高一化学】硫及其化合物：硫单质 硫的氧化物—物理性质", require: "截 1 张氧化还原反应例题" },
+    "nitrogen-ammonium": { source: "一化儿", bvid: "BV1uNdBBfE6q", duration: "57:19", title: "【高一化学】氮及其化合物-铵盐 氨气实验室制备", part: "【高一化学】氮及其化合物-铵盐 氨气实验室制备", require: "截 1 张化学反应例题" },
+    "inorganic-nonmetal-materials": { source: "一化儿", bvid: "BV1SS4y1S7q3", duration: "01:00:46", title: "高中化学【无机非金属材料】知识与解法合集！学渣救星", part: "高中化学【无机非金属材料】知识与解法合集！学渣救星", require: "截 1 张化学反应例题" },
+    "organic-functional-groups": { source: "一化儿", bvid: "BV1cf4y1T7hg", duration: "21:05", title: "一节课就记住！有机化学官能团总结", part: "一节课就记住！有机化学官能团总结", require: "截 1 张有机化学例题" },
+    "organic-alkane": { source: "一化儿", bvid: "BV13XG16mE6c", duration: "01:16:28", title: "【高一化学】必修二：有机化合物——烷烃", part: "【高一化学】必修二：有机化合物——烷烃", require: "截 1 张有机化学例题" },
+    "organic-homolog-isomer": { source: "一化儿", bvid: "BV1cL716rEs7", duration: "01:06:07", title: "【高一化学】必修二：有机化合物——同系物与同分异构体", part: "【高一化学】必修二：有机化合物——同系物与同分异构体", require: "截 1 张有机化学例题" },
+    "organic-ethylene-basic": { source: "一化儿", bvid: "BV1RP4y1T7qd", duration: "33:34", title: "【高中有机化学】乙烯、有机高分子材料|0基础救星！", part: "【高中有机化学】乙烯、有机高分子材料|0基础救星！", require: "截 1 张有机化学例题" },
+    "organic-ethanol": { source: "一化儿", bvid: "BV1ZW7s6yEkk", duration: "01:36:21", title: "【高一化学】必修二：有机化合物——乙醇", part: "【高一化学】必修二：有机化合物——乙醇", require: "截 1 张有机化学例题" },
+    "organic-substitution": { source: "一化儿", bvid: "BV11q4y1C7Rc", duration: "36:23", title: "高中有机化学方程汇总【取代反应】篇", part: "高中有机化学方程汇总【取代反应】篇", require: "截 1 张有机化学例题" },
+  };
+
+  const CHEM_ROUTE_DAYS = [
+    { day: 1, week: 1, title: "原子结构第一块砖", subtitle: "先会看质子数、中子数、核素和同位素", focus: ["原子结构"], videoKeys: ["atom-structure"] },
+    { day: 2, week: 1, title: "化学键补入口", subtitle: "离子键、共价键先认概念", focus: ["化学键"], videoKeys: [], mission: '化学键：去B站搜"高一化学 化学键 离子键 共价键 零基础"看一个，截图做题。' },
+    { day: 3, week: 1, title: "物质的量浓度", subtitle: "n、c、V 三个量先连起来", focus: ["化学反应"], videoKeys: ["amount-concentration"] },
+    { day: 4, week: 1, title: "气体摩尔体积", subtitle: "22.4 L/mol 的条件和计算", focus: ["化学反应"], videoKeys: ["amount-gas-volume"] },
+    { day: 5, week: 1, title: "氧化还原规律", subtitle: "先抓化合价升降和氧化性还原性", focus: ["氧化还原反应"], videoKeys: ["redox-law"] },
+    { day: 6, week: 2, title: "钠单质和氧化物", subtitle: "金属钠反应先建立元素化合物套路", focus: ["化学反应", "氧化还原反应"], videoKeys: ["sodium-element"] },
+    { day: 7, week: 2, title: "碳酸钠和碳酸氢钠", subtitle: "性质对比和方程式", focus: ["化学反应"], videoKeys: ["sodium-carbonate"] },
+    { day: 8, week: 2, title: "硫单质和硫氧化物", subtitle: "先认物质、颜色、状态和基本性质", focus: ["化学反应", "氧化还原反应"], videoKeys: ["sulfur-oxide-physical"] },
+    { day: 9, week: 2, title: "硫酸和酸雨补洞", subtitle: "二氧化硫、硫酸根、酸雨关系", focus: ["化学反应", "氧化还原反应"], videoKeys: [], mission: '硫酸/酸雨：去B站搜"高一化学 硫及其化合物 硫酸 酸雨 二氧化硫"看一个，截图做题。' },
+    { day: 10, week: 2, title: "氮及其化合物", subtitle: "铵盐和氨气实验室制备", focus: ["化学反应"], videoKeys: ["nitrogen-ammonium"] },
+    { day: 11, week: 3, title: "无机非金属材料", subtitle: "把材料题当作基础物质性质题", focus: ["化学反应"], videoKeys: ["inorganic-nonmetal-materials"] },
+    { day: 12, week: 3, title: "有机入门：官能团", subtitle: "先把常见官能团认出来", focus: ["有机化学"], videoKeys: ["organic-functional-groups"] },
+    { day: 13, week: 3, title: "烷烃", subtitle: "有机第一类物质，先会结构和命名", focus: ["有机化学"], videoKeys: ["organic-alkane"] },
+    { day: 14, week: 3, title: "同系物与同分异构体", subtitle: "有机概念题最容易丢分的入口", focus: ["有机化学"], videoKeys: ["organic-homolog-isomer"] },
+    { day: 15, week: 3, title: "乙烯和高分子材料", subtitle: "双键、加成、材料常识", focus: ["有机化学"], videoKeys: ["organic-ethylene-basic"] },
+    { day: 16, week: 4, title: "乙醇", subtitle: "羟基、氧化和常见反应", focus: ["有机化学"], videoKeys: ["organic-ethanol"] },
+    { day: 17, week: 4, title: "取代反应方程式", subtitle: "把有机方程式写法补成可得分动作", focus: ["有机化学"], videoKeys: ["organic-substitution"] },
+  ];
+
   // 多科内容包（P1b）：物理已就绪；数学/化学填了内容后把对应项从 null 换成 {TASKS,ROUTE_DAYS,ROUTE_VIDEO_LIBRARY,ONE_ROUND_BVS} 并把 SUBJECT_HAS_PLAN 翻 true。
   const PLAN_CONTENT = {
     physics: { TASKS: PHYSICS_TASKS, ROUTE_DAYS: PHYSICS_ROUTE_DAYS, ROUTE_VIDEO_LIBRARY: PHYSICS_ROUTE_VIDEO_LIBRARY, ONE_ROUND_BVS: PHYSICS_ONE_ROUND_BVS },
     math: { TASKS: [], ROUTE_DAYS: MATH_ROUTE_DAYS, ROUTE_VIDEO_LIBRARY: MATH_ROUTE_VIDEO_LIBRARY, ONE_ROUND_BVS: {} },
-    chemistry: null,
+    chemistry: { TASKS: [], ROUTE_DAYS: CHEM_ROUTE_DAYS, ROUTE_VIDEO_LIBRARY: CHEM_ROUTE_VIDEO_LIBRARY, ONE_ROUND_BVS: {} },
   };
   // 引擎里所有函数继续用 TASKS/ROUTE_DAYS/ROUTE_VIDEO_LIBRARY/ONE_ROUND_BVS；这些是 let 别名，
   // 由 applySubjectContent() 在渲染前指向当前科目的内容包（无内容则回退物理，行为不变）。
