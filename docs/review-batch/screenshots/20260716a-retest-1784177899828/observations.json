@@ -1,0 +1,108 @@
+{
+  "pageUrl": "file:///D:/Agent%E5%B7%A5%E4%BD%9C%E5%8C%BA/mochistudy-v34/mochistudy/index.html?debug=1",
+  "outputDir": "D:\\Agent工作区\\mochistudy-v34\\mochistudy\\docs\\review-batch\\screenshots\\20260716a-retest-1784177899828",
+  "observations": {
+    "buildLabel": "build-20260716a",
+    "energyDetails": {
+      "iconText": "savings",
+      "iconClass": "material-symbols-outlined summer-reward-glyph-savings",
+      "glyphTransform": "matrix(1, 0, 0, 1, 9.5, 10)",
+      "glyphFontFamily": "\"Material Symbols Outlined\"",
+      "glyphFontSize": "24px",
+      "iconRect": {
+        "x": 1023,
+        "y": 763.609375,
+        "width": 42,
+        "height": 42
+      },
+      "glyphRect": {
+        "x": 1032.5,
+        "y": 773.609375,
+        "width": 24,
+        "height": 24
+      },
+      "centerDelta": {
+        "x": 0.5,
+        "y": 1
+      },
+      "iconDisplay": "block",
+      "iconAlignItems": "center",
+      "iconJustifyContent": "center"
+    },
+    "plus3Button": {
+      "x": 1208.34375,
+      "y": 746,
+      "width": 54.65625,
+      "height": 24,
+      "text": "+3抽奖"
+    },
+    "afterPlus3State": {
+      "small": {
+        "focusHours": 0,
+        "studyDays": 0,
+        "recordCount": 0,
+        "balancedWeeks": 0,
+        "harvests": 0
+      },
+      "big": {
+        "totalRecords": 0,
+        "focusHours": 0,
+        "farmLevel": 0,
+        "studyDays": 0,
+        "nodeRecords": 0
+      },
+      "totalSmall": 0,
+      "totalBig": 0,
+      "lotteryTickets": 3,
+      "usedLotteryCount": 0,
+      "carriedLotteryDraws": 3,
+      "pityCurrent": 0,
+      "recentNew": {
+        "small": {},
+        "big": {}
+      }
+    },
+    "achievementTicketsText": "3",
+    "achievementTicketLabel": "次抽奖机会",
+    "achievementStateOnPage": {
+      "small": {
+        "focusHours": 0,
+        "studyDays": 0,
+        "recordCount": 0,
+        "balancedWeeks": 0,
+        "harvests": 0
+      },
+      "big": {
+        "totalRecords": 0,
+        "focusHours": 0,
+        "farmLevel": 0,
+        "studyDays": 0,
+        "nodeRecords": 0
+      },
+      "totalSmall": 0,
+      "totalBig": 0,
+      "lotteryTickets": 3,
+      "usedLotteryCount": 0,
+      "carriedLotteryDraws": 3,
+      "pityCurrent": 0,
+      "recentNew": {
+        "small": {},
+        "big": {}
+      }
+    }
+  },
+  "screenshots": {
+    "initial": "D:\\Agent工作区\\mochistudy-v34\\mochistudy\\docs\\review-batch\\screenshots\\20260716a-retest-1784177899828\\01-build-and-home.png",
+    "energyFloat": "D:\\Agent工作区\\mochistudy-v34\\mochistudy\\docs\\review-batch\\screenshots\\20260716a-retest-1784177899828\\02-energy-float-context.png",
+    "energyIconCrop": "D:\\Agent工作区\\mochistudy-v34\\mochistudy\\docs\\review-batch\\screenshots\\20260716a-retest-1784177899828\\03-energy-icon-crop.png",
+    "energyIconZoom": "D:\\Agent工作区\\mochistudy-v34\\mochistudy\\docs\\review-batch\\screenshots\\20260716a-retest-1784177899828\\04-energy-icon-zoom-dsf4.png",
+    "afterPlus3": "D:\\Agent工作区\\mochistudy-v34\\mochistudy\\docs\\review-batch\\screenshots\\20260716a-retest-1784177899828\\05-after-plus3-click.png",
+    "achievements": "D:\\Agent工作区\\mochistudy-v34\\mochistudy\\docs\\review-batch\\screenshots\\20260716a-retest-1784177899828\\06-achievements-tickets-3.png"
+  },
+  "pass": {
+    "build": true,
+    "energyIconPresent": true,
+    "lotteryTickets": true
+  },
+  "errors": []
+}
