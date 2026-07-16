@@ -416,7 +416,7 @@
   ];
 
   function readState() {
-    const fallback = { pendingTaskId: "", pendingRouteDay: 0, pendingRouteTaskId: "", activeTaskId: "", activeRouteDay: 0, tasks: {}, routeDays: {}, routeDetailDay: 0, examples: {}, reward: {} };
+    const fallback = { pendingTaskId: "", pendingRouteDay: 0, pendingRouteTaskId: "", activeRouteDay: 0, tasks: {}, routeDays: {}, routeDetailDay: 0, examples: {}, reward: {} };
     try {
       const saved = JSON.parse(localStorage.getItem(STATE_KEY) || "null");
       if (!saved || typeof saved !== "object") return fallback;
@@ -424,7 +424,6 @@
         pendingTaskId: String(saved.pendingTaskId || ""),
         pendingRouteDay: Number(saved.pendingRouteDay || 0),
         pendingRouteTaskId: String(saved.pendingRouteTaskId || ""),
-        activeTaskId: String(saved.activeTaskId || ""),
         activeRouteDay: Number(saved.activeRouteDay || 0),
         tasks: saved.tasks && typeof saved.tasks === "object" ? saved.tasks : {},
         routeDays: saved.routeDays && typeof saved.routeDays === "object" ? saved.routeDays : {},
@@ -459,7 +458,6 @@
   function setPendingTask(id, patch = {}, options = {}) {
     const state = readState();
     state.pendingTaskId = id;
-    state.activeTaskId = id;
     state.tasks[id] = {
       ...taskState(state, id),
       ...patch,
@@ -546,7 +544,6 @@
     state.pendingTaskId = "";
     state.pendingRouteDay = 0;
     state.pendingRouteTaskId = "";
-    state.activeTaskId = "";
     writeState(state);
   }
 
@@ -2633,7 +2630,6 @@
       const state = readState();
       const current = taskState(state, task.id);
       const now = new Date().toISOString();
-      state.activeTaskId = task.id;
       state.tasks[task.id] = {
         ...current,
         startedAt: current.startedAt || now,
@@ -2656,7 +2652,6 @@
       const state = readState();
       const current = taskState(state, task.id);
       const hasPractice = getPracticeItems(task).length > 0;
-      state.activeTaskId = task.id;
       state.tasks[task.id] = {
         ...current,
         watched: true,
@@ -2680,7 +2675,6 @@
       const anchor = taskAnchorOptions(task.id, event.currentTarget);
       const state = readState();
       const hasPractice = getPracticeItems(task).length > 0;
-      state.activeTaskId = task.id;
       state.tasks[task.id] = {
         ...taskState(state, task.id),
         watched: hasPractice ? true : taskState(state, task.id).watched || false,
@@ -2781,7 +2775,6 @@
       state.pendingTaskId = task.id;
       state.pendingRouteDay = 0;
       state.pendingRouteTaskId = "";
-      state.activeTaskId = task.id;
     }
     state.tasks[task.id] = {
       ...taskState(state, task.id),
@@ -3212,7 +3205,6 @@
       nextState.pendingTaskId = task.id;
       nextState.pendingRouteDay = 0;
       nextState.pendingRouteTaskId = "";
-      nextState.activeTaskId = task.id;
     }
     writeState(nextState);
     refreshHome(refreshOptions);
@@ -3378,7 +3370,6 @@
         size: Number(file.size || 0),
         createdAt: new Date().toISOString(),
       }, ...current]);
-      state.activeTaskId = taskId;
       state.tasks[taskId] = {
         ...taskState(state, taskId),
         watched: taskState(state, taskId).watched || false,
@@ -3600,7 +3591,6 @@
     const state = {
       pendingTaskId: "",
       pendingRouteDay: 0,
-      activeTaskId: "",
       activeRouteDay: 0,
       tasks: {},
       routeDays: {},
@@ -3616,7 +3606,6 @@
         activeStep: 1,
         updatedAt: now,
       };
-      state.activeTaskId = "newton-second-law";
       state.examples["newton-second-law"] = {
         items: [{
           id: "demo_example_newton",
