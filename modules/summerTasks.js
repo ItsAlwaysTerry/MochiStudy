@@ -1232,7 +1232,7 @@
       <aside class="summer-reward-float ${reward.collapsed ? "collapsed" : ""} ${claimCount ? "ready" : ""} ${activeDraw ? "drawing" : ""}" data-summer-reward style="--reward-angle:${rewardAngle}deg;${style ? style.replace(/^style="/, "").replace(/"$/, "") : ""}">
         <div class="summer-reward-head" data-summer-reward-drag role="button" tabindex="0" aria-label="${reward.collapsed ? "展开" : "收起"}今日能量">
           <span class="summer-reward-icon">
-            <span class="material-symbols-outlined">${activeDraw || preparedDraw ? "casino" : claimCount ? "redeem" : "savings"}</span>
+            <span class="material-symbols-outlined ${activeDraw || preparedDraw ? "" : claimCount ? "" : "summer-reward-glyph-savings"}">${activeDraw || preparedDraw ? "casino" : claimCount ? "redeem" : "savings"}</span>
           </span>
           <div>
             <strong>${activeDraw ? "正在抽奖" : preparedDraw ? "点骰子开始" : claimCount ? "可以抽奖了" : "今日能量"}</strong>

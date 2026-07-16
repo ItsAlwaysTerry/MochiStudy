@@ -5770,9 +5770,12 @@ ${record.originalQuestion || "暂无原题描述。"}
         return;
       }
       if (name === "debug-add-lottery-tickets") {
+        // 直接改 lotteryTickets 会被 checkAndGrantAchievements() 按 carriedLotteryDraws 重算覆盖掉，
+        // 要改就得改 carriedLotteryDraws（管理后台"调整"用的也是这个字段）
         const achState = loadAchievementState();
-        achState.lotteryTickets = Math.max(0, Number(achState.lotteryTickets || 0) + Number(action.dataset.count || 3));
+        achState.carriedLotteryDraws = Math.max(0, Number(achState.carriedLotteryDraws || 0) + Number(action.dataset.count || 3));
         saveAchievementState(achState);
+        checkAndGrantAchievements();
         updateNavBadge();
         debugRefreshFarm();
         if (currentRoute() === "achievements") renderAchievements(view);

@@ -9658,6 +9658,13 @@ body.focus-mode #view {
   font-size: 24px;
 }
 
+/* "savings"（小猪存钱罐）这个字形本身的墨迹不在其字面框正中，
+   经浏览器实测截图像素测量：约偏左9.5px、偏上10px，这里做对应的视觉纠偏。
+   只纠这一个字形——"redeem"/"casino"（其余两种状态）未测过，先不动，避免盲改。 */
+.summer-reward-glyph-savings {
+  transform: translate(9.5px, 10px);
+}
+
 .summer-reward-head strong {
   display: block;
   color: var(--text-primary);
