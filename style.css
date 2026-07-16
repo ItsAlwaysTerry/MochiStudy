@@ -9653,10 +9653,11 @@ body.focus-mode #view {
   transform: translate(9.5px, 10px);
 }
 
-/* "cake"（可抽奖时的蛋糕图标）：与 redeem/casino 同属正常居中字形（不像 savings 那样墨迹偏移），
-   默认信任 flex 居中（0 偏移）；下面数值由浏览器截图像素实测校准后确定。 */
+/* "cake"（可抽奖时的蛋糕图标）：用户实测反馈"偏上偏左、歪"，与同容器 savings 小猪同症状——
+   这套 Material Symbols 在这个 42px 圆里系统性偏左上，需要 +右 +下 纠偏。
+   先按 savings 已验证居中的同一偏移量 (9.5px, 10px) 处理；如仍差一点由肉眼微调方向。 */
 .summer-reward-glyph-cake {
-  transform: translate(0, 0);
+  transform: translate(9.5px, 10px);
 }
 
 .summer-reward-head strong {
