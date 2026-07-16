@@ -5602,6 +5602,7 @@ ${record.originalQuestion || "暂无原题描述。"}
               <button data-action="debug-add-records" data-count="10" type="button">+10记录</button>
               <button data-action="debug-add-node-records" data-count="20" type="button">+20同点</button>
               <button data-action="debug-add-focus" data-minutes="120" type="button">+2h专注</button>
+              <button data-action="debug-add-lottery-tickets" data-count="3" type="button">+3抽奖</button>
               <button data-action="debug-reset-achievements" type="button">清勋章</button>
             </div>
           </div>
@@ -5766,6 +5767,16 @@ ${record.originalQuestion || "暂无原题描述。"}
       }
       if (name === "debug-add-focus") {
         debugAddFocusMinutes(action.dataset.minutes);
+        return;
+      }
+      if (name === "debug-add-lottery-tickets") {
+        const achState = loadAchievementState();
+        achState.lotteryTickets = Math.max(0, Number(achState.lotteryTickets || 0) + Number(action.dataset.count || 3));
+        saveAchievementState(achState);
+        updateNavBadge();
+        debugRefreshFarm();
+        if (currentRoute() === "achievements") renderAchievements(view);
+        toast(`已加 ${action.dataset.count || 3} 次抽奖机会`);
         return;
       }
       if (name === "debug-reset-achievements") {

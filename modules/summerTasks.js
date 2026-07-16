@@ -1230,17 +1230,15 @@
     const rewardAngle = Math.round(stats.pct * 3.6);
     return `
       <aside class="summer-reward-float ${reward.collapsed ? "collapsed" : ""} ${claimCount ? "ready" : ""} ${activeDraw ? "drawing" : ""}" data-summer-reward style="--reward-angle:${rewardAngle}deg;${style ? style.replace(/^style="/, "").replace(/"$/, "") : ""}">
-        <div class="summer-reward-head" data-summer-reward-drag>
-          <button class="summer-reward-icon" data-summer-action="reward-toggle" type="button" aria-label="展开今日能量">
+        <div class="summer-reward-head" data-summer-reward-drag role="button" tabindex="0" aria-label="${reward.collapsed ? "展开" : "收起"}今日能量">
+          <span class="summer-reward-icon">
             <span class="material-symbols-outlined">${activeDraw || preparedDraw ? "casino" : claimCount ? "redeem" : "savings"}</span>
-          </button>
+          </span>
           <div>
             <strong>${activeDraw ? "正在抽奖" : preparedDraw ? "点骰子开始" : claimCount ? "可以抽奖了" : "今日能量"}</strong>
             <span>视频 ${stats.completedTasks}/${stats.totalTasks || 0} · ${stats.focusMins} 分钟</span>
           </div>
-          <button class="btn-icon summer-reward-collapse" data-summer-action="reward-collapse" type="button" aria-label="${reward.collapsed ? "展开" : "收起"}">
-            <span class="material-symbols-outlined">${reward.collapsed ? "keyboard_arrow_up" : "keyboard_arrow_down"}</span>
-          </button>
+          <span class="summer-reward-arrow material-symbols-outlined">${reward.collapsed ? "keyboard_arrow_up" : "keyboard_arrow_down"}</span>
         </div>
         ${reward.collapsed ? "" : `
           <div class="summer-reward-body">
@@ -2390,10 +2388,6 @@
             <strong>粘贴截图</strong>
             <small>点后 Ctrl+V</small>
           </div>
-          <label class="btn btn-soft btn-sm summer-example-file">
-            <span class="material-symbols-outlined">add_photo_alternate</span>从文件添加
-            <input data-example-file data-task-id="${escapeHtml(task.id)}" type="file" accept="image/*" hidden>
-          </label>
           <button class="btn btn-primary btn-sm summer-example-quiz" data-summer-action="copy-example-quiz" data-task-id="${escapeHtml(task.id)}" type="button" ${examples.length ? "" : "disabled"}>
             <span class="material-symbols-outlined">auto_awesome</span>${examples.length ? "复制测验包" : "先贴图"}
           </button>
@@ -2563,9 +2557,6 @@
       el.addEventListener("paste", handleExamplePaste);
       el.addEventListener("click", () => el.focus());
     });
-    container.querySelectorAll("[data-example-file]").forEach((el) => {
-      el.addEventListener("change", handleExampleFile);
-    });
     container.querySelectorAll("[data-summer-record-paste]").forEach((el) => {
       el.addEventListener("paste", handleTaskRecordPaste);
     });
@@ -2577,6 +2568,7 @@
     });
     container.querySelectorAll("[data-summer-reward-drag]").forEach((el) => {
       el.addEventListener("pointerdown", handleRewardDragStart);
+      el.addEventListener("keydown", handleRewardHeadKeydown);
     });
     const activeReward = rewardState(readState()).drawAnimation;
     if (activeReward?.active) scheduleRewardAnimation(activeReward, 220);
@@ -2718,20 +2710,6 @@
     if (action === "skip-day-reflection") {
       const dayNo = Number(event.currentTarget.dataset.routeDay || 0);
       skipDayReflection(dayNo);
-      return;
-    }
-    if (action === "reward-toggle") {
-      const state = readState();
-      const reward = rewardState(state);
-      writeRewardState({ collapsed: false, open: !reward.open });
-      refreshHome({ preserveScroll: true });
-      return;
-    }
-    if (action === "reward-collapse") {
-      const state = readState();
-      const reward = rewardState(state);
-      writeRewardState({ collapsed: !reward.collapsed });
-      refreshHome({ preserveScroll: true });
       return;
     }
     if (action === "reward-draw") {
@@ -3300,16 +3278,32 @@
     }
   }
 
+  function toggleRewardCollapsed() {
+    const reward = rewardState(readState());
+    writeRewardState({ collapsed: !reward.collapsed });
+    refreshHome({ preserveScroll: true });
+  }
+
+  // 整个头部区域既能点按（轻触=展开/收起）又能拖动（按住移动=挪位置），
+  // 用移动距离区分两者，不用把点击区和拖拽区拆成两块（此前拆分导致交互割裂、易误触）。
+  const REWARD_DRAG_THRESHOLD = 6;
+
   function handleRewardDragStart(event) {
-    if (event.target.closest("[data-summer-action]")) return;
     const float = event.currentTarget.closest("[data-summer-reward]");
     if (!float) return;
-    event.preventDefault();
     const rect = float.getBoundingClientRect();
     const offsetX = event.clientX - rect.left;
     const offsetY = event.clientY - rect.top;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    let dragged = false;
     float.setPointerCapture?.(event.pointerId);
     const move = (moveEvent) => {
+      if (!dragged) {
+        const dist = Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY);
+        if (dist < REWARD_DRAG_THRESHOLD) return;
+        dragged = true;
+      }
       const width = float.offsetWidth || rect.width;
       const height = float.offsetHeight || rect.height;
       const x = Math.min(Math.max(8, moveEvent.clientX - offsetX), window.innerWidth - width - 8);
@@ -3323,12 +3317,22 @@
       float.removeEventListener("pointermove", move);
       float.removeEventListener("pointerup", up);
       float.removeEventListener("pointercancel", up);
-      const nextRect = float.getBoundingClientRect();
-      writeRewardState({ position: { x: Math.round(nextRect.left), y: Math.round(nextRect.top) } });
+      if (dragged) {
+        const nextRect = float.getBoundingClientRect();
+        writeRewardState({ position: { x: Math.round(nextRect.left), y: Math.round(nextRect.top) } });
+      } else {
+        toggleRewardCollapsed();
+      }
     };
     float.addEventListener("pointermove", move);
     float.addEventListener("pointerup", up);
     float.addEventListener("pointercancel", up);
+  }
+
+  function handleRewardHeadKeydown(event) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    toggleRewardCollapsed();
   }
 
   async function copyPracticePrompt(task, itemIndex, refreshOptions = { preserveScroll: true }) {
@@ -3405,13 +3409,6 @@
     event.preventDefault();
     const file = imageItem.getAsFile();
     await saveExampleFile(taskId, file, event.currentTarget);
-  }
-
-  async function handleExampleFile(event) {
-    const taskId = event.currentTarget.dataset.taskId || "";
-    const file = event.currentTarget.files?.[0];
-    await saveExampleFile(taskId, file, event.currentTarget);
-    event.currentTarget.value = "";
   }
 
   function handleExampleNote(event) {
@@ -3535,7 +3532,7 @@
     const task = findSummerTask(taskId);
     if (!task || !file) return;
     if (!String(file.type || "").startsWith("image/")) {
-      window.MochiApp?.toast?.("请粘贴截图，或从文件添加一张图片");
+      window.MochiApp?.toast?.("请粘贴一张图片截图");
       return;
     }
     const id = `example_${Date.now()}_${Math.random().toString(16).slice(2)}`;

@@ -9282,15 +9282,6 @@ body.focus-mode #view {
   white-space: nowrap;
 }
 
-.summer-example-file {
-  align-self: stretch;
-  justify-content: center;
-  margin: 0;
-  min-height: 32px;
-  padding: 5px 8px;
-  font-size: 11px;
-}
-
 .summer-example-quiz,
 .summer-example-copy {
   align-self: stretch;
@@ -9620,11 +9611,12 @@ body.focus-mode #view {
 
 .summer-reward-head {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) 30px;
+  grid-template-columns: 42px minmax(0, 1fr) 24px;
   gap: 9px;
   align-items: center;
   padding: 10px;
-  cursor: grab;
+  cursor: pointer;
+  touch-action: none;
 }
 
 .summer-reward-head:active {
@@ -9637,12 +9629,10 @@ body.focus-mode #view {
   place-items: center;
   width: 42px;
   height: 42px;
-  border: 0;
   border-radius: 50%;
   color: #6b421c;
   background: conic-gradient(#77b255 0 var(--reward-angle, 0deg), rgba(154, 98, 34, 0.14) var(--reward-angle, 0deg) 360deg);
   box-shadow: 0 8px 18px rgba(154, 98, 34, 0.18);
-  cursor: pointer;
   overflow: hidden;
 }
 
@@ -9682,8 +9672,13 @@ body.focus-mode #view {
   white-space: nowrap;
 }
 
-.summer-reward-collapse {
+.summer-reward-arrow {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
   color: var(--text-tertiary);
+  font-size: 20px;
 }
 
 .summer-reward-body {
