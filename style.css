@@ -9734,8 +9734,92 @@ body.focus-mode #view {
 }
 
 .summer-reward-draw:disabled {
-  cursor: wait;
-  opacity: 0.72;
+  cursor: not-allowed;
+  opacity: 0.5;
+  box-shadow: none;
+}
+
+/* 两个抽奖按钮并排：抽小奖 / 抽大奖 */
+.summer-reward-draw-row {
+  display: flex;
+  gap: 8px;
+}
+
+.summer-reward-draw-row .summer-reward-draw {
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  min-height: 52px;
+  padding: 6px 4px;
+  font-size: 14px;
+}
+
+.summer-reward-draw.stage {
+  background: linear-gradient(135deg, #ffd27a, #ff8f4d);
+}
+
+.summer-reward-draw .material-symbols-outlined {
+  font-size: 18px;
+}
+
+.summer-reward-draw small {
+  font-size: 10px;
+  font-weight: 800;
+  opacity: 0.85;
+}
+
+/* 3 颗骰子一排（骰子加大，更有游戏感） */
+.summer-reward-dice-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 2px 0 4px;
+}
+
+.summer-reward-die3 {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border: 2px solid rgba(111, 68, 24, 0.3);
+  border-radius: 14px;
+  background: linear-gradient(145deg, #fff8dc, #ffd26a);
+  color: #5a3516;
+  font-size: 46px;
+  line-height: 1;
+  box-shadow: inset 0 -3px 0 rgba(111, 68, 24, 0.12), 0 8px 16px rgba(154, 98, 34, 0.16);
+}
+
+.summer-reward-die3.empty {
+  color: rgba(111, 68, 24, 0.4);
+  background: rgba(255, 248, 228, 0.7);
+}
+
+.summer-reward-die3.empty[data-summer-action] {
+  cursor: pointer;
+  border-style: dashed;
+}
+
+.summer-reward-die3.rolling {
+  animation: summer-reward-dice-roll 0.16s ease-in-out infinite alternate;
+}
+
+.summer-reward-die3.landed {
+  animation: summer-reward-die-pop 0.3s ease-out;
+}
+
+@keyframes summer-reward-die-pop {
+  0% { transform: scale(0.7); }
+  55% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+.summer-reward-dice-caption {
+  margin: 0 0 2px;
+  color: #8a4f13;
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
 }
 
 .summer-reward-roll {
