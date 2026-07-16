@@ -71,5 +71,23 @@ const PLAN_CONTENT = {
 
 ## 待你拍板
 1. 认可"单卡 + 科目 Tab"这个形态吗？还是你想要别的（比如三张独立卡 / 三个入口）？
+
+   1. 认可
+
 2. 落地顺序：同意"先 #6 再 #9"吗？
+
+   1. 同意
+
 3. 数学/化学的内容包你打算什么时候给资源（决定 P3 时机）。
+
+   ​	我贴的资源帖子，都不是说学生必须全部学习，我只是在一个推荐学习资源的小红书博主筛选相关的帖子给你，你可以根据知识量和覆盖程度以及符合学生难度安排
+
+   1. 数学（学生平时有六七十分）：
+      1. https://www.xiaohongshu.com/explore/69611fba000000000a030867?xsec_token=ABNPz-8xG0w6J6tLApjzANcSS8GkX4Z7jUza1flinmEjE=&xsec_source=pc_user
+      2. https://www.xiaohongshu.com/explore/69789e96000000000c03621f?xsec_token=AB0LuwzTltpwm7rKvwrpOr67NV7PE9PS6lwLYipvCeIZM=&xsec_source=pc_user
+      3. https://www.xiaohongshu.com/explore/69758a35000000000a03f5a8?xsec_token=ABOe8Yo9sT6_dcDRmLx66yy6Kek5sDwWq0DyY1GLDzM80=&xsec_source=pc_user
+      4. https://www.xiaohongshu.com/explore/6974bc2b000000000903858b?xsec_token=ABppKTzojWGjE1XWmujzSXfYf4fVQ6CxzVoKq5RdYxGt0=&xsec_source=pc_user
+   2. 化学（学生只有二十多分，感觉在化学这一科，这个博主有没有很体系的一些方法？他给过一些帖子，就是说要构建体系啊，就是化学这一科比较散。然后呢，他感觉感觉他也没有像数学还有物理这两科一样啊，说针对几十分以下会怎么做啊？嗯，怎么构建知识体系啊，不同分段或怎么学啊，他这些都没有，他的教程都比较零碎）
+      1. https://www.xiaohongshu.com/explore/697d8037000000000b00b97b?xsec_token=ABQOObZyWxYO9PPo6buzCA8eAAkyGiuq4mDsrHvSmaxFU=&xsec_source=pc_user
+      2. https://www.xiaohongshu.com/explore/69bfe33400000000230258b6?xsec_token=ABP6uSz7QVFUTBqgHYaSXs2cCVe976wx8KVflR-yON8o0=&xsec_source=pc_user
+      3. https://www.xiaohongshu.com/explore/6a450f54000000002201bbe7?xsec_token=ABKTNtlkWeWNovpGHcF08rLud7A-7lhYz7vbNsLnhFTIs=&xsec_source=pc_user
