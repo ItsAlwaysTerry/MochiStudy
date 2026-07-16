@@ -6001,7 +6001,8 @@ ${record.originalQuestion || "暂无原题描述。"}
     document.getElementById("mobile-menu")?.addEventListener("click", () => document.querySelector(".side-nav")?.classList.toggle("open"));
     checkSeasonAutoRenew();
     route();
-    if (location.search.includes("debug=1")) {
+    // 容错：debug=1 写在 ? 或 # 后面都认（file:// 打开时最容易把 ? 打在 # 后面）
+    if (location.search.includes("debug=1") || location.hash.includes("debug=1")) {
       const debugPanel = document.getElementById("debug-panel");
       if (debugPanel) debugPanel.style.display = "block";
       renderDebugPanel();

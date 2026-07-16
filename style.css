@@ -9625,10 +9625,13 @@ body.focus-mode #view {
 
 .summer-reward-icon {
   position: relative;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
   width: 42px;
   height: 42px;
+  flex-shrink: 0;
   border-radius: 50%;
   color: #6b421c;
   background: conic-gradient(#77b255 0 var(--reward-angle, 0deg), rgba(154, 98, 34, 0.14) var(--reward-angle, 0deg) 360deg);
