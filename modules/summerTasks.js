@@ -1646,19 +1646,16 @@
     `;
   }
 
+  // 紧凑胶囊而不是宽卡片：之前的宽版是 position:fixed 常驻右下角，
+  // 会一直挡住右栏折叠信息区；改成小图标+短字，点了直接跳到导入位置。
   function renderPendingImportFloat(state) {
     const task = pendingImportTask(state);
     if (!task) return "";
     return `
-      <div class="summer-pending-import-float">
-        <div>
-          <strong>等待导入</strong>
-          <span>${escapeHtml(task.title)}</span>
-        </div>
-        <button class="btn btn-primary btn-sm" data-summer-action="open-pending-import" data-task-id="${escapeHtml(task.id)}" type="button">
-          <span class="material-symbols-outlined">move_to_inbox</span>粘贴记录
-        </button>
-      </div>
+      <button class="summer-pending-import-float" data-summer-action="open-pending-import" data-task-id="${escapeHtml(task.id)}" type="button" aria-label="等待导入：${escapeHtml(task.title)}">
+        <span class="material-symbols-outlined">move_to_inbox</span>
+        <span>等待导入</span>
+      </button>
     `;
   }
 

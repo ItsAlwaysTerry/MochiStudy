@@ -9534,6 +9534,7 @@ body.focus-mode #view {
   font-size: 12px;
 }
 
+/* 紧凑胶囊：只占一小块，不再像宽卡片那样常年挡住右栏下方内容 */
 .summer-pending-import-float {
   position: fixed;
   right: 18px;
@@ -9541,35 +9542,22 @@ body.focus-mode #view {
   z-index: 540;
   display: flex;
   align-items: center;
-  gap: 9px;
-  max-width: min(420px, calc(100vw - 32px));
-  padding: 10px;
-  border: 1px solid rgba(74, 69, 128, 0.15);
-  border-radius: 16px;
+  gap: 6px;
+  width: auto;
+  max-width: none;
+  padding: 9px 14px 9px 12px;
+  border: 1px solid rgba(74, 69, 128, 0.18);
+  border-radius: 999px;
   background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 16px 42px rgba(46, 35, 66, 0.16);
-}
-
-.summer-pending-import-float > div {
-  min-width: 0;
-}
-
-.summer-pending-import-float strong {
-  display: block;
-  color: var(--text-primary);
+  box-shadow: 0 12px 30px rgba(46, 35, 66, 0.16);
+  color: var(--physics, #4a4580);
   font-size: 12px;
-  font-weight: 1000;
+  font-weight: 900;
+  cursor: pointer;
 }
 
-.summer-pending-import-float span:not(.material-symbols-outlined) {
-  display: block;
-  max-width: 180px;
-  overflow: hidden;
-  color: var(--text-secondary);
-  font-size: 11px;
-  font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.summer-pending-import-float .material-symbols-outlined {
+  font-size: 18px;
 }
 
 .summer-reward-float {
@@ -10960,7 +10948,6 @@ body.focus-mode #view {
   }
 
   .focus-mini-dock,
-  .summer-pending-import-float,
   .summer-reward-float {
     right: 10px;
     left: 10px;
@@ -10971,8 +10958,10 @@ body.focus-mode #view {
     bottom: 78px;
   }
 
+  /* 紧凑胶囊在移动端保持右下角小尺寸，不再横向撑满 */
   .summer-pending-import-float {
-    bottom: 146px;
+    right: 10px;
+    bottom: 72px;
   }
 
   .summer-reward-float {
