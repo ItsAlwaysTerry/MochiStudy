@@ -4,10 +4,9 @@
   const STATE_KEYS = { physics: "summer_task_state", math: "plan_state_math", chemistry: "plan_state_chemistry" };
   let activeSubject = "physics";
   function subjectStateKey(subject = activeSubject) { return STATE_KEYS[subject] || STATE_KEYS.physics; }
-  // 科目 Tab：只切换卡片显示（物理有内容，数/化暂为"准备中"占位）；暂不改全局状态读取。
+  // 科目 Tab：数/物/化切换。activeSubject（上面）同时驱动状态 key 和内容包，保证"状态与内容同科"。
   const SUBJECT_TABS = [["math", "数学"], ["physics", "物理"], ["chemistry", "化学"]];
   const SUBJECT_HAS_PLAN = { physics: true, math: false, chemistry: false };
-  let subjectTab = "physics";
   const BASIC_2045_URL = "https://space.bilibili.com/23630128/lists/2045?type=season";
   const BASIC_2181_URL = "https://space.bilibili.com/23630128/lists/2181?type=season";
   const ONE_ROUND_URL = "https://space.bilibili.com/23630128/lists/340933?type=series";
@@ -30,7 +29,7 @@
   let rewardAnimationTimer = null;
   let examplePointerAnchor = null;
   let routeOverviewOpen = false;
-  const ONE_ROUND_BVS = {
+  const PHYSICS_ONE_ROUND_BVS = {
     kinematics: "BV1D54y1m7Av",
     balance: "BV1vD4y1U7k4",
     newton: "BV1R64y1c7m2",
@@ -45,7 +44,7 @@
     magneticCircle: "BV1Xb4y1Q7Eq",
     induction: "BV13i4y1N7RJ",
   };
-  const ROUTE_VIDEO_LIBRARY = {
+  const PHYSICS_ROUTE_VIDEO_LIBRARY = {
     "kin-chase-template": { source: "黄夫人物理一轮", bvKey: "kinematics", page: 8, duration: "10:35", title: "追及相遇通用解题模板", part: "8.【讲义10】【追及相遇】通用解题模板", require: "截 1 张追及/相遇临界例题" },
     "kin-chase-critical": { source: "黄夫人物理一轮", bvKey: "kinematics", page: 9, duration: "17:15", title: "追及相遇临界讨论", part: "9.【讲义11】【追及相遇】临界讨论", require: "截 1 张临界条件题" },
     "kin-image-basic": { source: "黄夫人物理一轮", bvKey: "kinematics", page: 11, duration: "14:23", title: "基础图像总结", part: "11.【讲义13】基础图像总结", require: "截 1 张 x-t 或 v-t 图像题" },
@@ -123,7 +122,7 @@
     "induction-practice": { source: "黄夫人物理一轮", bvKey: "induction", page: 4, duration: "16:05", title: "楞次定律练习", part: "4.【讲义72】【楞次定律】练习", require: "截 1 张楞次练习题" },
   };
 
-  const TASKS = [
+  const PHYSICS_TASKS = [
     {
       id: "kinematics-basic",
       title: "匀变速直线运动",
@@ -392,7 +391,7 @@
     }
   ];
 
-  const ROUTE_DAYS = [
+  const PHYSICS_ROUTE_DAYS = [
     { day: 1, week: 1, title: "直线运动 + 受力起步", subtitle: "匀变速、牛二、正交分解", taskIds: ["kinematics-basic", "newton-second-law", "force-decomposition"] },
     { day: 2, week: 1, title: "功能、电路、曲线入门", subtitle: "功与功率、闭合电路、平抛、万有引力", taskIds: ["work-power", "closed-circuit-ohm", "projectile-motion", "universal-gravitation"] },
     { day: 3, week: 1, title: "运动图像 + 追及相遇", subtitle: "把 x-t / v-t 图像和刹车追及补成拿分点", focus: ["运动图像", "刹车陷阱", "追及相遇"], videoKeys: ["kin-chase-template", "kin-chase-critical", "kin-image-basic", "kin-image-special"] },
@@ -422,6 +421,26 @@
     { day: 27, week: 4, title: "错题二刷", subtitle: "只做曾经不会、半会、卡住的题", focus: ["错题复盘", "卡点修正"], videoKeys: ["kin-image-special", "newton-multi", "energy-relation", "circuit-closed-calc", "induction-practice"], mission: "从学习档案挑 5 张低星/半会卡片，先自己重做，再用同类测验包补 1 道变式。" },
     { day: 28, week: 4, title: "总复盘 + 下一轮计划", subtitle: "导出学习档案，决定下一轮补哪 3 个点", focus: ["学习档案", "复盘报告", "下轮计划"], videoKeys: ["kin-comprehensive", "energy-kinetic-practice", "electric-comprehensive", "experiment-source-practice"], mission: "不追新课。导出学习档案，看哪个专题反复低星，选出下一轮最该补的 3 个点。" },
   ];
+
+  // 多科内容包（P1b）：物理已就绪；数学/化学填了内容后把对应项从 null 换成 {TASKS,ROUTE_DAYS,ROUTE_VIDEO_LIBRARY,ONE_ROUND_BVS} 并把 SUBJECT_HAS_PLAN 翻 true。
+  const PLAN_CONTENT = {
+    physics: { TASKS: PHYSICS_TASKS, ROUTE_DAYS: PHYSICS_ROUTE_DAYS, ROUTE_VIDEO_LIBRARY: PHYSICS_ROUTE_VIDEO_LIBRARY, ONE_ROUND_BVS: PHYSICS_ONE_ROUND_BVS },
+    math: null,
+    chemistry: null,
+  };
+  // 引擎里所有函数继续用 TASKS/ROUTE_DAYS/ROUTE_VIDEO_LIBRARY/ONE_ROUND_BVS；这些是 let 别名，
+  // 由 applySubjectContent() 在渲染前指向当前科目的内容包（无内容则回退物理，行为不变）。
+  let TASKS = PHYSICS_TASKS;
+  let ROUTE_DAYS = PHYSICS_ROUTE_DAYS;
+  let ROUTE_VIDEO_LIBRARY = PHYSICS_ROUTE_VIDEO_LIBRARY;
+  let ONE_ROUND_BVS = PHYSICS_ONE_ROUND_BVS;
+  function applySubjectContent(subject = activeSubject) {
+    const c = PLAN_CONTENT[subject] || PLAN_CONTENT.physics;
+    TASKS = c.TASKS;
+    ROUTE_DAYS = c.ROUTE_DAYS;
+    ROUTE_VIDEO_LIBRARY = c.ROUTE_VIDEO_LIBRARY;
+    ONE_ROUND_BVS = c.ONE_ROUND_BVS;
+  }
 
   function readState() {
     const fallback = { pendingTaskId: "", pendingRouteDay: 0, pendingRouteTaskId: "", activeRouteDay: 0, tasks: {}, routeDays: {}, routeDetailDay: 0, examples: {}, reward: {} };
@@ -476,6 +495,7 @@
   }
 
   function attachImportedRecord(logEntry) {
+    applySubjectContent();
     const state = readState();
     const id = state.pendingTaskId;
     if (!id || !TASKS.some((task) => task.id === id)) {
@@ -800,7 +820,7 @@
     return `
       <div class="plan-subject-tabs" role="tablist" aria-label="选择科目计划">
         ${SUBJECT_TABS.map(([key, label]) => `
-          <button class="plan-subject-tab ${subjectTab === key ? "active" : ""}" data-summer-action="switch-subject" data-subject="${key}" type="button" role="tab" aria-selected="${subjectTab === key ? "true" : "false"}">
+          <button class="plan-subject-tab ${activeSubject === key ? "active" : ""}" data-summer-action="switch-subject" data-subject="${key}" type="button" role="tab" aria-selected="${activeSubject === key ? "true" : "false"}">
             ${label}${SUBJECT_HAS_PLAN[key] ? "" : `<span class="plan-subject-soon">准备中</span>`}
           </button>
         `).join("")}
@@ -823,11 +843,12 @@
   }
 
   function render() {
-    if (!SUBJECT_HAS_PLAN[subjectTab]) {
+    applySubjectContent();
+    if (!SUBJECT_HAS_PLAN[activeSubject]) {
       return `
         <section class="card summer-task-card">
           ${renderSubjectTabs()}
-          ${renderPlanComingSoon(subjectTab)}
+          ${renderPlanComingSoon(activeSubject)}
         </section>
       `;
     }
@@ -1196,11 +1217,13 @@
 
   // 首页一行入口：显示 28 天进度，点开进全屏总览
   function renderRouteEntry() {
+    if (!SUBJECT_HAS_PLAN[activeSubject]) return "";
+    applySubjectContent();
     const stat = routeStats(readState());
     return `
       <button class="card home-status-drawer home-status-link" data-summer-action="open-route-overview" type="button">
         <span class="material-symbols-outlined">calendar_month</span>
-        <span class="home-status-digest">28 天总路线 · ${stat.completed}/${stat.total}</span>
+        <span class="home-status-digest">${stat.total} 天总路线 · ${stat.completed}/${stat.total}</span>
         <span class="home-status-arrow material-symbols-outlined">chevron_right</span>
       </button>
     `;
@@ -2500,8 +2523,8 @@
     }
     if (action === "switch-subject") {
       const subject = event.currentTarget.dataset.subject || "physics";
-      if (SUBJECT_HAS_PLAN[subject] !== undefined && subject !== subjectTab) {
-        subjectTab = subject;
+      if (SUBJECT_HAS_PLAN[subject] !== undefined && subject !== activeSubject) {
+        activeSubject = subject;
         refreshHome({ preserveScroll: true });
       }
       return;
