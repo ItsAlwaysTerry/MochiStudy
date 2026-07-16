@@ -29,6 +29,8 @@
   ];
   const SUMMER_REWARD_BOARD_SIZE = 8;
   let rewardAnimationTimer = null;
+  let econAnimTimer = null;
+  let econAnimActive = false;
   let examplePointerAnchor = null;
   let routeOverviewOpen = false;
   const PHYSICS_ONE_ROUND_BVS = {
@@ -1058,7 +1060,7 @@
       dailySmallDate: "", dailySmallPaid: 0,
       qualDays: [], stages: 0, streak: 0, lastQualDate: "",
       dailyTickets: 0, stageTickets: 0,
-      history: [], lastPrize: null,
+      history: [], lastPrize: null, draw: null,
     };
   }
   function readSharedReward() {
@@ -1179,6 +1181,120 @@
       lastPrize: entry,
     });
     return entry;
+  }
+
+  // ===== 抽奖骰子动画（把 econDraw 的结果用"摇骰子走格"呈现）=====
+  // 逻辑金额来自 ECON（变体C），骰子只是把已定好的结果演出来，钱在"摇骰子"那一刻由 econDraw 结算。
+  function econTone(amount) {
+    const v = Number(amount || 0);
+    return v >= 100 ? "jackpot" : v >= 50 ? "big" : v >= 20 ? "big" : "coin";
+  }
+  function econPrizeLabel(amount) {
+    const v = Number(amount || 0);
+    if (v >= 100) return "超级大奖";
+    if (v >= 50) return "大奖";
+    if (v >= 20) return "大额奖励";
+    if (v >= 10) return "中额奖励";
+    if (v >= 5) return "小奖励";
+    return "鼓励奖";
+  }
+  function econCell(amount, index) {
+    return { label: econPrizeLabel(amount), amount: Number(amount || 0), weight: 1, tone: econTone(amount), cellId: `reward-cell-${index}` };
+  }
+  // 用当前券对应的奖池铺满 8 格盘面（阶段券=大额池，日常券=小额池）
+  function econBuildBoard(kind) {
+    const amounts = (kind === "stage" ? ECON.stagePool : ECON.dailyPool).map((x) => x.a);
+    return Array.from({ length: SUMMER_REWARD_BOARD_SIZE }, (_, i) => econCell(amounts[i % amounts.length], i));
+  }
+  // 预算到顶时不消耗券：返回 "week"/"day"/"" 说明是否被封顶挡住
+  function econDrawBlockedReason() {
+    const r = readSharedReward();
+    const today = todayIso();
+    const wk = econWeekKey(today);
+    const paidToday = r.paidTodayDate === today ? Number(r.paidToday || 0) : 0;
+    const weekPaid = r.weekKey === wk ? Number(r.weekPaid || 0) : 0;
+    if (ECON.weekCap - weekPaid <= 0) return "week";
+    const kind = r.stageTickets > 0 ? "stage" : r.dailyTickets > 0 ? "daily" : null;
+    if (kind === "daily" && ECON.dailyCap - paidToday <= 0) return "day";
+    return "";
+  }
+  // 抽一次：先打开盘面（不扣钱，让学生看清奖池格子）
+  function econOpenBoard(trigger) {
+    const r = readSharedReward();
+    if (r.draw && r.draw.phase && r.draw.phase !== "result") {
+      window.MochiApp?.toast?.("抽奖盘已经打开了，点骰子开始"); return;
+    }
+    const kind = r.stageTickets > 0 ? "stage" : r.dailyTickets > 0 ? "daily" : null;
+    if (!kind) { window.MochiApp?.toast?.("现在没有抽奖券，先做满 2 个节点"); return; }
+    const blocked = econDrawBlockedReason();
+    if (blocked) {
+      window.MochiApp?.toast?.(blocked === "week" ? "本周奖金已封顶，抽奖券留到下周" : "今天奖金已达上限，抽奖券留到明天");
+      return;
+    }
+    writeSharedReward({ draw: { phase: "ready", kind, board: econBuildBoard(kind), cursor: 0, startIndex: 0, dice: 0 } });
+    refreshHome({ preserveScroll: true });
+    trigger?.blur?.();
+  }
+  // 摇骰子：此刻才真正 econDraw 结算，骰子落到中奖格
+  function econRollDice(trigger) {
+    window.clearTimeout(econAnimTimer);
+    const r = readSharedReward();
+    const draw = r.draw;
+    if (!draw || draw.phase !== "ready") { window.MochiApp?.toast?.("先打开抽奖盘"); return; }
+    const entry = econDraw();
+    if (!entry) { writeSharedReward({ draw: null }); refreshHome({ preserveScroll: true }); window.MochiApp?.toast?.("抽奖券不足"); return; }
+    const kind = entry.kind;
+    const finalDice = Math.floor(Math.random() * 6) + 1;
+    const startIndex = 0;
+    const targetIndex = (startIndex + finalDice) % SUMMER_REWARD_BOARD_SIZE;
+    const board = econBuildBoard(kind).map((cell, i) => (i === targetIndex ? econCell(entry.drawn, i) : cell));
+    const anim = { phase: "rolling", kind, board, cursor: startIndex, startIndex, targetIndex, finalDice, dice: 0, drawn: entry.drawn, paid: entry.paid };
+    econAnimActive = true; // 标记动画进行中，避免渲染守卫误判为"卡住"而提前结算
+    writeSharedReward({ draw: anim });
+    refreshHome({ preserveScroll: true });
+    trigger?.blur?.();
+    econRunAnimation(anim);
+  }
+  function econRunAnimation(anim) {
+    window.clearTimeout(econAnimTimer);
+    econAnimActive = true;
+    if (!document.querySelector("[data-summer-reward]")) { econFinishDraw(anim); return; }
+    const rollValues = Array.from({ length: 26 }, (_, i) => ((i * 3 + 1) % 6) + 1).concat(anim.finalDice);
+    let idx = 0;
+    const rollDice = () => {
+      setRewardDice(rollValues[idx], true);
+      playRewardTick(idx % 2 ? 520 : 620);
+      idx += 1;
+      if (idx < rollValues.length) { econAnimTimer = setTimeout(rollDice, 130); return; }
+      setRewardDice(anim.finalDice, false);
+      econMoveCursor(anim, 0, anim.startIndex);
+    };
+    rollDice();
+  }
+  function econMoveCursor(anim, step, cursor) {
+    if (step >= anim.finalDice) { econFinishDraw(anim); return; }
+    const next = (cursor + 1) % SUMMER_REWARD_BOARD_SIZE;
+    setRewardCursor(next);
+    playRewardTick(740 + step * 30);
+    econAnimTimer = setTimeout(() => econMoveCursor(anim, step + 1, next), 480);
+  }
+  function econFinishDraw(anim) {
+    window.clearTimeout(econAnimTimer);
+    econAnimTimer = null;
+    econAnimActive = false;
+    writeSharedReward({ draw: { ...anim, phase: "result", cursor: anim.targetIndex } });
+    refreshHome({ preserveScroll: true });
+    setTimeout(() => {
+      const float = document.querySelector("[data-summer-reward]");
+      if (float) {
+        float.classList.add("drawn");
+        window.MochiApp?.sparkle?.(float, Number(anim.drawn || 0) >= 50 ? "★" : "¥");
+        setTimeout(() => float.classList.remove("drawn"), 900);
+      }
+      playRewardSound(econTone(anim.drawn));
+    }, 80);
+    const paidNote = Number(anim.paid) < Number(anim.drawn) ? `本周已达上限，实发 ¥${anim.paid}` : `¥${anim.paid} 已到账`;
+    window.MochiApp?.toast?.(`抽中 ¥${anim.drawn}，${paidNote}`);
   }
 
   function todayIso() {
@@ -1377,37 +1493,69 @@
     const earnedToday = r.paidTodayDate === today ? Number(r.paidToday || 0) : 0;
     const weekEarned = r.weekKey === econWeekKey(today) ? Number(r.weekPaid || 0) : 0;
     const last = r.lastPrize;
+    // 抽奖盘面（骰子动画）状态：ready=已打开待摇 / rolling·moving=进行中 / result=定格
+    const draw = r.draw && r.draw.phase ? r.draw : null;
+    const drawResult = draw && draw.phase === "result";
+    const drawRolling = draw && (draw.phase === "rolling" || draw.phase === "moving");
+    // 刷新时若碰到"盘面在转，但本次会话没有活动动画"（多为中途刷新/重开页面），补一次结算，避免盘面永久卡住
+    if (drawRolling && !econAnimActive) {
+      const stale = draw;
+      econAnimActive = true;
+      econAnimTimer = setTimeout(() => econFinishDraw(stale), 60);
+    }
+    const blocked = canDraw && !draw ? econDrawBlockedReason() : "";
+    // 图标环 = 今日能量（每天回填，做满 4 个节点填满）；正文彩条 = 阶段进度（攒向下一次大奖）
+    const energyAngle = Math.min(360, Math.round((energy / 4) * 360));
+    const stagePct = Math.round((daysInStage / ECON.stagePerDays) * 100);
+    const iconGlyph = draw && !drawResult ? "casino" : canDraw ? "cake" : "savings";
+    const iconClass = draw && !drawResult ? "" : canDraw ? "summer-reward-glyph-cake" : "summer-reward-glyph-savings";
+    const headTitle = draw
+      ? (draw.phase === "ready" ? "点骰子开始" : drawResult ? "抽奖结果" : "正在抽奖")
+      : (canDraw ? `可抽奖 ${tickets} 次` : "今日能量");
+    const boardState = draw ? {
+      phase: draw.phase, board: draw.board, cursor: draw.cursor,
+      targetIndex: Number.isFinite(Number(draw.targetIndex)) ? Number(draw.targetIndex) : -1,
+      finalDice: draw.finalDice, dice: draw.dice,
+      prize: drawResult ? { label: econPrizeLabel(draw.drawn), amount: draw.drawn, tone: econTone(draw.drawn) } : null,
+      claim: draw.kind === "stage" ? "阶段大奖" : "日常抽奖",
+    } : null;
     return `
-      <aside class="summer-reward-float ${collapsed ? "collapsed" : ""} ${canDraw ? "ready" : ""}" data-summer-reward style="${pos}">
+      <aside class="summer-reward-float ${collapsed ? "collapsed" : ""} ${canDraw ? "ready" : ""} ${drawRolling ? "drawing" : ""}" data-summer-reward style="--reward-angle:${energyAngle}deg;${pos}">
         <div class="summer-reward-head" data-summer-reward-drag role="button" tabindex="0" aria-label="${collapsed ? "展开" : "收起"}今日能量">
           <span class="summer-reward-icon">
-            <span class="material-symbols-outlined ${canDraw ? "" : "summer-reward-glyph-savings"}">${canDraw ? "redeem" : "savings"}</span>
+            <span class="material-symbols-outlined ${iconClass}">${iconGlyph}</span>
           </span>
           <div>
-            <strong>${canDraw ? `可抽奖 ${tickets} 次` : "今日能量"}</strong>
-            <span>今日 ${energy} 个节点 · 已得 ¥${earnedToday}</span>
+            <strong>${headTitle}</strong>
+            <span>今日 ${energy} 个节点 · ¥${earnedToday}/${ECON.dailyCap}</span>
           </div>
           <span class="summer-reward-arrow material-symbols-outlined">${collapsed ? "keyboard_arrow_up" : "keyboard_arrow_down"}</span>
         </div>
         ${collapsed ? "" : `
           <div class="summer-reward-body">
+            <div class="summer-reward-track"><div class="summer-reward-fill" style="width:${stagePct}%"></div></div>
             <div class="summer-reward-stats">
               <span>阶段进度 ${daysInStage}/${ECON.stagePerDays} 达标日</span>
-              <span>本周已得 ¥${weekEarned}</span>
+              <span>本周 ¥${weekEarned}/${ECON.weekCap}</span>
             </div>
-            ${last ? `
+            ${draw ? renderRewardBoard(boardState) : (last ? `
               <div class="summer-reward-result ${Number(last.drawn) >= 50 ? "big" : "coin"}">
                 <span>${last.kind === "stage" ? "阶段大奖" : "日常抽奖"}</span>
                 <strong>抽中 ¥${Number(last.drawn || 0)}</strong>
                 <em>${Number(last.paid) < Number(last.drawn) ? `本周已达上限，实发 ¥${Number(last.paid || 0)}` : `已到账 ¥${Number(last.paid || 0)}`}</em>
               </div>
-            ` : ""}
-            ${canDraw
-              ? `<button class="summer-reward-draw" data-summer-action="reward-draw" type="button">
-                  <span class="material-symbols-outlined">redeem</span>抽一次（${stageT > 0 ? "阶段大奖" : "日常"}）
-                </button>
-                <p class="summer-reward-claim">日常券 ${daily} · 阶段券 ${stageT}</p>`
-              : `<p class="summer-reward-claim">今天做满 2 个节点得日常抽奖券；攒 5 个达标日解锁阶段大奖。</p>`}
+            ` : "")}
+            ${draw ? "" : (canDraw
+              ? (blocked
+                ? `<p class="summer-reward-claim summer-reward-capnote">${blocked === "week"
+                    ? `🎉 本周奖金已拿满 ¥${ECON.weekCap}。抽奖券先留着，周一自动可用；这周继续做题只涨勋章和达标日，不亏。`
+                    : `今天奖金已达上限 ¥${ECON.dailyCap}，日常券留到明天。现在做节点仍在攒达标日、离阶段大奖更近。`}</p>
+                  <p class="summer-reward-claim">日常券 ${daily} · 阶段券 ${stageT}</p>`
+                : `<button class="summer-reward-draw" data-summer-action="reward-draw" type="button">
+                    <span class="material-symbols-outlined">casino</span>抽一次（${stageT > 0 ? "阶段大奖" : "日常"}）
+                  </button>
+                  <p class="summer-reward-claim">日常券 ${daily} · 阶段券 ${stageT}</p>`)
+              : `<p class="summer-reward-claim">今天做满 2 个节点得日常抽奖券；攒 5 个达标日解锁阶段大奖。</p>`)}
           </div>
         `}
       </aside>
@@ -2859,11 +3007,16 @@
       return;
     }
     if (action === "reward-draw") {
-      const entry = econDraw();
-      if (!entry) { window.MochiApp?.toast?.("现在没有抽奖券，先做满 2 个节点"); return; }
+      econOpenBoard(event.currentTarget);
+      return;
+    }
+    if (action === "reward-roll") {
+      econRollDice(event.currentTarget);
+      return;
+    }
+    if (action === "reward-clear-result") {
+      writeSharedReward({ draw: null });
       refreshHome({ preserveScroll: true });
-      if (entry.paid >= entry.drawn) window.MochiApp?.toast?.(`抽中 ¥${entry.drawn}，已到账！`);
-      else window.MochiApp?.toast?.(`抽中 ¥${entry.drawn}，本周已达上限，实发 ¥${entry.paid}`);
       return;
     }
     if (!task) return;

@@ -9653,6 +9653,12 @@ body.focus-mode #view {
   transform: translate(9.5px, 10px);
 }
 
+/* "cake"（可抽奖时的蛋糕图标）：与 redeem/casino 同属正常居中字形（不像 savings 那样墨迹偏移），
+   默认信任 flex 居中（0 偏移）；下面数值由浏览器截图像素实测校准后确定。 */
+.summer-reward-glyph-cake {
+  transform: translate(0, 0);
+}
+
 .summer-reward-head strong {
   display: block;
   color: var(--text-primary);
