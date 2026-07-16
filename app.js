@@ -5607,6 +5607,7 @@ ${record.originalQuestion || "暂无原题描述。"}
               <button data-action="debug-add-node-records" data-count="20" type="button">+20同点</button>
               <button data-action="debug-add-focus" data-minutes="120" type="button">+2h专注</button>
               <button data-action="debug-add-lottery-tickets" data-count="3" type="button">+3抽奖</button>
+              <button data-action="debug-add-summer-tickets" type="button">+暑假券</button>
               <button data-action="debug-reset-achievements" type="button">清勋章</button>
             </div>
           </div>
@@ -5784,6 +5785,12 @@ ${record.originalQuestion || "暂无原题描述。"}
         debugRefreshFarm();
         if (currentRoute() === "achievements") renderAchievements(view);
         toast(`已加 ${action.dataset.count || 3} 次抽奖机会`);
+        return;
+      }
+      if (name === "debug-add-summer-tickets") {
+        window.MochiSummerTasks?.debugGrantTickets?.(2, 1);
+        debugRefreshFarm();
+        toast("已加暑假券：日常×2 + 阶段×1（首页能量浮窗可抽）");
         return;
       }
       if (name === "debug-reset-achievements") {

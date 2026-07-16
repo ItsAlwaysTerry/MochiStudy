@@ -4150,6 +4150,10 @@
     renderRouteEntry,
     getTasks: () => TASKS.slice(),
     getRewardHistory: () => readSharedReward().history,
+    debugGrantTickets: (d = 1, s = 1) => {
+      const r = readSharedReward();
+      writeSharedReward({ dailyTickets: Number(r.dailyTickets || 0) + d, stageTickets: Number(r.stageTickets || 0) + s });
+    },
     loadDemoState,
     openTaskImportDock,
     openTaskFollowup,
