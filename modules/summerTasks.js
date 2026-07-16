@@ -1037,7 +1037,8 @@
     let score = 0;
     if (info.startedAt || info.lastFocusedAt || info.watched) score += 1;
     if (examples.length || hasPractice || info.practicingAt) score += 1;
-    if (info.exampleQuizPromptCopiedAt || info.promptCopiedAt || info.completed) score += 1;
+    // 第3格只认真实导入/完成，不认"点了复制测验包"（进度环诚实反映真进度）
+    if (info.completed) score += 1;
     if (taskReadyToAdvance(task, state)) score += 1;
     return Math.min(4, score);
   }
