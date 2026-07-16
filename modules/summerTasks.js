@@ -2203,7 +2203,7 @@
     const compact = Boolean(options.compact);
     const title = compact ? "例题截图" : "视频例题截图";
     const helper = examples.length
-      ? `已存 ${examples.length} 张。点“复制测验包”，把题一起发给 Gemini。`
+      ? `已存 ${examples.length} 张。点“复制测验包”和“复制图片”，把文字和图一起发给 Gemini。`
       : "看视频时截 1-3 张代表题，点左侧后 Ctrl+V 存下来。";
     return `
       <section class="summer-example-box ${compact ? "compact" : ""}" data-summer-example-task-id="${escapeHtml(task.id)}">
@@ -2226,6 +2226,9 @@
           </label>
           <button class="btn btn-primary btn-sm summer-example-quiz" data-summer-action="copy-example-quiz" data-task-id="${escapeHtml(task.id)}" type="button" ${examples.length ? "" : "disabled"}>
             <span class="material-symbols-outlined">auto_awesome</span>${examples.length ? "复制测验包" : "先贴图"}
+          </button>
+          <button class="btn btn-soft btn-sm summer-example-copy" data-summer-action="copy-example-image" data-task-id="${escapeHtml(task.id)}" data-example-id="${escapeHtml(examples[0]?.id || "")}" type="button" ${examples.length ? "" : "disabled"}>
+            <span class="material-symbols-outlined">content_copy</span>${examples.length > 1 ? "复制首图" : "复制图片"}
           </button>
         </div>
         <p class="summer-example-local-note">
@@ -2250,9 +2253,9 @@
       <div class="summer-example-ai-status ${hasExamples ? "ready" : ""}">
         <span class="material-symbols-outlined">${hasExamples ? "content_paste_go" : "info"}</span>
         <div>
-          <strong>${hasExamples ? "下一步：复制测验包发给 Gemini" : "先把视频里的例题截图存到这里"}</strong>
+          <strong>${hasExamples ? "下一步：测验包 + 图片一起发给 Gemini" : "先把视频里的例题截图存到这里"}</strong>
           <p>${hasExamples
-            ? "点“复制测验包”→ 到 Gemini 粘文字、再 Ctrl+V 把截图贴进同一条对话 → 练完把记录粘回下面。"
+            ? "点“复制测验包”粘文字，再点“复制图片”把截图贴进同一条 Gemini 对话（它带不了图，要单独复制图）→ 练完把记录粘回下面。"
             : "截图只存在本机；等下和测验包一起发给 Gemini。"
           }</p>
         </div>
@@ -3214,7 +3217,7 @@
     writeState(nextState);
     refreshHome(refreshOptions);
     if (ok) {
-      window.MochiApp?.toast?.("已复制测验包：到 Gemini 粘文字 + Ctrl+V 贴图，练完回来写收尾");
+      window.MochiApp?.toast?.("已复制测验包：再点“复制图片”一起发给 Gemini，练完回来写收尾");
     } else {
       showPromptFallback(prompt);
       window.MochiApp?.toast?.("已打开手动复制框，复制后连同截图发给 AI，练完回本节点写收尾");
@@ -3721,7 +3724,7 @@
       task.prep?.concepts?.length ? `本节相关概念：${task.prep.concepts.join("、")}。` : "",
       task.prep?.backup ? `卡住时备用范围：${task.prep.backup}。${backupLinks ? `资源链接：${backupLinks}。` : ""}` : "",
       "",
-      "我会先粘贴这段文字，然后直接把例题截图 Ctrl+V 粘到同一个对话里。你必须先看截图；如果没收到图片，请只提醒我继续粘图，不要凭空编题。",
+      "我会先粘贴这段文字，然后回 MochiStudy 点“复制图片”，把例题截图粘到同一个对话里。你必须先看截图；如果没收到图片，请只提醒我继续粘图，不要凭空编题。",
       exampleLines,
       "",
       "请按这个流程带我练：",
