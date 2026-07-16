@@ -4014,9 +4014,42 @@ git reset --hard origin/main</pre>
         </div>
       </section>
 
+      ${renderSummerAchievements()}
       ${renderSummerRewardHistory()}
       ${renderLotteryHistory()}
     `;
+  }
+
+  // 暑假计划专属成就：纯荣誉/收集，不进 totalSmall/totalBig、不换抽奖券、不发钱
+  // （钱只从首页能量浮窗抽奖出，单一预算口；这里只做"看得见的收集感"）
+  function renderSummerAchievements() {
+    const s = window.MochiSummerTasks?.getSummerHonorStats?.() || { nodesCompleted: 0, qualDays: 0, stages: 0 };
+    if (!s.nodesCompleted && !s.qualDays && !s.stages) return "";
+    const item = (icon, label, current, per, unit) => {
+      const badges = Math.floor(Number(current || 0) / per);
+      const toNext = (badges + 1) * per - Number(current || 0);
+      return `
+        <div class="badge-item summer-honor-item ${badges > 0 ? "badge-earned" : ""}">
+          <div class="badge-summary-row">
+            <div class="badge-icon"><span class="material-symbols-outlined">${icon}</span></div>
+            <div class="badge-info">
+              <strong>${label}</strong>
+              <span class="muted">已 ${Number(current || 0)} ${unit} · 再 ${toNext} ${unit}得下一枚</span>
+            </div>
+            <div class="badge-count"><span class="badge-total">x${badges}</span></div>
+          </div>
+        </div>`;
+    };
+    return `
+      <section class="card summer-honor-card">
+        <h3 style="margin-bottom:6px">暑假计划成就</h3>
+        <p class="muted" style="margin:0 0 14px">跟着暑假计划一路收集的荣誉徽章（纯收藏，奖金走首页能量浮窗抽奖）。</p>
+        <div class="badge-grid">
+          ${item("smart_display", "看课达人", s.nodesCompleted, 5, "个节点")}
+          ${item("local_fire_department", "达标日勋章", s.qualDays, 3, "个达标日")}
+          ${item("military_tech", "阶段勋章", s.stages, 1, "个阶段")}
+        </div>
+      </section>`;
   }
 
   function getSummerRewardHistory() {

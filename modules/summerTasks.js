@@ -4362,6 +4362,23 @@
     renderRouteEntry,
     getTasks: () => TASKS.slice(),
     getRewardHistory: () => readSharedReward().history,
+    // 暑假荣誉/收集统计（跨三科），供勋章页显示暑假专属成就；纯荣誉、不发钱（钱只走能量浮窗抽奖，单一预算口）
+    getSummerHonorStats: () => {
+      let nodesCompleted = 0;
+      Object.values(STATE_KEYS).forEach((key) => {
+        try {
+          const st = JSON.parse(localStorage.getItem(key) || "null") || {};
+          const tasks = st.tasks && typeof st.tasks === "object" ? st.tasks : {};
+          Object.values(tasks).forEach((info) => { if (info && info.completed) nodesCompleted += 1; });
+        } catch { /* 单科损坏跳过 */ }
+      });
+      const r = readSharedReward();
+      return {
+        nodesCompleted,
+        qualDays: Array.isArray(r.qualDays) ? r.qualDays.length : 0,
+        stages: Number(r.stages || 0),
+      };
+    },
     debugGrantTickets: (d = 1, s = 1) => {
       const r = readSharedReward();
       writeSharedReward({ dailyTickets: Number(r.dailyTickets || 0) + d, stageTickets: Number(r.stageTickets || 0) + s });
