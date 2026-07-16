@@ -69,13 +69,14 @@
     small: {
       focusHours: 2,
       studyDays: 3,
-      recordCount: 10,
+      // 导入从"1题1条"变成"1次导入4-6条"，按记录条数的阈值上调约5倍，避免勋章/抽奖券发太快
+      recordCount: 50,
       balancedWeeks: 1,
       harvests: 3,
     },
     big: {
-      nodeRecords: 20,
-      totalRecords: 50,
+      nodeRecords: 40,
+      totalRecords: 200,
       focusHours: 10,
       farmLevelStep: 3,
       studyDays: 20,
