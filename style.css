@@ -11283,3 +11283,49 @@ body.focus-mode #view {
   flex-shrink: 0;
   color: var(--muted, #a08a90);
 }
+
+/* 科目 Tab（多科计划 P1c）：数学/物理/化学 切换 */
+.plan-subject-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.plan-subject-tab {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid rgba(74, 69, 128, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--text-secondary, #6b5b60);
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.plan-subject-tab.active {
+  background: var(--physics, #4a4580);
+  border-color: var(--physics, #4a4580);
+  color: #fff;
+}
+.plan-subject-tab:not(.active):hover {
+  background: rgba(197, 194, 240, 0.28);
+}
+.plan-subject-soon {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  color: inherit;
+  opacity: 0.85;
+}
+.plan-subject-tab.active .plan-subject-soon {
+  background: rgba(255, 255, 255, 0.28);
+}
+.plan-coming-soon {
+  align-items: flex-start;
+}

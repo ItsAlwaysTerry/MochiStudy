@@ -4,6 +4,10 @@
   const STATE_KEYS = { physics: "summer_task_state", math: "plan_state_math", chemistry: "plan_state_chemistry" };
   let activeSubject = "physics";
   function subjectStateKey(subject = activeSubject) { return STATE_KEYS[subject] || STATE_KEYS.physics; }
+  // 科目 Tab：只切换卡片显示（物理有内容，数/化暂为"准备中"占位）；暂不改全局状态读取。
+  const SUBJECT_TABS = [["math", "数学"], ["physics", "物理"], ["chemistry", "化学"]];
+  const SUBJECT_HAS_PLAN = { physics: true, math: false, chemistry: false };
+  let subjectTab = "physics";
   const BASIC_2045_URL = "https://space.bilibili.com/23630128/lists/2045?type=season";
   const BASIC_2181_URL = "https://space.bilibili.com/23630128/lists/2181?type=season";
   const ONE_ROUND_URL = "https://space.bilibili.com/23630128/lists/340933?type=series";
@@ -792,7 +796,41 @@
     return links.slice(0, 3);
   }
 
+  function renderSubjectTabs() {
+    return `
+      <div class="plan-subject-tabs" role="tablist" aria-label="选择科目计划">
+        ${SUBJECT_TABS.map(([key, label]) => `
+          <button class="plan-subject-tab ${subjectTab === key ? "active" : ""}" data-summer-action="switch-subject" data-subject="${key}" type="button" role="tab" aria-selected="${subjectTab === key ? "true" : "false"}">
+            ${label}${SUBJECT_HAS_PLAN[key] ? "" : `<span class="plan-subject-soon">准备中</span>`}
+          </button>
+        `).join("")}
+      </div>
+    `;
+  }
+
+  function renderPlanComingSoon(subject) {
+    const name = subject === "math" ? "数学" : "化学";
+    return `
+      <div class="summer-route-placeholder plan-coming-soon">
+        <span class="material-symbols-outlined">hourglass_top</span>
+        <div>
+          <strong>${name}一轮计划准备中</strong>
+          <p>正在按你的分数段整理${name}的视频和练习路线，先把物理这科推进就好，${name}准备好会第一时间放这里。</p>
+          <button class="btn btn-soft btn-sm" data-summer-action="switch-subject" data-subject="physics" type="button">先去物理</button>
+        </div>
+      </div>
+    `;
+  }
+
   function render() {
+    if (!SUBJECT_HAS_PLAN[subjectTab]) {
+      return `
+        <section class="card summer-task-card">
+          ${renderSubjectTabs()}
+          ${renderPlanComingSoon(subjectTab)}
+        </section>
+      `;
+    }
     const state = readState();
     const queue = rollingTasks(state, 3);
     const planDay = queue.length ? null : nextRoutePlanDay(state);
@@ -804,6 +842,7 @@
     const hero = buildHeroSummary(state, queue, planDay, remainingDetailed, pendingRoute, dailyGate);
     return `
       <section class="card summer-task-card">
+        ${renderSubjectTabs()}
         <div class="summer-route-hero">
           <div>
             <p class="summer-kicker">暑假物理滚动任务</p>
@@ -2456,6 +2495,14 @@
         state.routeDetailDay = dayNo;
         writeState(state);
         refreshHome(anchor);
+      }
+      return;
+    }
+    if (action === "switch-subject") {
+      const subject = event.currentTarget.dataset.subject || "physics";
+      if (SUBJECT_HAS_PLAN[subject] !== undefined && subject !== subjectTab) {
+        subjectTab = subject;
+        refreshHome({ preserveScroll: true });
       }
       return;
     }
