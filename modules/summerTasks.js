@@ -1,5 +1,9 @@
 (function () {
-  const STATE_KEY = "summer_task_state";
+  // 多科分桶：物理仍用原 key（数据零迁移），数学/化学各自独立 key。
+  // activeSubject 未来由科目 Tab 切换；现在恒为 physics，行为与单科时完全一致。
+  const STATE_KEYS = { physics: "summer_task_state", math: "plan_state_math", chemistry: "plan_state_chemistry" };
+  let activeSubject = "physics";
+  function subjectStateKey(subject = activeSubject) { return STATE_KEYS[subject] || STATE_KEYS.physics; }
   const BASIC_2045_URL = "https://space.bilibili.com/23630128/lists/2045?type=season";
   const BASIC_2181_URL = "https://space.bilibili.com/23630128/lists/2181?type=season";
   const ONE_ROUND_URL = "https://space.bilibili.com/23630128/lists/340933?type=series";
@@ -418,7 +422,7 @@
   function readState() {
     const fallback = { pendingTaskId: "", pendingRouteDay: 0, pendingRouteTaskId: "", activeRouteDay: 0, tasks: {}, routeDays: {}, routeDetailDay: 0, examples: {}, reward: {} };
     try {
-      const saved = JSON.parse(localStorage.getItem(STATE_KEY) || "null");
+      const saved = JSON.parse(localStorage.getItem(subjectStateKey()) || "null");
       if (!saved || typeof saved !== "object") return fallback;
       return {
         pendingTaskId: String(saved.pendingTaskId || ""),
@@ -437,7 +441,7 @@
   }
 
   function writeState(state) {
-    localStorage.setItem(STATE_KEY, JSON.stringify(state));
+    localStorage.setItem(subjectStateKey(), JSON.stringify(state));
   }
 
   function taskState(state, id) {
