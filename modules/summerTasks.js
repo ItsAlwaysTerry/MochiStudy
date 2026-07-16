@@ -3792,18 +3792,8 @@
     const anchor = options.preserveAnchor;
     const scrollX = window.scrollX;
     const scrollY = window.scrollY;
-    // 28 天总览覆盖层有自己的内部滚动；重渲染会把它重建到顶部，先记住再还原
-    const overlayScroll = document.querySelector(".summer-route-overlay")?.scrollTop || 0;
     const view = document.getElementById("view");
     if (view && view.querySelector(".home-flow")) window.MochiFarm?.renderFarm?.(view);
-    if (overlayScroll > 0) {
-      const restoreOverlay = () => {
-        const nextOverlay = document.querySelector(".summer-route-overlay");
-        if (nextOverlay) nextOverlay.scrollTop = overlayScroll;
-      };
-      requestAnimationFrame(restoreOverlay);
-      setTimeout(restoreOverlay, 60);
-    }
     if (anchor?.selector && Number.isFinite(anchor.top)) {
       const restoreAnchor = () => {
         const next = document.querySelector(anchor.selector);
@@ -3812,7 +3802,12 @@
           return;
         }
         const delta = next.getBoundingClientRect().top - anchor.top;
-        if (Math.abs(delta) > 0.5) window.scrollTo(scrollX, window.scrollY + delta);
+        if (Math.abs(delta) <= 0.5) return;
+        // 锚点在 28 天总览覆盖层里时，滚它自己的内部滚动条而不是窗口：
+        // 详情区高度会随选中天变化，只有锚定到点击的那天、按位移补覆盖层滚动，才不会跳
+        const overlay = next.closest(".summer-route-overlay");
+        if (overlay) overlay.scrollTop += delta;
+        else window.scrollTo(scrollX, window.scrollY + delta);
       };
       requestAnimationFrame(() => {
         restoreAnchor();
