@@ -4041,21 +4041,24 @@ git reset --hard origin/main</pre>
         </section>
       `;
     }
-    const totalAmount = history.reduce((sum, entry) => sum + Number(entry.amount || entry.prize?.amount || 0), 0);
+    // 累计按"实发(paid)"算，方便和家长对账；历史条目新格式 {kind,drawn,paid,date,ts}
+    const totalAmount = history.reduce((sum, entry) => sum + Number(entry.paid ?? entry.amount ?? 0), 0);
     const rows = history.map((entry) => {
-      const amount = Number(entry.amount || entry.prize?.amount || 0);
-      const tone = entry.tone || entry.prize?.tone || "coin";
-      const typeLabel = entry.type === "week" ? "周奖励" : "日奖励";
+      const drawn = Number(entry.drawn ?? entry.amount ?? 0);
+      const paid = Number(entry.paid ?? drawn);
+      const tone = drawn >= 50 ? "big" : "coin";
+      const typeLabel = entry.kind === "stage" ? "阶段大奖" : "日常抽奖";
+      const clamped = paid < drawn;
       return `
         <div class="summer-reward-history-item ${summerRewardToneClass(tone)}">
           <div>
             <span class="summer-reward-history-date">${escapeHtml(entry.date || "")}</span>
-            <strong>${escapeHtml(entry.label || entry.prize?.label || "奖励")}</strong>
-            <p>${escapeHtml(entry.claim || "暑假任务奖励")} · 骰子 ${escapeHtml(entry.finalDice || "-")} 点</p>
+            <strong>抽中 ¥${drawn}</strong>
+            <p>${typeLabel}${clamped ? ` · 本周达上限，实发 ¥${paid}` : ""}</p>
           </div>
           <div class="summer-reward-history-prize">
-            <span>${typeLabel}</span>
-            <strong>${amount > 0 ? `${amount} 元` : "继续攒"}</strong>
+            <span>实发</span>
+            <strong>${paid > 0 ? `${paid} 元` : "继续攒"}</strong>
           </div>
         </div>
       `;
