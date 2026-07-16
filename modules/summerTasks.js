@@ -6,7 +6,9 @@
   function subjectStateKey(subject = activeSubject) { return STATE_KEYS[subject] || STATE_KEYS.physics; }
   // 科目 Tab：数/物/化切换。activeSubject（上面）同时驱动状态 key 和内容包，保证"状态与内容同科"。
   const SUBJECT_TABS = [["math", "数学"], ["physics", "物理"], ["chemistry", "化学"]];
-  const SUBJECT_HAS_PLAN = { physics: true, math: false, chemistry: false };
+  const SUBJECT_HAS_PLAN = { physics: true, math: true, chemistry: false };
+  const SUBJECT_LABEL = { physics: "物理", math: "数学", chemistry: "化学" };
+  function currentSubjectLabel() { return SUBJECT_LABEL[activeSubject] || "物理"; }
   const BASIC_2045_URL = "https://space.bilibili.com/23630128/lists/2045?type=season";
   const BASIC_2181_URL = "https://space.bilibili.com/23630128/lists/2181?type=season";
   const ONE_ROUND_URL = "https://space.bilibili.com/23630128/lists/340933?type=series";
@@ -422,10 +424,67 @@
     { day: 28, week: 4, title: "总复盘 + 下一轮计划", subtitle: "导出学习档案，决定下一轮补哪 3 个点", focus: ["学习档案", "复盘报告", "下轮计划"], videoKeys: ["kin-comprehensive", "energy-kinetic-practice", "electric-comprehensive", "experiment-source-practice"], mission: "不追新课。导出学习档案，看哪个专题反复低星，选出下一轮最该补的 3 个点。" },
   ];
 
+  const MATH_ROUTE_VIDEO_LIBRARY = {
+    "set-core": { source: "一数", bvid: "BV15XHdehEk7", duration: "51:26", title: "「集合」核心大串讲", part: "「集合」核心大串讲", require: "截 1 张集合例题" },
+    "set-condition": { source: "一数", bvid: "BV1NN411H79R", duration: "45:28", title: "“充分必要”傻傻分不清？保姆式梳理所有关键点！", part: "“充分必要”傻傻分不清？保姆式梳理所有关键点！", require: "截 1 张集合例题" },
+    "func-system": { source: "一数", bvid: "BV1bu411k7c8", duration: "47:34", title: "2022高考数学!核心点系统复习——函数篇 \| 最后六课第1课", part: "2022高考数学!核心点系统复习——函数篇 \| 最后六课第1课", require: "截 1 张函数例题" },
+    "func-props": { source: "一数", bvid: "BV1xk1WYaEkw", duration: "50:22", title: "【函数】单调性！奇偶性！一网打尽！函数性质大串讲", part: "【函数】单调性！奇偶性！一网打尽！函数性质大串讲", require: "截 1 张函数例题" },
+    "func-exponential-composite": { source: "神奇小猪的数学课", bvid: "BV1yG411A73o", duration: "16:47", title: "【考前抱佛脚】指数复合函数！请务必在考前一分钟看完！", part: "【考前抱佛脚】指数复合函数！请务必在考前一分钟看完！", require: "截 1 张函数例题" },
+    "deriv-intro": { source: "高中数学蔡德锦", bvid: "BV1vD4y1p78r", duration: "54:29", title: "必学：导数模块必学内容哦", part: "必学：导数模块必学内容哦", require: "截 1 张导数例题" },
+    "trig-transform-logic": { source: "一数", bvid: "BV15Yi5B9ESN", duration: "27:12", title: "【高一必看】三角恒等变换思路全梳理", part: "【高一必看】三角恒等变换思路全梳理", require: "截 1 张三角函数例题" },
+    "trig-transform-formulas": { source: "一数", bvid: "BV1pe411q79E", duration: "38:54", title: "「三角恒等变换」公式多吧？半小时全学会！", part: "「三角恒等变换」公式多吧？半小时全学会！", require: "截 1 张三角函数例题" },
+    "trig-omega-range": { source: "一数", bvid: "BV1qJwKe3Ey5", duration: "36:08", title: "三角函数𝜔取值范围大串讲！", part: "三角函数𝜔取值范围大串讲！", require: "截 1 张三角函数例题" },
+    "trig-solve-triangle": { source: "一数", bvid: "BV1GXZAY7EWe", duration: "01:24:11", title: "「解三角形」常考题型！基础到进阶！", part: "「解三角形」常考题型！基础到进阶！", require: "截 1 张三角函数例题" },
+    "trig-sine-cosine-law": { source: "一数", bvid: "BV1bJ4m177Wb", duration: "43:44", title: "“正余弦定理”核心题型梳理！", part: "“正余弦定理”核心题型梳理！", require: "截 1 张三角函数例题" },
+    "trig-range-extreme": { source: "一数", bvid: "BV1Ng4y1x7s9", duration: "21:59", title: "解三角形“范围与最值”没思路？两大做题方法梳理！", part: "解三角形“范围与最值”没思路？两大做题方法梳理！", require: "截 1 张三角函数例题" },
+    "seq-an-sn": { source: "一数", bvid: "BV1GN4y1z7vG", duration: "27:30", title: "高考数列常考！an，Sn混搭题型梳理！", part: "高考数列常考！an，Sn混搭题型梳理！", require: "截 1 张数列例题" },
+    "seq-general-term": { source: "一数", bvid: "BV1E4c4ePEJT", duration: "46:11", title: "高考必考「数列求通项」方法大总结！", part: "高考必考「数列求通项」方法大总结！", require: "截 1 张数列例题" },
+    "seq-sum-methods": { source: "一数", bvid: "BV1f6kbY4EaG", duration: "39:57", title: "【数列求和串讲】错位相减+裂项相消+分组求和！", part: "【数列求和串讲】错位相减+裂项相消+分组求和！", require: "截 1 张数列例题" },
+    "seq-discussion": { source: "一数", bvid: "BV1fqfnY5EQy", duration: "48:17", title: "数列必做十题「最值+奇偶+花式讨论」", part: "数列必做十题「最值+奇偶+花式讨论」", require: "截 1 张数列例题" },
+    "vector-linear": { source: "一数", bvid: "BV1ZsXDYVEAW", duration: "48:07", title: "向量的线性运算，方法大梳理！", part: "向量的线性运算，方法大梳理！", require: "截 1 张向量例题" },
+    "vector-coordinate": { source: "一数", bvid: "BV1A4411X7rV", duration: "23:25", title: "平面向量的坐标运算", part: "平面向量的坐标运算", require: "截 1 张向量例题" },
+    "vector-dot-product": { source: "一数", bvid: "BV1RH4y157t9", duration: "57:07", title: "数量积没思路？投影+拆解+极化恒等式！一步到位！", part: "数量积没思路？投影+拆解+极化恒等式！一步到位！", require: "截 1 张向量例题" },
+    "solid-vertical": { source: "一数", bvid: "BV1wqMfzrEvT", duration: "39:08", title: "【立体几何】垂直不会做？技巧全在这！", part: "【立体几何】垂直不会做？技巧全在这！", require: "截 1 张立体几何例题" },
+    "solid-parallel": { source: "一数", bvid: "BV1uF4m1P7DK", duration: "34:21", title: "“平行证明”不会连辅助线？一个视频讲懂！", part: "“平行证明”不会连辅助线？一个视频讲懂！", require: "截 1 张立体几何例题" },
+    "solid-space-vector": { source: "一数", bvid: "BV1Bj411i7ML", duration: "19:13", title: "用「平面向量」的方法学习「空间向量」\| 高考数学大合集", part: "用「平面向量」的方法学习「空间向量」\| 高考数学大合集", require: "截 1 张立体几何例题" },
+    "solid-section": { source: "一数", bvid: "BV19y4y1s7za", duration: "14:03", title: "14分钟掌握立体几何 截面常规画法！", part: "14分钟掌握立体几何 截面常规画法！", require: "截 1 张立体几何例题" },
+    "solid-coordinate": { source: "一数", bvid: "BV1vX4Ce6Ecy", duration: "48:45", title: "立体几何「不好建系」「不好求坐标」怎么办？", part: "立体几何「不好建系」「不好求坐标」怎么办？", require: "截 1 张立体几何例题" },
+    "analytic-line-circle": { source: "一数", bvid: "BV1y14y1872V", duration: "53:06", title: "直线与圆公式、方法、二级结论全梳理，事半功倍！", part: "直线与圆公式、方法、二级结论全梳理，事半功倍！", require: "截 1 张解析几何例题" },
+    "analytic-line-circle-advanced": { source: "一数", bvid: "BV1wh4y167cR", duration: "34:04", title: "【直线与圆】进阶题型梳理与破解！", part: "【直线与圆】进阶题型梳理与破解！", require: "截 1 张解析几何例题" },
+    "analytic-ellipse": { source: "一数", bvid: "BV1wP4y1273G", duration: "30:59", title: "椭圆 好用的二级结论梳理！", part: "椭圆 好用的二级结论梳理！", require: "截 1 张解析几何例题" },
+    "analytic-parabola": { source: "一数", bvid: "BV14WDAYQEyy", duration: "26:49", title: "高考中出现的“抛物线”二级结论！", part: "高考中出现的“抛物线”二级结论！", require: "截 1 张解析几何例题" },
+    "analytic-conic-hard": { source: "一数", bvid: "BV1UbSFBTEcm", duration: "01:03:29", title: "圆锥曲线小题重难点题型串讲！", part: "圆锥曲线小题重难点题型串讲！", require: "截 1 张解析几何例题" },
+    "prob-analysis": { source: "一数", bvid: "BV1qc411n7w1", duration: "57:14", title: "概率大题看不懂？保姆式分析指导！\| 高考数学", part: "概率大题看不懂？保姆式分析指导！\| 高考数学", require: "截 1 张概率统计例题" },
+    "prob-advanced": { source: "一数", bvid: "BV14M4m1k71g", duration: "01:30:32", title: "【最后十课】概率大题束手无策？来拔高！2024高考冲刺！", part: "【最后十课】概率大题束手无策？来拔高！2024高考冲刺！", require: "截 1 张概率统计例题" },
+  };
+
+  const MATH_ROUTE_DAYS = [
+    { day: 1, week: 1, title: "集合与条件判断", subtitle: "集合与充分必要条件", focus: ["集合"], videoKeys: ["set-core", "set-condition"] },
+    { day: 2, week: 1, title: "函数主干框架", subtitle: "函数核心框架", focus: ["函数"], videoKeys: ["func-system"] },
+    { day: 3, week: 1, title: "函数性质与复合函数", subtitle: "单调性、奇偶性、复合函数", focus: ["函数"], videoKeys: ["func-props", "func-exponential-composite"] },
+    { day: 4, week: 1, title: "导数模块入口", subtitle: "导数基础内容", focus: ["导数"], videoKeys: ["deriv-intro"] },
+    { day: 5, week: 1, title: "三角恒等变换", subtitle: "三角恒等变换公式与思路", focus: ["三角函数"], videoKeys: ["trig-transform-logic", "trig-transform-formulas"] },
+    { day: 6, week: 2, title: "三角函数参数与图像", subtitle: "ω 参数与取值范围", focus: ["三角函数"], videoKeys: ["trig-omega-range"] },
+    { day: 7, week: 2, title: "解三角形常考题", subtitle: "解三角形基础到进阶", focus: ["三角函数"], videoKeys: ["trig-solve-triangle", "trig-sine-cosine-law"] },
+    { day: 8, week: 2, title: "解三角形范围与最值", subtitle: "范围与最值方法", focus: ["三角函数"], videoKeys: ["trig-range-extreme"] },
+    { day: 9, week: 2, title: "数列通项与 an/Sn", subtitle: "通项与 an/Sn 混搭", focus: ["数列"], videoKeys: ["seq-an-sn", "seq-general-term"] },
+    { day: 10, week: 2, title: "数列求和方法", subtitle: "错位相减、裂项相消、分组求和", focus: ["数列"], videoKeys: ["seq-sum-methods"] },
+    { day: 11, week: 3, title: "数列讨论与综合题", subtitle: "最值、奇偶、花式讨论", focus: ["数列"], videoKeys: ["seq-discussion"] },
+    { day: 12, week: 3, title: "基本不等式配凑", subtitle: "基本不等式配凑题型", focus: ["不等式"], videoKeys: [], mission: '基本不等式：去B站搜"基本不等式 题型"看一个，截图做题。' },
+    { day: 13, week: 3, title: "平面向量运算", subtitle: "线性运算与坐标运算", focus: ["向量"], videoKeys: ["vector-linear", "vector-coordinate"] },
+    { day: 14, week: 3, title: "数量积与向量结论", subtitle: "数量积、投影、极化恒等式", focus: ["向量"], videoKeys: ["vector-dot-product"] },
+    { day: 15, week: 3, title: "立体几何证明", subtitle: "垂直证明与平行证明", focus: ["立体几何"], videoKeys: ["solid-vertical", "solid-parallel"] },
+    { day: 16, week: 4, title: "空间向量与截面", subtitle: "空间向量与截面画法", focus: ["立体几何", "向量"], videoKeys: ["solid-space-vector", "solid-section"] },
+    { day: 17, week: 4, title: "建系与坐标求解", subtitle: "立体几何建系与坐标求解", focus: ["立体几何"], videoKeys: ["solid-coordinate"] },
+    { day: 18, week: 4, title: "直线与圆", subtitle: "直线与圆公式、方法、进阶题型", focus: ["解析几何"], videoKeys: ["analytic-line-circle", "analytic-line-circle-advanced"] },
+    { day: 19, week: 4, title: "圆锥曲线二级结论", subtitle: "椭圆、抛物线、圆锥曲线小题", focus: ["解析几何"], videoKeys: ["analytic-ellipse", "analytic-parabola", "analytic-conic-hard"] },
+    { day: 20, week: 4, title: "概率统计大题", subtitle: "概率大题分析与拔高", focus: ["概率统计"], videoKeys: ["prob-analysis", "prob-advanced"] },
+  ];
+
   // 多科内容包（P1b）：物理已就绪；数学/化学填了内容后把对应项从 null 换成 {TASKS,ROUTE_DAYS,ROUTE_VIDEO_LIBRARY,ONE_ROUND_BVS} 并把 SUBJECT_HAS_PLAN 翻 true。
   const PLAN_CONTENT = {
     physics: { TASKS: PHYSICS_TASKS, ROUTE_DAYS: PHYSICS_ROUTE_DAYS, ROUTE_VIDEO_LIBRARY: PHYSICS_ROUTE_VIDEO_LIBRARY, ONE_ROUND_BVS: PHYSICS_ONE_ROUND_BVS },
-    math: null,
+    math: { TASKS: [], ROUTE_DAYS: MATH_ROUTE_DAYS, ROUTE_VIDEO_LIBRARY: MATH_ROUTE_VIDEO_LIBRARY, ONE_ROUND_BVS: {} },
     chemistry: null,
   };
   // 引擎里所有函数继续用 TASKS/ROUTE_DAYS/ROUTE_VIDEO_LIBRARY/ONE_ROUND_BVS；这些是 let 别名，
@@ -606,7 +665,7 @@
     return {
       id: `route-day-${day.day}-${video.key}`,
       title: video.title || day.title,
-      subject: "physics",
+      subject: activeSubject,
       nodeLabel: inferRouteNodeLabel(day),
       day: day.day,
       source: video.source || "B站资源",
@@ -628,7 +687,7 @@
     return {
       id: `route-day-${day.day}-sheet`,
       title: day.title,
-      subject: "physics",
+      subject: activeSubject,
       nodeLabel: inferRouteNodeLabel(day),
       day: day.day,
       source: "当天学习单",
@@ -661,6 +720,11 @@
   }
 
   function inferRouteNodeLabel(day) {
+    // 非物理科目：直接用当天 focus 里的知识点（已是该科预设知识点），不套物理正则
+    if (activeSubject !== "physics") {
+      const focusLabel = (Array.isArray(day.focus) ? day.focus : []).find(Boolean);
+      return focusLabel || (activeSubject === "math" ? "函数" : "化学反应");
+    }
     const text = [day.title, day.subtitle, ...(day.focus || [])].join(" ");
     if (/电场|电势|电路|电流|电动势|电阻|实验/.test(text)) return "电场";
     if (/磁场|安培|洛伦兹/.test(text)) return "磁场";
@@ -835,7 +899,7 @@
         <span class="material-symbols-outlined">hourglass_top</span>
         <div>
           <strong>${name}一轮计划准备中</strong>
-          <p>正在按你的分数段整理${name}的视频和练习路线，先把物理这科推进就好，${name}准备好会第一时间放这里。</p>
+          <p>正在按你的分数段整理${name}的视频和练习路线，先把已开放的科目推进就好，${name}准备好会第一时间放这里。</p>
           <button class="btn btn-soft btn-sm" data-summer-action="switch-subject" data-subject="physics" type="button">先去物理</button>
         </div>
       </div>
@@ -866,11 +930,11 @@
         ${renderSubjectTabs()}
         <div class="summer-route-hero">
           <div>
-            <p class="summer-kicker">暑假物理滚动任务</p>
+            <p class="summer-kicker">${activeSubject === "physics" ? "暑假物理" : escapeHtml(currentSubjectLabel())}滚动任务</p>
             <h3>${escapeHtml(hero.title)}</h3>
             <p>${escapeHtml(hero.description)}</p>
           </div>
-          <div class="summer-hero-stats" aria-label="今日暑假物理任务概览">
+          <div class="summer-hero-stats" aria-label="今日${escapeHtml(currentSubjectLabel())}任务概览">
             ${hero.stats.map((item) => `
               <div class="summer-hero-stat">
                 <span>${escapeHtml(item.label)}</span>
@@ -1206,7 +1270,7 @@
       };
     }
     return {
-      title: "28 天物理路线已完成",
+      title: `${currentSubjectLabel()}路线已完成`,
       description: "可以导出学习档案，回看最卡的 3 个点，再决定下一轮。",
       stats: [
         { label: "路线", value: "已跑完", note: "准备复盘" },
@@ -1248,17 +1312,21 @@
     const selectedDay = selectedRouteDay(state, currentDayNo);
     const stat = routeStats(state);
     const taskStat = progress(state);
+    const routeKicker = activeSubject === "physics" ? "暑假物理" : currentSubjectLabel();
+    const routeDesc = activeSubject === "physics"
+      ? "前 7 节是完整视频任务；第 3-28 天在学习单里列主线视频、例题截图、本节收尾和统一导入入口。"
+      : "按天推进：每天看主线视频、截例题、做同类测验、写本节收尾，绿了再看下一天。";
     return `
       <section class="card summer-route-card">
         <div class="summer-route-card-head">
           <div>
-            <p class="summer-kicker">暑假物理 28 天路线</p>
+            <p class="summer-kicker">${escapeHtml(routeKicker)} ${stat.total} 天路线</p>
             <h3>总计划</h3>
-            <p>前 7 节是完整视频任务；第 3-28 天在学习单里列主线视频、例题截图、本节收尾和统一导入入口。</p>
+            <p>${escapeHtml(routeDesc)}</p>
           </div>
           <div class="summer-route-card-stats">
-            <span>已完成 ${stat.completed}/28 天</span>
-            <span>详细视频 ${taskStat.completed}/${taskStat.total} 节</span>
+            <span>已完成 ${stat.completed}/${stat.total} 天</span>
+            ${taskStat.total > 0 ? `<span>详细视频 ${taskStat.completed}/${taskStat.total} 节</span>` : ""}
           </div>
         </div>
         <div class="summer-progress-track"><div class="summer-progress-fill" style="width:${stat.pct}%"></div></div>
@@ -1419,7 +1487,7 @@
         <div class="summer-route-placeholder summer-route-sheet">
           <span class="material-symbols-outlined">flag</span>
           <div>
-            <strong>物理 28 天主线已跑完</strong>
+            <strong>${escapeHtml(currentSubjectLabel())}主线已跑完</strong>
             <p>现在最重要的是导出学习档案，看哪些卡点反复出现，再定下一轮 7 天小计划。</p>
           </div>
         </div>
@@ -2578,7 +2646,7 @@
       if (action === "route-focus") {
         writeState(state);
         const primaryTask = routePrimaryTask(day, state);
-        window.MochiApp?.startCommittedFocus?.(`暑假物理：${day.title}`, 45, {
+        window.MochiApp?.startCommittedFocus?.(`暑假${currentSubjectLabel()}：${day.title}`, 45, {
           source: "summer-task",
           taskId: primaryTask.id,
           routeDay: day.day,
@@ -2712,7 +2780,7 @@
         updatedAt: now,
       };
       writeState(state);
-      window.MochiApp?.startCommittedFocus?.(`暑假物理：看${task.title}`, task.focusMins, {
+      window.MochiApp?.startCommittedFocus?.(`暑假${currentSubjectLabel()}：看${task.title}`, task.focusMins, {
         source: "summer-task",
         taskId: task.id,
         routeDay: task.routeVideo ? task.day : undefined,
@@ -2781,7 +2849,7 @@
       } else {
         updateTask(task.id, { watched: taskState(readState(), task.id).watched || false, lastFocusedAt: now, activeStep: 0 });
       }
-      const goal = getPracticeItems(task).length ? `暑假物理：${task.title}过关小题` : `暑假物理：看${task.title}`;
+      const goal = getPracticeItems(task).length ? `暑假${currentSubjectLabel()}：${task.title}过关小题` : `暑假${currentSubjectLabel()}：看${task.title}`;
       window.MochiApp?.startCommittedFocus?.(goal, task.focusMins, {
         source: "summer-task",
         taskId: task.id,
