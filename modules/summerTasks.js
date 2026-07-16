@@ -4307,6 +4307,13 @@
       const r = readSharedReward();
       writeSharedReward({ dailyTickets: Number(r.dailyTickets || 0) + d, stageTickets: Number(r.stageTickets || 0) + s });
     },
+    // 调试用：把统一奖励状态清回初始（清空预算计数/券/历史/进行中的抽奖盘），撞上限后可重新测抽奖
+    debugResetReward: () => {
+      econAnimActive = false;
+      window.clearTimeout(econAnimTimer);
+      econAnimTimer = null;
+      localStorage.removeItem(SHARED_REWARD_KEY);
+    },
     loadDemoState,
     openTaskImportDock,
     openTaskFollowup,
