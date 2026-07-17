@@ -533,6 +533,7 @@ v34 之后的改动：
 - **调试**：`?debug=1` 面板加「重置奖励」（`debugResetReward()` 清 `summer_reward`，撞上限后可重测）、「+暑假券」（`debugGrantTickets(2,1)`）。
 - **验证**：codex 真机截图证实抽奖链路端到端跑通（曾实测抽中 ¥20/¥50）；蛋糕居中已由用户确认；后续 codex 因机器到 OpenAI 网络不稳（`tls handshake eof`）时改用本地模拟 + 用户肉眼确认。npm 版 codex CLI 因太旧读不懂新模型目录 `max` 档报「加载出错」，已更新 `0.137.0→0.144.5`。
 - **备查**：`docs/review-batch/reward-economy-design.md`（含第十二节预算上限说明）、`docs/review-batch/骰子恢复实测.md`。
+- **旧勋章抽奖下线、勋章改纯收集（build `20260716v`）**：老勋章页 Canvas 转盘（¥20-200、**无预算上限**、UI 丑、奖品和能量浮窗重叠）体验混乱，按用户决定**下线入口**：勋章页去掉抽奖入口卡/抽奖历史/导航红点，debug 去掉「+3抽奖」。勋章改**纯收集/荣誉**——`totalSmall/totalBig` 只作收藏计数展示，`checkAndGrantAchievements` 不再 `recalcLotteryTickets` 发券，新勋章 toast 改「收集到…」；`updateNavBadge` 清红点。**钱只从首页能量浮窗出（单一预算口）**；散乱题=照常记录进档案+攒收集勋章，不额外发钱。转盘内部（`renderLottery`/`open-lottery`/木鱼/保底/`LOTTERY_CONFIG`/admin 转盘内容）保留为可恢复死代码，未物理删除。
 
 ### UI 现代化改造 Phase 0–5（builds `20260716p`–`20260716u`，2026-07-17）
 

@@ -942,17 +942,15 @@
     });
 
     if (newBadges.length > 0) state.recentNew = recentNew;
-    recalcLotteryTickets(state, cfg);
     saveAchievementState(state);
 
     if (newBadges.length > 0) {
       const smallCount = newBadges.filter((badge) => badge.type === "small").reduce((sum, badge) => sum + badge.count, 0);
       const bigCount = newBadges.filter((badge) => badge.type === "big").reduce((sum, badge) => sum + badge.count, 0);
       let message = "";
-      if (bigCount > 0) message += `获得大勋章 x${bigCount}！`;
-      if (smallCount > 0) message += `${message ? " " : ""}获得小勋章 x${smallCount}！`;
-      if (state.lotteryTickets > 0) message += ` 当前可抽奖 ${state.lotteryTickets} 次`;
-      toast(message);
+      if (bigCount > 0) message += `收集到大勋章 x${bigCount}！`;
+      if (smallCount > 0) message += `${message ? " " : ""}收集到小勋章 x${smallCount}！`;
+      toast(message || "解锁新勋章！");
     }
 
     updateNavBadge();
@@ -1841,20 +1839,8 @@
   }
 
   function updateNavBadge() {
-    const tickets = loadAchievementState().lotteryTickets || 0;
-    document.querySelectorAll('[data-route="achievements"]').forEach((btn) => {
-      let badge = btn.querySelector(".nav-lottery-badge");
-      if (tickets > 0) {
-        if (!badge) {
-          badge = document.createElement("span");
-          badge.className = "nav-lottery-badge";
-          btn.appendChild(badge);
-        }
-        badge.textContent = tickets;
-      } else if (badge) {
-        badge.remove();
-      }
-    });
+    // 旧勋章抽奖已下线、勋章改纯收集，导航不再显示抽奖券红点（清掉可能残留的旧红点）
+    document.querySelectorAll('[data-route="achievements"] .nav-lottery-badge').forEach((badge) => badge.remove());
   }
 
   function applySidebarPreference() {
@@ -3996,53 +3982,36 @@ git reset --hard origin/main</pre>
 
   function renderAchievements(container) {
     checkAndGrantAchievements();
-    const state = recalcLotteryTickets(loadAchievementState());
-    saveAchievementState(state);
+    const state = loadAchievementState();
     const cfg = loadAchievementConfig();
     const earned = calcAchievements();
     const progress = buildAchievementProgress(cfg);
-    const lotteryTickets = Number(state.lotteryTickets || 0);
 
     container.innerHTML = `
       <div class="achievements-page">
         <div class="page-head">
           <div>
             <h2>勋章收藏</h2>
-            <p>勋章会按累计阈值重复获得，自动换成抽奖机会。</p>
+            <p>做题、专注、坚持都会不断解锁勋章，越攒越多——纯收藏展示，奖金走首页能量浮窗。</p>
           </div>
         </div>
 
-        <section class="card lottery-entry-card ${lotteryTickets > 0 ? "has-tickets" : "is-quiet"}">
-          <div class="lottery-entry-inner">
-            <div class="lottery-entry-copy">
-              <div class="lottery-tickets-display">
-                <span class="lottery-tickets-num">${lotteryTickets}</span>
-                <span class="lottery-tickets-label">
-                  <strong>次抽奖机会</strong>
-                  <span>每 ${cfg.lottery.smallPerDraw} 个小勋章或 ${cfg.lottery.bigPerDraw} 个大勋章换 1 次抽奖</span>
-                </span>
-              </div>
-              <div class="badge-summary badge-summary-compact" aria-label="勋章统计">
-                <div class="badge-summary-item">
-                  <span class="badge-summary-num">${state.totalBig || 0}</span>
-                  <span class="badge-summary-label">大勋章</span>
-                </div>
-                <div class="badge-summary-divider"></div>
-                <div class="badge-summary-item">
-                  <span class="badge-summary-num">${state.totalSmall || 0}</span>
-                  <span class="badge-summary-label">小勋章</span>
-                </div>
-                <div class="badge-summary-divider"></div>
-                <div class="badge-summary-item">
-                  <span class="badge-summary-num">${state.usedLotteryCount || 0}</span>
-                  <span class="badge-summary-label">已抽奖</span>
-                </div>
-              </div>
+        <section class="card">
+          <div class="badge-summary" aria-label="勋章统计">
+            <div class="badge-summary-item">
+              <span class="badge-summary-num">${state.totalBig || 0}</span>
+              <span class="badge-summary-label">大勋章</span>
             </div>
-            <button class="btn btn-primary" data-action="open-lottery" ${lotteryTickets === 0 ? "disabled" : ""}>
-              <span class="material-symbols-outlined">casino</span>
-              去抽奖
-            </button>
+            <div class="badge-summary-divider"></div>
+            <div class="badge-summary-item">
+              <span class="badge-summary-num">${state.totalSmall || 0}</span>
+              <span class="badge-summary-label">小勋章</span>
+            </div>
+            <div class="badge-summary-divider"></div>
+            <div class="badge-summary-item">
+              <span class="badge-summary-num">${Number(state.totalBig || 0) + Number(state.totalSmall || 0)}</span>
+              <span class="badge-summary-label">共收集</span>
+            </div>
           </div>
         </section>
 
@@ -4070,7 +4039,6 @@ git reset --hard origin/main</pre>
 
         ${renderSummerAchievements()}
         ${renderSummerRewardHistory()}
-        ${renderLotteryHistory()}
       </div>
     `;
   }
@@ -5690,12 +5658,11 @@ ${record.originalQuestion || "暂无原题描述。"}
           </div>
           <div class="debug-float-row debug-total-row">
             <span>勋章测试</span>
-            <strong>${loadAchievementState().lotteryTickets || 0} 抽</strong>
+            <strong>${(Number(loadAchievementState().totalBig || 0) + Number(loadAchievementState().totalSmall || 0))} 勋章</strong>
             <div class="debug-float-actions">
               <button data-action="debug-add-records" data-count="10" type="button">+10记录</button>
               <button data-action="debug-add-node-records" data-count="20" type="button">+20同点</button>
               <button data-action="debug-add-focus" data-minutes="120" type="button">+2h专注</button>
-              <button data-action="debug-add-lottery-tickets" data-count="3" type="button">+3抽奖</button>
               <button data-action="debug-add-summer-tickets" type="button">+暑假券</button>
               <button data-action="debug-reset-summer-reward" type="button">重置奖励</button>
               <button data-action="debug-reset-achievements" type="button">清勋章</button>
@@ -5864,9 +5831,8 @@ ${record.originalQuestion || "暂无原题描述。"}
         debugAddFocusMinutes(action.dataset.minutes);
         return;
       }
-      if (name === "debug-add-lottery-tickets") {
-        // 直接改 lotteryTickets 会被 checkAndGrantAchievements() 按 carriedLotteryDraws 重算覆盖掉，
-        // 要改就得改 carriedLotteryDraws（管理后台"调整"用的也是这个字段）
+      if (name === "debug-add-lottery-tickets-DISABLED") {
+        // 旧勋章抽奖已下线，此调试项已移除（保留分支避免误触，不再有按钮触发）
         const achState = loadAchievementState();
         achState.carriedLotteryDraws = Math.max(0, Number(achState.carriedLotteryDraws || 0) + Number(action.dataset.count || 3));
         saveAchievementState(achState);
