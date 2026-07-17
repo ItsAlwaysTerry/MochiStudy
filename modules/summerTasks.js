@@ -33,6 +33,7 @@
   let econAnimActive = false;
   let examplePointerAnchor = null;
   let routeOverviewOpen = false;
+  let forceDeferredSummaryOpen = false;
   const supportHelpOpenTasks = new Set();
   const PHYSICS_ONE_ROUND_BVS = {
     kinematics: "BV1D54y1m7Av",
@@ -1058,11 +1059,14 @@
     const items = deferredTasks(state);
     if (!items.length) return "";
     return `
-      <details class="summer-deferred-summary" aria-label="暂时搁置的卡点">
+      <details class="summer-deferred-summary" aria-label="待补基础" ${forceDeferredSummaryOpen ? "open" : ""}>
         <summary class="summer-deferred-summary-head">
           <span class="material-symbols-outlined">bookmark_added</span>
-          <strong>有 ${items.length} 个卡点暂时搁置 · 本周复盘前处理</strong>
-          <span class="summer-deferred-view">查看</span>
+          <span class="summer-deferred-summary-copy">
+            <strong>待补基础 · ${items.length} 个卡点</strong>
+            <small>暂时放下不算完成，本周复盘前回来处理</small>
+          </span>
+          <span class="summer-deferred-view">查看并处理</span>
         </summary>
         <div class="summer-deferred-list">
           ${items.map((task) => {
@@ -3387,6 +3391,19 @@
     refreshHome({ preserveScroll: true, lockScroll: true });
   }
 
+  function refreshAndRevealDeferredView(trigger) {
+    trigger?.blur?.();
+    forceDeferredSummaryOpen = true;
+    try {
+      refreshHome();
+    } finally {
+      forceDeferredSummaryOpen = false;
+    }
+    requestAnimationFrame(() => {
+      document.querySelector(".summer-deferred-summary")?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    });
+  }
+
   function bind(container) {
     container.querySelectorAll("[data-summer-action]").forEach((el) => {
       el.addEventListener("click", handleAction);
@@ -3652,8 +3669,8 @@
       const day = taskRouteDay(task);
       if (day && Number(state.activeRouteDay || 0) === day.day && routeDayCanAdvance(day, state)) state.activeRouteDay = 0;
       writeState(state);
-      refreshSupportView(event.currentTarget);
-      window.MochiApp?.toast?.(`已放入“待补基础”；${deferredDeadlineLabel(task)}，不算完成、不计奖励`);
+      refreshAndRevealDeferredView(event.currentTarget);
+      window.MochiApp?.toast?.(`已放入“待补基础”，入口已展开；${deferredDeadlineLabel(task)}，不算完成、不计奖励`);
       return;
     }
     if (action === "support-return") {

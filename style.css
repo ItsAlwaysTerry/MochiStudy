@@ -8641,18 +8641,19 @@ body.focus-mode #view {
 
 .summer-deferred-summary {
   margin-top: 10px;
-  border: 1px solid color-mix(in srgb, var(--secondary) 20%, transparent);
+  border: 1px solid color-mix(in srgb, var(--secondary) 34%, transparent);
+  border-left: 4px solid var(--secondary);
   border-radius: var(--r-md);
-  background: color-mix(in srgb, var(--secondary-container) 12%, var(--surface));
+  background: color-mix(in srgb, var(--secondary-container) 28%, var(--surface));
 }
 
 .summer-deferred-summary-head {
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr) auto;
-  gap: 8px;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  gap: 9px;
   align-items: center;
-  min-height: 40px;
-  padding: 7px 10px;
+  min-height: 52px;
+  padding: 9px 11px;
   list-style: none;
   cursor: pointer;
 }
@@ -8663,20 +8664,43 @@ body.focus-mode #view {
 
 .summer-deferred-summary-head > .material-symbols-outlined {
   color: var(--secondary);
-  font-size: 19px;
+  font-size: 22px;
 }
 
-.summer-deferred-summary-head strong {
+.summer-deferred-summary-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.summer-deferred-summary-copy strong,
+.summer-deferred-summary-copy small {
   margin: 0;
+}
+
+.summer-deferred-summary-copy strong {
   color: var(--text-primary);
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
+  line-height: 1.35;
+}
+
+.summer-deferred-summary-copy small {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
   line-height: 1.35;
 }
 
 .summer-deferred-view {
+  min-height: 32px;
+  padding: 7px 9px;
+  border: 1px solid color-mix(in srgb, var(--secondary) 30%, transparent);
+  border-radius: var(--r-md);
   color: var(--secondary);
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
   font-size: 11px;
   font-weight: 900;
+  white-space: nowrap;
 }
 
 .summer-deferred-summary[open] .summer-deferred-view {
@@ -8691,7 +8715,7 @@ body.focus-mode #view {
 .summer-deferred-list {
   display: grid;
   gap: 4px;
-  padding: 0 10px 7px 38px;
+  padding: 0 11px 9px 44px;
 }
 
 .summer-deferred-list button {
@@ -12577,6 +12601,19 @@ body.focus-mode #view {
 
   .summer-deferred-gate {
     grid-template-columns: 1fr;
+  }
+
+  .summer-deferred-summary-head {
+    grid-template-columns: 22px minmax(0, 1fr);
+  }
+
+  .summer-deferred-view {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .summer-deferred-list {
+    padding-left: 42px;
   }
 
   .summer-deferred-gate-actions,
