@@ -518,3 +518,18 @@ v34 之后的改动：
 - **纸质地图**：`docs/试题调研-纸质地图.html`——可打印，18 本一本一块，超重点→考点 ☐ 打勾 + ☐ 串招 + ★ 高频。上学带着对照打勾。
 - **代码改动（小）**：新增"辅导书"来源标记，走现有 `study_card_meta.source` 机制不动 study_log。`app.js` `normalizeSource()` 加 `textbook` 分支（辅导书/教辅/试题调研/textbook）；`knowledgeMap.js` `sourceDisplayInfo()` 加 `{label:"辅导书", className:"source-textbook"}`；`style.css` 加 `.card-source-pill.source-textbook`（暖橙）。导入识别 `学习来源：辅导书` 后档案卡片带「辅导书」标签，数据层永久可筛。缓存版本号 → `20260627a`。
 - 待办：①真卷照片实测三合一 Gem「读图分清辅导书页 vs 作业题」+ 读题准确率 ②后续把辑6/8/9/10 并入需补那几本目录 ③（可选）清理被取代的中间件文件。
+
+### 统一奖励经济系统重做 + 抽奖骰子玩法（builds `20260716d`–`20260716m`）
+
+背景：导入从「1 题 1 条」变「1 次 4-6 条」，旧勋章阈值/发券太快；且暑假三科各自发奖、和主抽奖两套发钱无预算上限。目标：**一套跨科经济、预算硬上限、把「做题」和「看得见的成长+抽奖」挂钩**。数值来自 `docs/review-batch/reward-economy-design.md`（3 轮自审 + 2 万周本地蒙特卡洛锁定「变体C」）。
+
+- **统一经济核心（`summerTasks.js`，新 localStorage key `summer_reward`）**：`ECON` 常量（`dailySmall`/`dailyPool`/`stageFixed=15`/`stagePool`/`qualifyNodes=2`/`stagePerDays=5`/`dailyCap=40`/`weekCap=150`）。`nodesCompletedToday()` 跨三科数当天完成节点=今日能量；`syncEconomy()` 幂等结算今日小奖+达标日+连续+阶段+券，预算硬上限兜底；`econDraw(kind)` 按 daily/stage 券各自抽对应奖池。**钱只从这一个口出（单一预算）**。
+- **勋章阈值上调 5×（`app.js`）**：`recordCount 10→50`、`nodeRecords 20→40`、`totalRecords 50→200`（只调按记录条数的项）。
+- **抽奖骰子玩法（能量浮窗内，非 Canvas 转盘）**：`renderEconBoard` + `econOpenBoard(kind)`/`econRollNextDie`/`econWalk`/`econFinishDraw`。**双按钮**：`抽小奖(reward-draw-daily)`/`抽大奖(reward-draw-stage)` 并排，各自独立、封顶只禁用对应按钮不消耗券。**3 颗骰子**：逐颗摇（点骰子或按钮），Unicode 骰面 ⚀⚁⚂⚃⚄⚅、60px；点数相加=走几格（最小 3、最大 18 可绕盘多圈）。骰子**减速旋转**（20 帧 ~3.13s/颗）、走格**放慢且末尾更慢**（渐慢，停在中奖格前顿一下）。落格逻辑本地 20-30 万次模拟零失败（骰子必落在中奖格）。
+- **四段音效（共享 AudioContext）**：摇骰子=减速咔哒、出骰子=一声「咚」、走格=一格一响音渐高、**出结果=`playPrizeFanfare`（莫扎特《土耳其进行曲》下行戏剧乐句，从高点 A5 回音下行、渐慢重落低音 A3 定格，约 4.2s，大奖叠低八度）**。`file://` 本地可用。
+- **能量浮窗视觉**：图标环（`--reward-angle`=今日能量）+ 正文炫彩进度条（阶段进度）；图标 无券=小猪 savings / 有券=蛋糕 cake（`.summer-reward-glyph-cake` 用与小猪同容器实测的 `translate(9.5px,10px)` 校准居中）/ 抽奖中=骰子 casino。头部/正文写清预算上限 `¥X/40`、`¥Y/150`；撞顶不扣券、转非钱激励文案。
+- **P4 暑假成就（`app.js` `renderSummerAchievements` + `summerTasks` `getSummerHonorStats`）**：勋章页「暑假计划成就」区显示 看课达人(每5节点)/达标日勋章(每3达标日)/阶段勋章(每阶段)。**纯荣誉收集、不进 totalSmall/totalBig、不换券、不发钱**——避免和能量抽奖双重发钱。
+- **删除**：右下角「等待导入」浮窗（`renderPendingImportFloat` 调用，点击常静默失败、与任务流内导入重复；函数保留可恢复）。
+- **调试**：`?debug=1` 面板加「重置奖励」（`debugResetReward()` 清 `summer_reward`，撞上限后可重测）、「+暑假券」（`debugGrantTickets(2,1)`）。
+- **验证**：codex 真机截图证实抽奖链路端到端跑通（曾实测抽中 ¥20/¥50）；蛋糕居中已由用户确认；后续 codex 因机器到 OpenAI 网络不稳（`tls handshake eof`）时改用本地模拟 + 用户肉眼确认。npm 版 codex CLI 因太旧读不懂新模型目录 `max` 档报「加载出错」，已更新 `0.137.0→0.144.5`。
+- **备查**：`docs/review-batch/reward-economy-design.md`（含第十二节预算上限说明）、`docs/review-batch/骰子恢复实测.md`。
