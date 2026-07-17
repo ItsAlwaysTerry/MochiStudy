@@ -61,7 +61,7 @@
 
   const GAME_CONFIG = loadGameConfig();
   // Keep this in sync with index.html asset ?v= cache-bust suffix when shipping UI changes.
-  const BUILD_ID = "build-20260717g";
+  const BUILD_ID = "build-20260717h";
 
   function loadAdminConfig() {
     return GAME_CONFIG;
@@ -6105,6 +6105,9 @@ ${record.originalQuestion || "暂无原题描述。"}
     document.addEventListener("change", handleChange);
     document.getElementById("mobile-menu")?.addEventListener("click", () => document.querySelector(".side-nav")?.classList.toggle("open"));
     checkSeasonAutoRenew();
+    // 无条件结算一次暑假能量经济（含历史达标日回填），不依赖用户当前停在哪个路由——
+    // 之前只在首页"今日能量"浮窗渲染时才作为副作用触发，导致不在首页刷新就永远不同步。
+    window.MochiSummerTasks?.syncEconomy?.();
     route();
     // 容错：debug=1 写在 ? 或 # 后面都认（file:// 打开时最容易把 ? 打在 # 后面）
     if (location.search.includes("debug=1") || location.hash.includes("debug=1")) {

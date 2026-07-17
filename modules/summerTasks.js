@@ -4516,6 +4516,10 @@
     renderRouteEntry,
     getTasks: () => TASKS.slice(),
     getRewardHistory: () => readSharedReward().history,
+    // 独立于路由/渲染路径调用：结算今日小奖 + 回填历史达标日 + 发券。之前只在首页"今日能量"浮窗
+    // 渲染时才作为副作用调用，导致学生若不在首页刷新页面，同步（含历史回填）永远不会触发。
+    // app.js 的 init() 会在每次打开页面时无条件调一次，不再依赖用户停在哪个路由。
+    syncEconomy: () => syncEconomy(),
     // 暑假荣誉/收集统计（跨三科），供勋章页显示暑假专属成就；纯荣誉、不发钱（钱只走能量浮窗抽奖，单一预算口）
     getSummerHonorStats: () => {
       let nodesCompleted = 0;
@@ -4536,6 +4540,7 @@
     // 调试用：诊断"历史节点为什么没同步进能量经济"——逐科统计任务数/已完成数/completedAt缺失数/
     // 已识别的历史达标日，方便判断是"数据本来就没有"还是"数据有但字段不匹配同步不上"。
     debugDiagnoseHistory: () => {
+      syncEconomy(); // 诊断前先真正结算一次，顺手把之前因为没在首页触发而漏掉的历史回填补上
       const perSubject = {};
       Object.entries(STATE_KEYS).forEach(([subject, key]) => {
         let taskCount = 0, completedCount = 0, missingCompletedAt = 0;
