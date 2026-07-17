@@ -757,6 +757,18 @@
     return `https://www.bilibili.com/video/${bvid}/${video.page ? `?p=${video.page}` : ""}`;
   }
 
+  function routeVideoStudyReference(video) {
+    if (!/一轮/.test(String(video.source || ""))) return "";
+    const part = String(video.part || "");
+    const lecture = part.match(/【讲义([^】]+)】/)?.[1] || "";
+    return [
+      String(video.source || "一轮复习"),
+      Number(video.page) > 0 ? `视频 P${Number(video.page)}` : "",
+      lecture ? `讲义 ${lecture}` : "",
+      String(video.title || ""),
+    ].filter(Boolean).join(" · ");
+  }
+
   function routeVideoTask(day, video) {
     const concepts = Array.isArray(day.focus) ? day.focus : [];
     return {
@@ -771,6 +783,7 @@
       videoTitle: video.part || video.title || day.title,
       focusMins: 35,
       routeVideo: true,
+      oneRoundReference: routeVideoStudyReference(video),
       prep: {
         concepts,
         backup: day.subtitle,
@@ -3175,6 +3188,7 @@
       keywords: Array.isArray(custom.keywords) ? custom.keywords.filter(Boolean) : [],
       backup: String(prep.backup || ""),
       links: Array.isArray(prep.backupLinks) ? prep.backupLinks : [],
+      oneRoundReference: String(custom.oneRoundReference || task.oneRoundReference || ""),
       check: String(custom.check || (concepts[0] ? `能否用自己的话说清“${concepts[0]}”是什么？` : "能否说清这节课最基础的一个概念？")),
       avoid: String(custom.avoid || ""),
     };
@@ -3194,6 +3208,7 @@
       `我卡住的原因：${supportReasonLabel(safeSupport.reason)}`,
       plan.concepts.length ? `需要先补：${plan.concepts.join("、")}` : "",
       plan.book ? `讲义范围：${plan.book}` : "",
+      plan.oneRoundReference ? `一轮复习对应位置：${plan.oneRoundReference}` : "",
       plan.keywords.length ? `可搜索关键词：${plan.keywords.join("、")}` : plan.backup ? `可搜索目录：${plan.backup}` : "",
       attempts.length ? `我已经试过：${attempts.join("、")}` : "我还没有成功找到合适的基础解释。",
       safeSupport.note ? `具体不懂：${safeSupport.note}` : "",
@@ -3207,7 +3222,7 @@
   }
 
   function rescuePrimaryResource(plan) {
-    if (plan.book) return { icon: "menu_book", label: "只翻这里", text: plan.book, link: null };
+    if (plan.book) return { icon: "menu_book", label: "实体一轮讲义页码", text: plan.book, link: null };
     const searchText = plan.keywords.length ? plan.keywords.join("、") : plan.backup;
     if (searchText) return { icon: "search", label: "只搜这些词", text: searchText, link: plan.links[0] || null };
     if (plan.links.length) return { icon: "open_in_new", label: "只看这个入口", text: plan.links[0].label || "基础资源", link: plan.links[0] };
@@ -3246,6 +3261,13 @@
             <strong>${escapeHtml(plan.pause)}</strong>
             ${plan.concepts.length ? `<p>只补：${escapeHtml(plan.concepts.join("、"))}</p>` : ""}
           </div>
+          ${plan.oneRoundReference ? `
+            <div class="summer-rescue-resource reference">
+              <span class="material-symbols-outlined">video_library</span>
+              <div><strong>一轮复习对应位置</strong><p>${escapeHtml(plan.oneRoundReference)}</p></div>
+              <a class="btn btn-soft btn-sm" href="${escapeHtml(task.url)}" target="_blank" rel="noreferrer"><span class="material-symbols-outlined">open_in_new</span>打开对应页</a>
+            </div>
+          ` : ""}
           ${resource ? `
             <div class="summer-rescue-resource">
               <span class="material-symbols-outlined">${escapeHtml(resource.icon)}</span>

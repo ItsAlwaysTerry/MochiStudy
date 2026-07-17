@@ -10673,6 +10673,15 @@ body.focus-mode #view {
   font-size: 20px;
 }
 
+.summer-rescue-resource.reference {
+  border-color: color-mix(in srgb, var(--tertiary) 24%, var(--line));
+  background: color-mix(in srgb, var(--tertiary-container) 14%, var(--surface));
+}
+
+.summer-rescue-resource.reference > .material-symbols-outlined {
+  color: var(--tertiary);
+}
+
 .summer-rescue-resource strong,
 .summer-rescue-resource p {
   display: block;
