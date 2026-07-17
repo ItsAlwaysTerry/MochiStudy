@@ -33,6 +33,7 @@
   let econAnimActive = false;
   let examplePointerAnchor = null;
   let routeOverviewOpen = false;
+  const supportHelpOpenTasks = new Set();
   const PHYSICS_ONE_ROUND_BVS = {
     kinematics: "BV1D54y1m7Av",
     balance: "BV1vD4y1U7k4",
@@ -1044,14 +1045,12 @@
     const items = deferredTasks(state);
     if (!items.length) return "";
     return `
-      <section class="summer-deferred-summary" aria-label="待补基础">
-        <div class="summer-deferred-summary-head">
+      <details class="summer-deferred-summary" aria-label="暂时搁置的卡点">
+        <summary class="summer-deferred-summary-head">
           <span class="material-symbols-outlined">bookmark_added</span>
-          <div>
-            <strong>待补基础 ${items.length} 项</strong>
-            <p>先放下不等于完成；到本周复盘前回来处理。</p>
-          </div>
-        </div>
+          <strong>有 ${items.length} 个卡点暂时搁置 · 本周复盘前处理</strong>
+          <span class="summer-deferred-view">查看</span>
+        </summary>
         <div class="summer-deferred-list">
           ${items.map((task) => {
             const support = taskSupport(taskState(state, task.id));
@@ -1066,7 +1065,7 @@
             `;
           }).join("")}
         </div>
-      </section>
+      </details>
     `;
   }
 
@@ -2341,6 +2340,7 @@
         ${videos.map((video, index) => {
           const task = routeVideoTask(day, video);
           const info = taskState(state, task.id);
+          const rescueActive = taskSupport(info)?.status === "active";
           const step = routeVideoStepState(day, task, state);
           const isPending = state.pendingRouteTaskId === task.id;
           const needsReflection = Boolean(info.completed && info.reflectionRequired && !info.reflectionDone);
@@ -2351,7 +2351,7 @@
           const isFutureByOrder = step.tone !== "deferred" && firstOpenIndex >= 0 && index > firstOpenIndex;
           const isNext = !step.tone && index === firstOpenIndex;
           return `
-            <div class="summer-route-step ${step.tone} ${isNext ? "next" : ""} ${isFutureByOrder ? "future-order" : ""}">
+            <div class="summer-route-step ${step.tone} ${isNext ? "next" : ""} ${isFutureByOrder ? "future-order" : ""} ${rescueActive ? "rescue-paused" : ""}">
               <div class="summer-route-step-marker" aria-label="${escapeHtml(step.label)}">
                 <span class="material-symbols-outlined">${escapeHtml(step.icon)}</span>
               </div>
@@ -2365,8 +2365,9 @@
                       <small>${escapeHtml(step.label)} · ${escapeHtml(video.require || "截 1 张代表例题，后面用来生成同类测验。")}</small>
                     </div>
                   </div>
-                  ${renderRouteVideoActions(task, state)}
+                  ${renderRouteVideoActions(task, state, rescueActive)}
                 </article>
+                ${renderTaskRescueSlot(task, info)}
                 ${renderTaskSupportDrawer(task, state, {
                   selectedStep: step.tone === "active" || isPending || needsReflection ? 1 : 0,
                   isPending,
@@ -2382,7 +2383,7 @@
     `;
   }
 
-  function renderRouteVideoActions(task, state) {
+  function renderRouteVideoActions(task, state, rescueActive = false) {
     const info = taskState(state, task.id);
     const examples = taskExamples(state, task.id);
     const completed = taskReadyToAdvance(task, state);
@@ -2398,14 +2399,14 @@
       main = { action: "open-task-support", icon: "add_photo_alternate", label: "粘贴例题截图", tone: "primary", disabled: false };
     }
     return `
-      <div class="summer-route-video-actions">
-        <button class="btn btn-${main.tone} btn-sm summer-video-next-btn" data-summer-action="${escapeHtml(main.action)}" data-task-id="${escapeHtml(task.id)}" type="button" ${main.disabled ? "disabled" : ""}>
+      <div class="summer-route-video-actions" ${rescueActive ? `aria-label="正常任务已暂停"` : ""}>
+        <button class="btn btn-${main.tone} btn-sm summer-video-next-btn" data-rescue-blocked-action data-summer-action="${escapeHtml(main.action)}" data-task-id="${escapeHtml(task.id)}" type="button" ${main.disabled || rescueActive ? "disabled" : ""}>
           <span class="material-symbols-outlined">${escapeHtml(main.icon)}</span>${escapeHtml(main.label)}
         </button>
         ${completed ? "" : `<button class="summer-rescue-entry compact" data-summer-action="support-open" data-task-id="${escapeHtml(task.id)}" type="button">
           <span class="material-symbols-outlined">help</span>听不懂
         </button>`}
-        ${completed ? "" : `<details class="summer-more-actions compact">
+        ${completed ? "" : `<details class="summer-more-actions compact" data-rescue-blocked-action>
           <summary>更多</summary>
           <div>
             <a class="btn btn-soft btn-sm" href="${escapeHtml(task.url)}" target="_blank" rel="noreferrer">
@@ -2731,10 +2732,11 @@
     const imported = Boolean(s.completed);
     const watched = Boolean(s.watched);
     const needsReflection = Boolean(imported && s.reflectionRequired && !s.reflectionDone);
+    const rescueActive = taskSupport(s)?.status === "active";
     const flow = getTaskFlow(task, s, isPending);
     const selectedStep = selectedTaskStep(s, flow);
     return `
-      <article class="summer-task ${completed ? "completed" : ""} ${isPending ? "pending-import" : ""} ${needsReflection ? "needs-reflection" : ""} ${options.queueTone === "current" ? "queue-current" : ""} ${options.queueTone === "future" ? "queue-future" : ""}" data-summer-task-id="${escapeHtml(task.id)}">
+      <article class="summer-task ${completed ? "completed" : ""} ${isPending ? "pending-import" : ""} ${needsReflection ? "needs-reflection" : ""} ${rescueActive ? "rescue-paused" : ""} ${options.queueTone === "current" ? "queue-current" : ""} ${options.queueTone === "future" ? "queue-future" : ""}" data-summer-task-id="${escapeHtml(task.id)}">
         <div class="summer-task-main">
           <div class="summer-task-title-row">
             <span class="summer-task-check material-symbols-outlined">${needsReflection ? "rate_review" : completed ? "check_circle" : watched ? "radio_button_checked" : "radio_button_unchecked"}</span>
@@ -2743,37 +2745,36 @@
               <p>${escapeHtml(task.source)} · ${escapeHtml(task.duration)} · ${escapeHtml(task.videoTitle)}</p>
             </div>
           </div>
-          ${renderTaskStepper(task, flow, selectedStep)}
-          ${renderTaskStepPanel(task, selectedStep, flow, s)}
-          ${renderTaskSupportDrawer(task, state, { selectedStep, isPending, needsReflection, imported })}
+          ${renderTaskStepper(task, flow, selectedStep, rescueActive)}
+          ${renderTaskRescueSlot(task, s)}
+          <div class="summer-normal-task-content" ${rescueActive ? `aria-label="正常任务已暂停"` : ""}>
+            ${rescueActive ? `<p class="summer-task-paused-label"><span class="material-symbols-outlined">pause_circle</span>正常任务已暂停</p>` : ""}
+            ${renderTaskStepPanel(task, selectedStep, flow, s)}
+            ${renderTaskSupportDrawer(task, state, { selectedStep, isPending, needsReflection, imported })}
+          </div>
         </div>
-        ${renderTaskActions(task, flow)}
+        ${renderTaskActions(task, flow, rescueActive)}
       </article>
     `;
   }
 
   function renderTaskSupportDrawer(task, state, options = {}) {
     const info = taskState(state, task.id);
-    const support = taskSupport(info);
     const examples = taskExamples(state, task.id);
     const hasRecord = Boolean(info.lastImportedRecord);
     const completed = taskReadyToAdvance(task, state);
-    const open = !completed && (support?.status === "active" || support?.status === "deferred" || options.isPending || options.needsReflection || options.selectedStep >= 1 || hasRecord);
+    const open = !completed && (options.isPending || options.needsReflection || options.selectedStep >= 1 || hasRecord);
     const status = completed
       ? "已完成，可回看"
-      : support?.status === "deferred"
-        ? "待补基础"
-        : support?.status === "active"
-          ? "正在补基础"
-          : options.needsReflection
-            ? "待写本节收尾"
-            : options.isPending
-              ? "等 Gemini 记录"
-              : hasRecord
-                ? "已有学习记录"
-                : examples.length
-                  ? `${examples.length} 张例题`
-                  : "截图 / 导入 / 收尾";
+      : options.needsReflection
+        ? "待写本节收尾"
+        : options.isPending
+          ? "等 Gemini 记录"
+          : hasRecord
+            ? "已有学习记录"
+            : examples.length
+              ? `${examples.length} 张例题`
+              : "截图 / 导入 / 收尾";
     return `
       <details class="summer-task-support" ${open ? "open" : ""} data-task-support="${escapeHtml(task.id)}">
         <summary>
@@ -2785,7 +2786,6 @@
           ${completed
             ? renderCompletedTaskReview(task, state)
             : `
-              ${renderTaskRescuePanel(task, info)}
               ${renderExampleCollector(task, state, { compact: options.compact })}
               ${renderTaskImportDock(task, state, { compact: options.compact })}
               ${renderTaskReflectionPanel(task, state, { forceOpen: options.needsReflection })}
@@ -2927,12 +2927,12 @@
     return flow.step;
   }
 
-  function renderTaskStepper(task, flow, selectedStep) {
+  function renderTaskStepper(task, flow, selectedStep, rescueActive = false) {
     const steps = ["看视频", "做题", "收尾", "完成"];
     return `
       <div class="summer-stepper" aria-label="任务步骤">
         ${steps.map((label, index) => `
-          <button class="chip ${index < flow.step ? "done" : index === flow.step ? "active" : ""} ${index > flow.step ? "future" : ""} ${index === selectedStep ? "selected" : ""}" data-summer-action="show-step" data-task-id="${escapeHtml(task.id)}" data-step="${index}" type="button" aria-pressed="${index === selectedStep ? "true" : "false"}">
+          <button class="chip ${index < flow.step ? "done" : index === flow.step ? "active" : ""} ${index > flow.step ? "future" : ""} ${index === selectedStep ? "selected" : ""}" data-rescue-blocked-action data-summer-action="show-step" data-task-id="${escapeHtml(task.id)}" data-step="${index}" type="button" aria-pressed="${index === selectedStep ? "true" : "false"}" ${rescueActive ? "disabled" : ""}>
             <i>${index < flow.step ? "✓" : index + 1}</i>${label}
           </button>
         `).join("")}
@@ -2988,15 +2988,15 @@
     `;
   }
 
-  function renderTaskActions(task, flow) {
-    const disabled = flow.action === "done" ? " disabled" : "";
+  function renderTaskActions(task, flow, rescueActive = false) {
+    const disabled = flow.action === "done" || rescueActive ? " disabled" : "";
     const primaryClass = flow.tone === "done" ? "btn-ghost" : "btn-primary";
     return `
       <div class="summer-task-actions">
-        <button class="btn ${primaryClass} btn-sm summer-next-btn" data-summer-action="${escapeHtml(flow.action)}" data-task-id="${escapeHtml(task.id)}" type="button"${disabled}>
+        <button class="btn ${primaryClass} btn-sm summer-next-btn" data-rescue-blocked-action data-summer-action="${escapeHtml(flow.action)}" data-task-id="${escapeHtml(task.id)}" type="button"${disabled}>
           <span class="material-symbols-outlined">${escapeHtml(flow.icon)}</span>${escapeHtml(flow.label)}
         </button>
-        ${flow.action === "open-task-support" && flow.tone === "done" ? "" : `<details class="summer-more-actions">
+        ${flow.action === "open-task-support" && flow.tone === "done" ? "" : `<details class="summer-more-actions" data-rescue-blocked-action>
           <summary>更多操作</summary>
           <div>
             <a class="btn btn-ghost btn-sm" href="${escapeHtml(task.url)}" target="_blank" rel="noreferrer">
@@ -3202,23 +3202,37 @@
     ].filter(Boolean).join("\n");
   }
 
+  function renderTaskRescueSlot(task, info) {
+    return `<div class="summer-rescue-slot" data-rescue-slot="${escapeHtml(task.id)}">${renderTaskRescuePanel(task, info)}</div>`;
+  }
+
+  function rescuePrimaryResource(plan) {
+    if (plan.book) return { icon: "menu_book", label: "只翻这里", text: plan.book, link: null };
+    const searchText = plan.keywords.length ? plan.keywords.join("、") : plan.backup;
+    if (searchText) return { icon: "search", label: "只搜这些词", text: searchText, link: plan.links[0] || null };
+    if (plan.links.length) return { icon: "open_in_new", label: "只看这个入口", text: plan.links[0].label || "基础资源", link: plan.links[0] };
+    return null;
+  }
+
   function renderTaskRescuePanel(task, info) {
     const support = taskSupport(info);
-    if (!support || support.status === "resolved") return "";
+    if (!support || support.status !== "active") return "";
     const reasons = [
       ["concept", "概念没学过"],
       ["formulas", "公式太多"],
       ["long", "视频太长"],
     ];
     const plan = rescuePlan(task, support.reason);
-    const attempted = new Set(support.attempted);
+    const resource = rescuePrimaryResource(plan);
+    const helpOpen = supportHelpOpenTasks.has(task.id);
     return `
-      <section class="summer-rescue-panel ${support.status}">
+      <section class="summer-rescue-panel active" aria-label="临时救急，不计任务进度">
+        <div class="summer-rescue-label"><span class="material-symbols-outlined">pause_circle</span>临时救急 · 不计任务进度</div>
         <div class="summer-rescue-head">
           <span class="material-symbols-outlined">support</span>
           <div>
-            <strong>${support.status === "deferred" ? "这节已放入待补基础" : "先说卡在哪里"}</strong>
-            <p>${support.status === "deferred" ? "它还没有完成，也不会计入奖励；本周复盘前要回来。" : "选一个最接近的原因，网站只给你当前要做的一步。"}</p>
+            <strong>主线先暂停，先补最小基础</strong>
+            <p>选一个最接近的原因。这里只处理眼前这个卡点，不会推进任务或奖励。</p>
           </div>
         </div>
         <div class="summer-rescue-reasons" role="group" aria-label="选择卡住原因">
@@ -3228,34 +3242,33 @@
         </div>
         ${support.reason ? `
           <div class="summer-rescue-action">
-            <span>现在只做这一步</span>
+            <span>现在只做这一件事</span>
             <strong>${escapeHtml(plan.pause)}</strong>
-            ${plan.concepts.length ? `<p>先补：${escapeHtml(plan.concepts.join("、"))}</p>` : ""}
+            ${plan.concepts.length ? `<p>只补：${escapeHtml(plan.concepts.join("、"))}</p>` : ""}
           </div>
-          <div class="summer-rescue-resources">
-            ${plan.book ? `<p><span class="material-symbols-outlined">menu_book</span><strong>翻书</strong>${escapeHtml(plan.book)}</p>` : ""}
-            ${plan.keywords.length ? `<p><span class="material-symbols-outlined">search</span><strong>目录搜索</strong>${escapeHtml(plan.keywords.join("、"))}</p>` : plan.backup ? `<p><span class="material-symbols-outlined">search</span><strong>目录搜索</strong>${escapeHtml(plan.backup)}</p>` : ""}
-            ${plan.avoid ? `<p class="avoid"><span class="material-symbols-outlined">do_not_disturb_on</span><strong>先不学</strong>${escapeHtml(plan.avoid)}</p>` : ""}
-            ${plan.links.length ? `<div>${plan.links.map((link) => `<a class="btn btn-soft btn-sm" href="${escapeHtml(link.url)}" target="_blank" rel="noreferrer"><span class="material-symbols-outlined">open_in_new</span>${escapeHtml(link.label || "打开资源")}</a>`).join("")}</div>` : ""}
-          </div>
-          <div class="summer-rescue-attempts">
-            ${plan.book ? `<button class="${attempted.has("book") ? "selected" : ""}" data-summer-action="support-attempt" data-task-id="${escapeHtml(task.id)}" data-support-attempt="book" type="button"><span class="material-symbols-outlined">${attempted.has("book") ? "check_box" : "check_box_outline_blank"}</span>已经翻过讲义</button>` : ""}
-            ${plan.keywords.length || plan.backup ? `<button class="${attempted.has("basic-video") ? "selected" : ""}" data-summer-action="support-attempt" data-task-id="${escapeHtml(task.id)}" data-support-attempt="basic-video" type="button"><span class="material-symbols-outlined">${attempted.has("basic-video") ? "check_box" : "check_box_outline_blank"}</span>已经看过基础课</button>` : ""}
-          </div>
-          <label class="summer-rescue-note">
-            <span>还卡在哪里（可选）</span>
-            <textarea data-support-note data-task-id="${escapeHtml(task.id)}" rows="2" placeholder="例如：不知道为什么引力能让卫星转圈。">${escapeHtml(support.note)}</textarea>
-          </label>
+          ${resource ? `
+            <div class="summer-rescue-resource">
+              <span class="material-symbols-outlined">${escapeHtml(resource.icon)}</span>
+              <div><strong>${escapeHtml(resource.label)}</strong><p>${escapeHtml(resource.text)}</p></div>
+              ${resource.link ? `<a class="btn btn-soft btn-sm" href="${escapeHtml(resource.link.url)}" target="_blank" rel="noreferrer"><span class="material-symbols-outlined">open_in_new</span>打开</a>` : ""}
+            </div>
+          ` : ""}
           <div class="summer-rescue-check">
             <span class="material-symbols-outlined">quiz</span>
-            <div><strong>回原任务前先问自己</strong><p>${escapeHtml(plan.check)}</p></div>
+            <div><strong>能回答再回主线</strong><p>${escapeHtml(plan.check)}</p></div>
           </div>
           <div class="summer-rescue-actions">
-            <button class="btn btn-primary btn-sm" data-summer-action="support-resolved" data-task-id="${escapeHtml(task.id)}" type="button"><span class="material-symbols-outlined">check_circle</span>解决了，回原任务</button>
-            <button class="btn btn-soft btn-sm" data-summer-action="support-help" data-task-id="${escapeHtml(task.id)}" type="button"><span class="material-symbols-outlined">content_copy</span>还是不懂，复制求助卡</button>
-            <button class="btn btn-ghost btn-sm" data-summer-action="support-defer" data-task-id="${escapeHtml(task.id)}" type="button"><span class="material-symbols-outlined">bookmark_add</span>先放一放</button>
+            <button class="btn btn-primary btn-sm" data-summer-action="support-resolved" data-task-id="${escapeHtml(task.id)}" type="button"><span class="material-symbols-outlined">check_circle</span>能回答了，回原任务</button>
+            <button class="btn btn-soft btn-sm" data-summer-action="support-help-open" data-task-id="${escapeHtml(task.id)}" type="button"><span class="material-symbols-outlined">help</span>还是不懂</button>
           </div>
+          ${helpOpen ? `
+            <div class="summer-rescue-help">
+              <label><span>具体卡在哪里（可选）</span><input data-support-note data-task-id="${escapeHtml(task.id)}" type="text" value="${escapeHtml(support.note)}" placeholder="例如：不知道引力为什么能让卫星转圈"></label>
+              <button class="btn btn-soft btn-sm" data-summer-action="support-help-copy" data-task-id="${escapeHtml(task.id)}" type="button"><span class="material-symbols-outlined">content_copy</span>复制求助卡</button>
+            </div>
+          ` : ""}
         ` : ""}
+        <button class="summer-rescue-defer" data-summer-action="support-defer" data-task-id="${escapeHtml(task.id)}" type="button">实在无法继续？暂时放下，本周复盘前回来</button>
       </section>
     `;
   }
@@ -3313,34 +3326,35 @@
     });
   }
 
-  function findTaskSupportElement(taskId, trigger) {
-    const selector = `[data-task-support="${escapeSelectorAttr(taskId)}"]`;
+  function findTaskRescueSlot(taskId, trigger) {
+    const selector = `[data-rescue-slot="${escapeSelectorAttr(taskId)}"]`;
     const scope = trigger?.closest?.(".summer-route-step, .summer-task");
     return scope?.querySelector?.(selector) || document.querySelector(selector);
   }
 
   function updateRescuePanelInPlace(task, trigger) {
-    const details = findTaskSupportElement(task.id, trigger);
-    const body = details?.querySelector?.(".summer-task-support-body");
-    if (!details || !body) return false;
-    const current = trigger?.closest?.(".summer-rescue-panel") || body.querySelector(".summer-rescue-panel");
+    const slot = findTaskRescueSlot(task.id, trigger);
+    const scope = slot?.closest?.(".summer-route-step, .summer-task");
+    if (!slot || !scope) return false;
     const html = renderTaskRescuePanel(task, taskState(readState(), task.id)).trim();
-    const status = details.querySelector("summary small");
-    if (!html) {
-      current?.remove?.();
-      if (status) status.textContent = "继续原任务";
-      details.open = false;
-      return true;
+    const active = Boolean(html);
+    slot.innerHTML = html;
+    scope.classList.toggle("rescue-paused", active);
+    scope.querySelectorAll("[data-rescue-blocked-action]").forEach((el) => {
+      if (el.tagName === "BUTTON") el.disabled = active;
+      else {
+        el.toggleAttribute("inert", active);
+        el.setAttribute("aria-disabled", active ? "true" : "false");
+      }
+    });
+    const normalContent = scope.querySelector(".summer-normal-task-content");
+    if (normalContent) {
+      normalContent.setAttribute("aria-label", active ? "正常任务已暂停" : "正常任务");
+      const pausedLabel = normalContent.querySelector(".summer-task-paused-label");
+      if (active && !pausedLabel) normalContent.insertAdjacentHTML("afterbegin", `<p class="summer-task-paused-label"><span class="material-symbols-outlined">pause_circle</span>正常任务已暂停</p>`);
+      if (!active) pausedLabel?.remove?.();
     }
-    const template = document.createElement("template");
-    template.innerHTML = html;
-    const next = template.content.firstElementChild;
-    if (!next) return false;
-    if (current) current.replaceWith(next);
-    else body.prepend(next);
-    if (status) status.textContent = "正在补基础";
-    details.open = true;
-    bindRescuePanel(next);
+    bindRescuePanel(slot.querySelector(".summer-rescue-panel"));
     return true;
   }
 
@@ -3554,6 +3568,7 @@
     }
     if (!task) return;
     if (action === "support-open") {
+      supportHelpOpenTasks.delete(task.id);
       updateTaskSupport(task.id, {
         status: "active",
         openedAt: taskSupport(taskState(readState(), task.id))?.openedAt || new Date().toISOString(),
@@ -3569,26 +3584,21 @@
       if (!updateRescuePanelInPlace(task, event.currentTarget)) refreshSupportView(event.currentTarget);
       return;
     }
-    if (action === "support-attempt") {
-      const attempt = event.currentTarget.dataset.supportAttempt || "";
-      if (attempt !== "book" && attempt !== "basic-video") return;
-      const support = taskSupport(taskState(readState(), task.id));
-      const attempted = new Set(support?.attempted || []);
-      if (attempted.has(attempt)) attempted.delete(attempt);
-      else attempted.add(attempt);
-      updateTaskSupport(task.id, { status: "active", attempted: Array.from(attempted) });
-      if (!updateRescuePanelInPlace(task, event.currentTarget)) refreshSupportView(event.currentTarget);
-      return;
-    }
     if (action === "support-resolved") {
       const now = new Date().toISOString();
       updateTaskSupport(task.id, { status: "resolved", resolvedAt: now, deferredAt: "" });
       updateTask(task.id, { activeStep: 0 });
+      supportHelpOpenTasks.delete(task.id);
       if (!updateRescuePanelInPlace(task, event.currentTarget)) refreshSupportView(event.currentTarget);
       window.MochiApp?.toast?.("已回到原任务；真正完成视频、练习和收尾后才计入奖励");
       return;
     }
-    if (action === "support-help") {
+    if (action === "support-help-open") {
+      supportHelpOpenTasks.add(task.id);
+      if (!updateRescuePanelInPlace(task, event.currentTarget)) refreshSupportView(event.currentTarget);
+      return;
+    }
+    if (action === "support-help-copy") {
       const note = String(event.currentTarget.closest(".summer-rescue-panel")?.querySelector("[data-support-note]")?.value || "").trim();
       updateTaskSupport(task.id, { note });
       const support = taskSupport(taskState(readState(), task.id));
@@ -3600,6 +3610,7 @@
       return;
     }
     if (action === "support-defer") {
+      supportHelpOpenTasks.delete(task.id);
       const state = readState();
       const current = taskState(state, task.id);
       const support = taskSupport(current) || {};
@@ -3622,6 +3633,7 @@
       return;
     }
     if (action === "support-return") {
+      supportHelpOpenTasks.delete(task.id);
       const state = readState();
       const current = taskState(state, task.id);
       const support = taskSupport(current) || {};
