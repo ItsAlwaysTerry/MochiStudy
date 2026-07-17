@@ -322,6 +322,35 @@
     `;
   }
 
+  // 局部刷新某科迷你地块的植物精灵 + 数字（导入后在首页用；不重渲染整个农场，避免冲掉打卡成功卡）。
+  // grew=true 时给精灵加一个"长大了"的弹跳动画，让"真实农场"立刻有可见反馈。
+  function refreshMiniPlot(subject, grew) {
+    const plot = document.querySelector(`.mini-plot.subject-${subject}`);
+    if (!plot) return;
+    const state = readState();
+    const stage = calcPlotStage(subject);
+    const sprite = plot.querySelector(".mini-crop-sprite");
+    if (sprite) sprite.setAttribute("style", cropSpriteStyle(subject, stage));
+    const harvestTarget = Number(config().harvestTarget || DEFAULT_FARM_CONFIG.harvestTarget);
+    const recordCount = state.plots[subject]?.recordCount || 0;
+    const count = plot.querySelector(".mini-plot-count");
+    if (count) count.textContent = `${recordCount}/${harvestTarget}`;
+    if (stage === 5 && !plot.querySelector(".mini-harvest-btn")) {
+      const btn = document.createElement("button");
+      btn.className = "mini-harvest-btn";
+      btn.dataset.farmAction = "harvest";
+      btn.dataset.subject = subject;
+      btn.type = "button";
+      btn.textContent = "收";
+      plot.appendChild(btn);
+    }
+    if (grew && sprite) {
+      sprite.classList.remove("mini-crop-grew");
+      void sprite.offsetWidth; // 强制回流，重新触发动画
+      sprite.classList.add("mini-crop-grew");
+    }
+  }
+
   function renderStreakBanner() {
     const streak = window.MochiApp?.calcStudyStreak?.() || 0;
     const todayCount = window.MochiApp?.getTodayRecordCount?.() || 0;
@@ -779,6 +808,7 @@
     calcPlotStage,
     harvest,
     refreshFarmSummary,
+    refreshMiniPlot,
     renderFarm,
   };
 })();

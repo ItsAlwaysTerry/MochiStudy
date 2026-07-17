@@ -4672,9 +4672,14 @@ ${record.originalQuestion || "暂无原题描述。"}
     sparkle(result, "★");
     textarea.value = "";
     window.MochiPet.renderMiniState();
-    if (!document.body.classList.contains("focus-mode") && currentRoute() !== "home") {
-      window.MochiFarm?.refreshFarmSummary?.();
-      refreshVisibleRoute();
+    if (!document.body.classList.contains("focus-mode")) {
+      if (currentRoute() === "home") {
+        // 首页只局部刷新对应地块的植物本体+数字（阶段变了会有弹跳动画），不重渲染整个农场，保住打卡成功卡
+        window.MochiFarm?.refreshMiniPlot?.(record.subject, stageAfter > stageBefore);
+      } else {
+        window.MochiFarm?.refreshFarmSummary?.();
+        refreshVisibleRoute();
+      }
     }
     window.MochiCards?.refresh?.();
     toast(`${subject}地块成长中 🌱，已保存学习记录`);

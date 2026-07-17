@@ -358,9 +358,6 @@
         <button class="btn btn-ghost btn-sm" data-archive-action="relearn" type="button">
           <span class="material-symbols-outlined">school</span>从零重学
         </button>
-        <button class="btn btn-ghost btn-sm" data-action="copy-ai-prompt" data-prompt-path="./skill/gaokao啃卷子.md" type="button">
-          <span class="material-symbols-outlined">description</span>啃卷子
-        </button>
         <button class="btn btn-ghost btn-sm" data-archive-action="quiz-subject" type="button">
           <span class="material-symbols-outlined">casino</span>出测验
         </button>
@@ -619,10 +616,8 @@
     document.getElementById("archive-quiz-root")?.remove();
     const scopes = [["all", "全部"], ...Object.entries(SUBJECTS).map(([key, item]) => [key, item.label])];
     const counts = [2, 3, 4, 5];
-    const filters = [["all", "全部弱点"], ["unreviewed", "没复习过"], ["lowstar", "有低星"]];
     let pickedScope = defaultScope || STATE.activeSubject || "all";
     let pickedCount = 4;
-    let pickedFilter = "all";
     const root = document.createElement("div");
     root.id = "archive-quiz-root";
     root.className = "archive-export-root";
@@ -645,12 +640,6 @@
             ${counts.map((c) => `<button class="${c === pickedCount ? "active" : ""}" data-quiz-count="${c}" type="button">${c} 个</button>`).join("")}
           </div>
         </div>
-        <div class="quiz-sheet-field">
-          <small>只测哪类</small>
-          <div class="quiz-sheet-options">
-            ${filters.map(([v, l]) => `<button class="${v === pickedFilter ? "active" : ""}" data-quiz-filter="${v}" type="button">${l}</button>`).join("")}
-          </div>
-        </div>
         <div class="archive-export-actions">
           <button class="btn btn-primary" data-quiz-go type="button"><span class="material-symbols-outlined">casino</span>出这份测验</button>
           <button class="btn btn-outline" data-quiz-close type="button">关闭</button>
@@ -664,11 +653,9 @@
       if (scopeBtn) { pickedScope = scopeBtn.dataset.quizScope; root.innerHTML = renderSheet(); return; }
       const countBtn = event.target.closest("[data-quiz-count]");
       if (countBtn) { pickedCount = Number(countBtn.dataset.quizCount); root.innerHTML = renderSheet(); return; }
-      const filterBtn = event.target.closest("[data-quiz-filter]");
-      if (filterBtn) { pickedFilter = filterBtn.dataset.quizFilter; root.innerHTML = renderSheet(); return; }
       if (event.target.closest("[data-quiz-go]")) {
         root.remove();
-        quizSubjectScoped(pickedScope, pickedCount, pickedFilter);
+        quizSubjectScoped(pickedScope, pickedCount);
       }
     });
     document.body.appendChild(root);
