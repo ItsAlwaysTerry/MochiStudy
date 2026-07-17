@@ -3658,46 +3658,47 @@
     const freq = remaining <= 4 ? 660 + (5 - Math.max(0, remaining)) * 95 : 610;
     econBeep({ freq, type: "triangle", dur: 0.09, vol: 0.05 });
   }
-  // 出抽奖结果：贝多芬《命运交响曲》开头动机(G G G ♭E / F F F D)→胜利琶音改编的搞笑小旋律，
-  // 用给零花钱配"命运交响曲"的反差制造喜感；大奖更响更亮。约 3.3 秒。
+  // 出抽奖结果：莫扎特《土耳其进行曲》开头三组上行回音音型，节奏不均匀——越到后面每个音拉得越长
+  // （渐慢 ritardando），最后大幅拖长收在主音上，突出宿命/震惊感。不接上行胜利琶音。大奖叠低八度更厚。
   function playPrizeFanfare(big) {
     const ctx = econAudio();
     if (!ctx) return;
     try {
-      const t0 = ctx.currentTime + 0.03;
-      const G4 = 392.0, Eb4 = 311.13, F4 = 349.23, D4 = 293.66;
-      const C5 = 523.25, E5 = 659.25, G5 = 783.99, C6 = 1046.5;
-      // [频率, 起始秒, 时长秒]
-      const seq = [
-        [G4, 0.00, 0.13], [G4, 0.16, 0.13], [G4, 0.32, 0.13], [Eb4, 0.48, 0.46],
-        [F4, 1.05, 0.13], [F4, 1.21, 0.13], [F4, 1.37, 0.13], [D4, 1.53, 0.54],
-        [C5, 2.20, 0.16], [E5, 2.40, 0.16], [G5, 2.60, 0.16], [C6, 2.82, 0.58],
+      const Gs4 = 415.30, A4 = 440.0, B4 = 493.88, C5 = 523.25, D5 = 587.33, Ds5 = 622.25, E5 = 659.25, F5 = 698.46;
+      // [频率, 时长(秒)]，时长越往后越长
+      const notes = [
+        [B4, 0.12], [A4, 0.12], [Gs4, 0.12], [A4, 0.12], [C5, 0.22],
+        [D5, 0.13], [C5, 0.13], [B4, 0.13], [C5, 0.13], [E5, 0.26],
+        [F5, 0.16], [E5, 0.16], [Ds5, 0.16], [E5, 0.34],
+        [C5, 0.46], [B4, 0.74], [A4, 1.25], // 结尾渐慢拉长，收在主音
       ];
-      seq.forEach(([freq, off, dur]) => {
+      const t0 = ctx.currentTime + 0.03;
+      let off = 0;
+      notes.forEach(([freq, dur]) => {
+        const start = t0 + off;
+        const vol = big ? 0.16 : 0.11;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = "triangle";
         osc.frequency.value = freq;
-        const start = t0 + off;
-        const vol = big ? 0.16 : 0.11;
         gain.gain.setValueAtTime(0.0001, start);
-        gain.gain.exponentialRampToValueAtTime(vol, start + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+        gain.gain.exponentialRampToValueAtTime(vol, start + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + dur * 0.95);
         osc.connect(gain).connect(ctx.destination);
-        // 大奖叠一个低八度更厚
+        osc.start(start);
+        osc.stop(start + dur + 0.03);
         if (big) {
           const osc2 = ctx.createOscillator();
           const gain2 = ctx.createGain();
           osc2.type = "sine";
           osc2.frequency.value = freq / 2;
           gain2.gain.setValueAtTime(0.0001, start);
-          gain2.gain.exponentialRampToValueAtTime(vol * 0.6, start + 0.02);
-          gain2.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+          gain2.gain.exponentialRampToValueAtTime(vol * 0.55, start + 0.015);
+          gain2.gain.exponentialRampToValueAtTime(0.0001, start + dur * 0.95);
           osc2.connect(gain2).connect(ctx.destination);
           osc2.start(start); osc2.stop(start + dur + 0.03);
         }
-        osc.start(start);
-        osc.stop(start + dur + 0.03);
+        off += dur;
       });
     } catch { /* 音效失败不影响流程 */ }
   }
