@@ -9640,6 +9640,12 @@ body.focus-mode #view {
   background: var(--surface);
 }
 
+.summer-route-step.active .summer-route-video-card,
+.summer-route-step.next .summer-route-video-card {
+  border-color: color-mix(in srgb, var(--tertiary-container) 42%, var(--line));
+  background: color-mix(in srgb, var(--tertiary-container) 22%, var(--surface));
+}
+
 .summer-route-video-main {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
@@ -9843,7 +9849,7 @@ body.focus-mode #view {
 }
 
 .summer-task.pending-import {
-  background: color-mix(in srgb, var(--physics-container) 12%, transparent);
+  background: color-mix(in srgb, var(--tertiary-container) 24%, var(--surface));
   box-shadow: none;
 }
 
@@ -9853,7 +9859,7 @@ body.focus-mode #view {
 }
 
 .summer-task.queue-current:not(.completed) {
-  background: color-mix(in srgb, var(--physics-container) 10%, transparent);
+  background: color-mix(in srgb, var(--tertiary-container) 20%, var(--surface));
   box-shadow: none;
 }
 
