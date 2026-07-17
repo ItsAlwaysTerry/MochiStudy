@@ -62,7 +62,7 @@ mochi_debug_panel_open        — 调试面板展开状态
 mochi_debug_float_collapsed   — 右下角调试浮窗收起状态
 mochi_debug_tab               — 调试浮窗当前 Tab
 commitment_history            — 专注承诺历史，每轮一条 {id,date,goal,plannedMins,actualMins,outcome,ts}；最多 50 条；用于首页"说到做到"回看
-summer_task_state             — 暑假任务区状态，保存滚动任务队列中的 watched/completed/activeStep/studyNote/reflectionRequired/reflectionDone/reflection、当前展开任务 activeTaskId、用户锁定为今日任务的 activeRouteDay、待关联视频任务 pendingTaskId、待关联路线学习单 pendingRouteDay、待关联路线视频/学习单 pendingRouteTaskId、28天路线详情 routeDetailDay、每日总复盘 routeDays[].dailyReflection、视频例题截图元信息 examples 和已关联学习记录 id；不改 study_log 字段。截图图片本体存在 IndexedDB `mochi_summer_examples`
+summer_task_state             — 暑假任务区状态，保存滚动任务队列中的 watched/completed/activeStep/studyNote/reflectionRequired/reflectionDone/reflection、卡住救援状态 tasks[].support、当前展开任务 activeTaskId、用户锁定为今日任务的 activeRouteDay、待关联视频任务 pendingTaskId、待关联路线学习单 pendingRouteDay、待关联路线视频/学习单 pendingRouteTaskId、28天路线详情 routeDetailDay、每日总复盘 routeDays[].dailyReflection、视频例题截图元信息 examples 和已关联学习记录 id；不改 study_log 字段。截图图片本体存在 IndexedDB `mochi_summer_examples`
 summer_reward_config          — 暑假奖励浮窗的隐藏奖项配置，字段 items: [{label, amount, weight, tone}]；学生端不展示概率，未设置时使用代码默认权重
 sidebar_expanded              — 桌面端侧边栏展开状态，"1" 为展开文字导航，默认收起为窄图标栏
 ```
@@ -787,3 +787,12 @@ v34 之后的改动：
 - **浮窗状态修正**：奖励说明统一读取配置门槛；账户里留有旧小奖券时，不再误写成“今天已达标”。
 - **完整流程才计分**：奖励能量只统计已经保存本节收尾的任务；新完成任务用 `rewardCompletedAt` 记录四步流程真正结束的时间，旧达标日仍按原日期保留。
 - **缓存版本号**：`index.html` 静态资源版本号和 `BUILD_ID` 更新为 `20260717k`。
+
+### V5.39 卡住任务补基础闭环（build `20260717l`）
+
+- **视频内即时求救**：未完成视频旁新增“听不懂 / 视频太难”入口，学生可选择“概念没学过 / 公式太多 / 视频太长”，页面只给当前最小补救动作，不再等到练习步骤才显示讲义和基础课。
+- **万有引力精确救援**：第 2 天万有引力卡点明确指向实体一轮讲义 2 第 27-30 页和“万有引力定律 / 向心力 / 卫星圆周运动”关键词，并暂缓同步卫星、双星、追及相遇和复杂比值题。
+- **三种处理结果**：“解决了”回原任务但不算完成；“还是不懂”复制包含已尝试内容和具体卡点的求助卡；“先放一放”写入 `tasks[].support.status = deferred`，退出当前队列但不计完成、不计奖励。
+- **待补基础与周节点拦截**：待补任务集中显示并可随时返回；物理在第 7/14/21/28 天周测前强制补回同周任务，数学/化学在进入下一周前强制补回，防止无限拖延。
+- **兼容与完成规则**：旧状态没有 `support` 时行为不变；正常完成一天仍需完成原有今日复盘才顺延，`study_log` 和备份结构均未改动。
+- **缓存版本号**：`index.html` 静态资源版本号和 `BUILD_ID` 更新为 `20260717l`。

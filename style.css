@@ -8619,6 +8619,147 @@ body.focus-mode #view {
   margin: 0;
 }
 
+.summer-deferred-summary {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--secondary) 28%, transparent);
+  border-left: 4px solid var(--secondary);
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--secondary-container) 22%, var(--surface));
+}
+
+.summer-deferred-summary-head {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.summer-deferred-summary-head > .material-symbols-outlined {
+  color: var(--secondary);
+  font-size: 22px;
+}
+
+.summer-deferred-summary-head strong,
+.summer-deferred-summary-head p {
+  display: block;
+  margin: 0;
+}
+
+.summer-deferred-summary-head strong {
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+}
+
+.summer-deferred-summary-head p {
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+
+.summer-deferred-list {
+  display: grid;
+  gap: 4px;
+}
+
+.summer-deferred-list button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 42px;
+  padding: 7px 8px;
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--secondary) 18%, transparent);
+  color: var(--text-primary);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.summer-deferred-list button strong,
+.summer-deferred-list button small {
+  display: block;
+}
+
+.summer-deferred-list button strong {
+  font-size: var(--fs-xs);
+}
+
+.summer-deferred-list button small {
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.summer-deferred-list button > .material-symbols-outlined {
+  flex: 0 0 auto;
+  color: var(--secondary);
+  font-size: 19px;
+}
+
+.summer-deferred-gate {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--secondary) 34%, transparent);
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--secondary-container) 28%, var(--surface));
+}
+
+.summer-deferred-gate > .material-symbols-outlined {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-full);
+  color: var(--surface);
+  background: var(--secondary);
+  font-size: 20px;
+}
+
+.summer-deferred-gate strong,
+.summer-deferred-gate p {
+  margin: 0;
+}
+
+.summer-deferred-gate strong {
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+}
+
+.summer-deferred-gate p {
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+
+.summer-deferred-gate-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.summer-deferred-gate-actions .btn {
+  min-height: 40px;
+  margin: 0;
+  white-space: normal;
+}
+
+.summer-deferred-gate-actions small {
+  color: inherit;
+  font-size: 10px;
+  opacity: 0.8;
+}
+
 .summer-progress-track {
   height: 5px;
   overflow: hidden;
@@ -8960,6 +9101,19 @@ body.focus-mode #view {
 
 .summer-route-detail-task.active {
   border-color: rgba(74, 69, 128, 0.28);
+}
+
+.summer-route-detail-task.deferred,
+.summer-route-preview-item.deferred {
+  border-color: color-mix(in srgb, var(--secondary) 34%, transparent);
+  background: color-mix(in srgb, var(--secondary-container) 18%, var(--surface));
+}
+
+.summer-route-detail-task.deferred .material-symbols-outlined,
+.summer-route-detail-task.deferred em,
+.summer-route-preview-item.deferred .material-symbols-outlined,
+.summer-route-preview-item.deferred em {
+  color: var(--secondary);
 }
 
 .summer-route-preview-list {
@@ -9422,7 +9576,7 @@ body.focus-mode #view {
   background: var(--tertiary);
 }
 
-.summer-route-step:not(.active):not(.done):not(.next) {
+.summer-route-step:not(.active):not(.done):not(.next):not(.deferred) {
   opacity: 0.55;
 }
 
@@ -9447,6 +9601,17 @@ body.focus-mode #view {
   border-color: var(--physics);
   background: var(--physics);
   box-shadow: 0 0 0 5px rgba(197, 194, 240, 0.38);
+}
+
+.summer-route-step.deferred {
+  opacity: 0.82;
+}
+
+.summer-route-step.deferred .summer-route-step-marker {
+  color: var(--secondary);
+  border-color: color-mix(in srgb, var(--secondary) 42%, transparent);
+  background: color-mix(in srgb, var(--secondary-container) 44%, var(--surface));
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.9);
 }
 
 .summer-route-step-body {
@@ -9525,6 +9690,52 @@ body.focus-mode #view {
   min-height: 42px !important;
   border-radius: var(--r-md);
   font-weight: 1000;
+}
+
+.summer-video-start-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.summer-video-start-row .summer-step-hint {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.summer-rescue-entry {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 6px 9px;
+  border: 1px solid color-mix(in srgb, var(--secondary) 34%, transparent);
+  border-radius: var(--r-md);
+  color: var(--secondary);
+  background: color-mix(in srgb, var(--secondary-container) 22%, var(--surface));
+  font-size: var(--fs-xs);
+  font-weight: 900;
+  line-height: 1.25;
+  cursor: pointer;
+}
+
+.summer-rescue-entry:hover,
+.summer-rescue-entry:focus-visible {
+  border-color: var(--secondary);
+  background: color-mix(in srgb, var(--secondary-container) 42%, var(--surface));
+}
+
+.summer-rescue-entry .material-symbols-outlined {
+  font-size: 18px;
+}
+
+.summer-rescue-entry.compact {
+  width: 100%;
+  min-height: 32px;
+  padding: 5px 7px;
 }
 
 .summer-day-list,
@@ -10293,6 +10504,212 @@ body.focus-mode #view {
   display: grid;
   gap: 9px;
   padding: 0 0 8px;
+}
+
+.summer-rescue-panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px 0 14px;
+  border-top: 3px solid var(--secondary);
+  border-bottom: 1px solid var(--line);
+}
+
+.summer-rescue-panel.deferred {
+  border-top-style: dashed;
+}
+
+.summer-rescue-head {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.summer-rescue-head > .material-symbols-outlined {
+  color: var(--secondary);
+  font-size: 24px;
+}
+
+.summer-rescue-head strong,
+.summer-rescue-head p {
+  display: block;
+  margin: 0;
+}
+
+.summer-rescue-head strong {
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+}
+
+.summer-rescue-head p {
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+
+.summer-rescue-reasons,
+.summer-rescue-attempts,
+.summer-rescue-actions,
+.summer-rescue-resources > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.summer-rescue-reasons button,
+.summer-rescue-attempts button {
+  min-height: 38px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  color: var(--text-secondary);
+  background: var(--surface-low);
+  font-size: var(--fs-xs);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.summer-rescue-reasons button.selected,
+.summer-rescue-attempts button.selected {
+  border-color: color-mix(in srgb, var(--secondary) 42%, transparent);
+  color: var(--secondary);
+  background: color-mix(in srgb, var(--secondary-container) 38%, var(--surface));
+}
+
+.summer-rescue-attempts button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.summer-rescue-attempts .material-symbols-outlined {
+  font-size: 18px;
+}
+
+.summer-rescue-action {
+  padding: 10px 12px;
+  border-left: 4px solid var(--secondary);
+  background: color-mix(in srgb, var(--secondary-container) 22%, var(--surface));
+}
+
+.summer-rescue-action span,
+.summer-rescue-action strong,
+.summer-rescue-action p {
+  display: block;
+  margin: 0;
+}
+
+.summer-rescue-action span {
+  color: var(--secondary);
+  font-size: 11px;
+  font-weight: 1000;
+}
+
+.summer-rescue-action strong {
+  margin-top: 3px;
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+
+.summer-rescue-action p {
+  margin-top: 5px;
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+}
+
+.summer-rescue-resources {
+  display: grid;
+  gap: 6px;
+}
+
+.summer-rescue-resources p {
+  display: grid;
+  grid-template-columns: 20px 68px minmax(0, 1fr);
+  gap: 6px;
+  align-items: start;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+
+.summer-rescue-resources p > .material-symbols-outlined {
+  color: var(--secondary);
+  font-size: 18px;
+}
+
+.summer-rescue-resources p > strong {
+  color: var(--text-primary);
+}
+
+.summer-rescue-resources p.avoid {
+  color: var(--text-tertiary);
+}
+
+.summer-rescue-resources .btn,
+.summer-rescue-actions .btn {
+  min-height: 40px;
+  margin: 0;
+  white-space: normal;
+}
+
+.summer-rescue-note {
+  display: grid;
+  gap: 5px;
+}
+
+.summer-rescue-note > span {
+  color: var(--text-primary);
+  font-size: var(--fs-xs);
+  font-weight: 900;
+}
+
+.summer-rescue-note textarea {
+  width: 100%;
+  min-height: 64px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  color: var(--text-primary);
+  background: var(--surface-low);
+  font: inherit;
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.summer-rescue-check {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 7px;
+  align-items: start;
+  padding-top: 9px;
+  border-top: 1px solid var(--line);
+}
+
+.summer-rescue-check > .material-symbols-outlined {
+  color: var(--physics);
+  font-size: 20px;
+}
+
+.summer-rescue-check strong,
+.summer-rescue-check p {
+  display: block;
+  margin: 0;
+}
+
+.summer-rescue-check strong {
+  color: var(--text-primary);
+  font-size: var(--fs-xs);
+}
+
+.summer-rescue-check p {
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
 }
 
 .summer-completed-review {
@@ -12050,6 +12467,47 @@ body.focus-mode #view {
   .summer-active-day-bar {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .summer-deferred-gate {
+    grid-template-columns: 1fr;
+  }
+
+  .summer-deferred-gate-actions,
+  .summer-rescue-actions,
+  .summer-rescue-resources > div {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .summer-deferred-gate-actions .btn,
+  .summer-rescue-actions .btn,
+  .summer-rescue-resources .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .summer-video-start-row {
+    flex-direction: column;
+  }
+
+  .summer-rescue-entry,
+  .summer-rescue-entry.compact {
+    width: 100%;
+    min-height: 42px;
+  }
+
+  .summer-rescue-reasons {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .summer-rescue-reasons button {
+    width: 100%;
+  }
+
+  .summer-rescue-resources p {
+    grid-template-columns: 20px 62px minmax(0, 1fr);
   }
 
   .summer-route-detail-tasks {

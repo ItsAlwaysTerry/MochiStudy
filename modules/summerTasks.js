@@ -361,6 +361,14 @@
         concepts: ["万有引力", "圆周运动", "向心力", "轨道半径", "周期", "线速度"],
         oneRound: "实体书一轮讲义 2 第27-35页；双星/追及相遇先放到第38-43页有余力再看",
         backup: "按目录找：万有引力、圆周运动、向心力、卫星问题",
+        rescue: {
+          pause: "先暂停“天体卫星所有题型”，不要硬跟后面的综合公式。",
+          concepts: ["万有引力定律", "公式各字母含义", "引力提供向心力"],
+          book: "实体一轮讲义 2 第27-30页",
+          keywords: ["万有引力定律", "向心力", "卫星圆周运动"],
+          check: "卫星为什么一直在下落，却没有直接掉到地面？",
+          avoid: "暂时不看同步卫星、双星、追及相遇和复杂比值题。",
+        },
         backupLinks: [
           { label: "打开基础课合集", url: BASIC_2045_URL },
           { label: "打开一轮复习合集", url: ONE_ROUND_URL },
@@ -570,6 +578,31 @@
     return state.tasks[id] || {};
   }
 
+  const SUPPORT_STATUSES = new Set(["active", "deferred", "resolved"]);
+  const SUPPORT_REASONS = new Set(["concept", "formulas", "long"]);
+
+  function taskSupport(info) {
+    const raw = info?.support;
+    if (!raw || typeof raw !== "object") return null;
+    const status = SUPPORT_STATUSES.has(raw.status) ? raw.status : "";
+    const reason = SUPPORT_REASONS.has(raw.reason) ? raw.reason : "";
+    if (!status && !reason) return null;
+    return {
+      status: status || "active",
+      reason,
+      attempted: Array.isArray(raw.attempted) ? raw.attempted.filter((item) => item === "book" || item === "basic-video") : [],
+      note: String(raw.note || ""),
+      openedAt: String(raw.openedAt || ""),
+      deferredAt: String(raw.deferredAt || ""),
+      resolvedAt: String(raw.resolvedAt || ""),
+      helpCardCopiedAt: String(raw.helpCardCopiedAt || ""),
+    };
+  }
+
+  function taskIsDeferred(task, state) {
+    return !taskReadyToAdvance(task, state) && taskSupport(taskState(state, task.id))?.status === "deferred";
+  }
+
   function routeDayState(state, dayNo) {
     return state.routeDays?.[dayNo] || {};
   }
@@ -577,6 +610,29 @@
   function updateTask(id, patch) {
     const state = readState();
     state.tasks[id] = { ...taskState(state, id), ...patch, updatedAt: new Date().toISOString() };
+    writeState(state);
+    return state;
+  }
+
+  function updateTaskSupport(id, patch) {
+    const state = readState();
+    const current = taskState(state, id);
+    const now = new Date().toISOString();
+    const support = taskSupport(current) || {
+      status: "active",
+      reason: "",
+      attempted: [],
+      note: "",
+      openedAt: now,
+      deferredAt: "",
+      resolvedAt: "",
+      helpCardCopiedAt: "",
+    };
+    state.tasks[id] = {
+      ...current,
+      support: { ...support, ...patch },
+      updatedAt: now,
+    };
     writeState(state);
     return state;
   }
@@ -779,23 +835,33 @@
     return (day.taskIds || []).map(findTask).filter(Boolean);
   }
 
+  function routeTaskPool(day) {
+    const tasks = routeTasks(day);
+    return tasks.length ? tasks : routeVideoTasks(day);
+  }
+
   function routeDayCompleted(day, state) {
     return routeDayLearningReady(day, state) && dayReflectionDone(day, state);
   }
 
   function routeDayLearningReady(day, state) {
-    const tasks = routeTasks(day);
-    const taskPool = tasks.length ? tasks : routeVideoTasks(day);
+    const taskPool = routeTaskPool(day);
     return taskPool.length > 0 && taskPool.every((task) => taskReadyToAdvance(task, state));
   }
 
+  function routeDayCanAdvance(day, state) {
+    const taskPool = routeTaskPool(day);
+    if (!taskPool.length || !taskPool.every((task) => taskReadyToAdvance(task, state) || taskIsDeferred(task, state))) return false;
+    if (taskPool.every((task) => taskReadyToAdvance(task, state))) return dayReflectionDone(day, state);
+    return true;
+  }
+
   function routeDayStarted(day, state) {
-    const tasks = routeTasks(day);
-    const taskPool = tasks.length ? tasks : routeVideoTasks(day);
+    const taskPool = routeTaskPool(day);
     if (!taskPool.length) return Boolean(state.routeDays?.[day.day]?.startedAt);
     return taskPool.some((task) => {
       const info = taskState(state, task.id);
-      return Boolean(info.startedAt || info.lastFocusedAt || info.watched || info.practicingAt || info.completed);
+      return Boolean(info.startedAt || info.lastFocusedAt || info.watched || info.practicingAt || info.completed || taskSupport(info));
     }) || Boolean(state.routeDays?.[day.day]?.startedAt);
   }
 
@@ -821,7 +887,32 @@
 
   function routePrimaryTask(day, state) {
     const tasks = routeVideoTasks(day);
-    return tasks.find((task) => !taskReadyToAdvance(task, state)) || tasks[0] || routeSheetTask(day);
+    return tasks.find((task) => !taskReadyToAdvance(task, state) && !taskIsDeferred(task, state)) || tasks[0] || routeSheetTask(day);
+  }
+
+  function allPlanTasks() {
+    const map = new Map();
+    TASKS.concat(ROUTE_DAYS.flatMap((day) => routeVideoTasks(day))).forEach((task) => map.set(task.id, task));
+    return Array.from(map.values());
+  }
+
+  function taskRouteDay(task) {
+    return ROUTE_DAYS.find((day) => day.day === Number(task?.day || 0)) || null;
+  }
+
+  function deferredTasks(state) {
+    return allPlanTasks().filter((task) => taskIsDeferred(task, state));
+  }
+
+  function deferredTasksBlockingDay(day, state) {
+    if (!day) return deferredTasks(state);
+    const isPhysicsReview = activeSubject === "physics" && day.day % 7 === 0;
+    return deferredTasks(state).filter((task) => {
+      const sourceDay = taskRouteDay(task);
+      if (!sourceDay || sourceDay.day >= day.day) return false;
+      if (sourceDay.week < day.week) return true;
+      return isPhysicsReview && sourceDay.week === day.week;
+    });
   }
 
   function dayRequiresDailyReflection(day, state) {
@@ -858,12 +949,12 @@
   function currentRouteDay(state) {
     const pendingTask = findTask(state.pendingTaskId);
     const pendingDay = pendingTask && ROUTE_DAYS.find((day) => (day.taskIds || []).includes(pendingTask.id));
-    if (pendingDay) return pendingDay.day;
+    if (pendingDay && !taskIsDeferred(pendingTask, state)) return pendingDay.day;
     const activeDay = ROUTE_DAYS.find((day) => day.day === Number(state.activeRouteDay || 0));
-    if (activeDay && !routeDayCompleted(activeDay, state)) return activeDay.day;
+    if (activeDay && !routeDayCanAdvance(activeDay, state)) return activeDay.day;
     const pendingRouteDay = ROUTE_DAYS.find((day) => day.day === Number(state.pendingRouteDay || 0));
-    if (pendingRouteDay && !routeDayCompleted(pendingRouteDay, state)) return pendingRouteDay.day;
-    const firstOpenDay = ROUTE_DAYS.find((day) => !routeDayCompleted(day, state));
+    if (pendingRouteDay && !routeDayCanAdvance(pendingRouteDay, state)) return pendingRouteDay.day;
+    const firstOpenDay = ROUTE_DAYS.find((day) => !routeDayCanAdvance(day, state));
     return firstOpenDay?.day || ROUTE_DAYS[ROUTE_DAYS.length - 1].day;
   }
 
@@ -878,22 +969,23 @@
   }
 
   function rollingTasks(state, limit = 3) {
-    const pending = findTask(state.pendingTaskId);
+    const directPending = findTask(state.pendingTaskId);
+    const pending = directPending && !taskIsDeferred(directPending, state) ? directPending : null;
     const activeDay = ROUTE_DAYS.find((day) => day.day === Number(state.activeRouteDay || 0));
-    if (activeDay && !routeDayCompleted(activeDay, state)) {
-      const activeTasks = routeTasks(activeDay).filter((task) => !taskReadyToAdvance(task, state));
+    if (activeDay && !routeDayCanAdvance(activeDay, state)) {
+      const activeTasks = routeTasks(activeDay).filter((task) => !taskReadyToAdvance(task, state) && !taskIsDeferred(task, state));
       if (activeTasks.length) return activeTasks.slice(0, limit);
       return [];
     }
-    const openTasks = TASKS.filter((task) => !taskReadyToAdvance(task, state));
+    const openTasks = TASKS.filter((task) => !taskReadyToAdvance(task, state) && !taskIsDeferred(task, state));
     const ordered = pending ? [pending, ...openTasks.filter((task) => task.id !== pending.id)] : openTasks;
     return ordered.slice(0, limit);
   }
 
   function nextRoutePlanDay(state) {
     const activeDay = ROUTE_DAYS.find((day) => day.day === Number(state.activeRouteDay || 0));
-    if (activeDay && !routeTasks(activeDay).length && !routeDayCompleted(activeDay, state)) return activeDay;
-    return ROUTE_DAYS.find((day) => !routeTasks(day).length && !routeDayCompleted(day, state)) || null;
+    if (activeDay && !routeTasks(activeDay).length && !routeDayCanAdvance(activeDay, state)) return activeDay;
+    return ROUTE_DAYS.find((day) => !routeTasks(day).length && !routeDayCanAdvance(day, state)) || null;
   }
 
   function oneRoundVideoUrl(key) {
@@ -937,6 +1029,75 @@
     `;
   }
 
+  function supportReasonLabel(reason) {
+    return ({ concept: "概念没学过", formulas: "公式太多", long: "视频太长" })[reason] || "需要补基础";
+  }
+
+  function deferredDeadlineLabel(task) {
+    const day = taskRouteDay(task);
+    if (!day) return "本轮结束前处理";
+    if (activeSubject === "physics") return `第 ${day.week * 7} 天复盘前处理`;
+    return day.week < 4 ? `进入第 ${day.week + 1} 周前处理` : "本轮结束前处理";
+  }
+
+  function renderDeferredSummary(state) {
+    const items = deferredTasks(state);
+    if (!items.length) return "";
+    return `
+      <section class="summer-deferred-summary" aria-label="待补基础">
+        <div class="summer-deferred-summary-head">
+          <span class="material-symbols-outlined">bookmark_added</span>
+          <div>
+            <strong>待补基础 ${items.length} 项</strong>
+            <p>先放下不等于完成；到本周复盘前回来处理。</p>
+          </div>
+        </div>
+        <div class="summer-deferred-list">
+          ${items.map((task) => {
+            const support = taskSupport(taskState(state, task.id));
+            return `
+              <button data-summer-action="support-return" data-task-id="${escapeHtml(task.id)}" type="button">
+                <span>
+                  <strong>${escapeHtml(task.title)}</strong>
+                  <small>${escapeHtml(supportReasonLabel(support?.reason))} · ${escapeHtml(deferredDeadlineLabel(task))}</small>
+                </span>
+                <span class="material-symbols-outlined">arrow_forward</span>
+              </button>
+            `;
+          }).join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderDeferredGate(day, tasks, state) {
+    const target = day
+      ? activeSubject === "physics" && day.day % 7 === 0
+        ? `进入第 ${day.day} 天周测前`
+        : `进入第 ${day.week} 周前`
+      : "结束本轮计划前";
+    return `
+      <section class="summer-deferred-gate">
+        <span class="material-symbols-outlined">priority_high</span>
+        <div>
+          <strong>${escapeHtml(target)}，先补回 ${tasks.length} 个卡点</strong>
+          <p>这些任务之前只是暂时放下，还没有完成，也没有计入奖励。选一个回来处理，真正完成后才会解除拦截。</p>
+          <div class="summer-deferred-gate-actions">
+            ${tasks.map((task) => {
+              const support = taskSupport(taskState(state, task.id));
+              return `
+                <button class="btn btn-primary btn-sm" data-summer-action="support-return" data-task-id="${escapeHtml(task.id)}" type="button">
+                  <span class="material-symbols-outlined">restart_alt</span>回来处理：${escapeHtml(task.title)}
+                  <small>${escapeHtml(supportReasonLabel(support?.reason))}</small>
+                </button>
+              `;
+            }).join("")}
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
   function renderPlanComingSoon(subject) {
     const name = subject === "math" ? "数学" : "化学";
     return `
@@ -964,6 +1125,7 @@
     const state = readState();
     const queue = rollingTasks(state, 3);
     const planDay = queue.length ? null : nextRoutePlanDay(state);
+    const gateTasks = queue.length ? [] : deferredTasksBlockingDay(planDay, state);
     const activeDay = ROUTE_DAYS.find((day) => day.day === Number(state.activeRouteDay || 0));
     const completedDetailed = TASKS.filter((task) => taskReadyToAdvance(task, state)).length;
     const remainingDetailed = TASKS.length - completedDetailed;
@@ -991,13 +1153,18 @@
             </div>
           </div>
         </div>
-        ${activeDay && !routeDayCompleted(activeDay, state) ? `
+        ${renderDeferredSummary(state)}
+        ${activeDay && !routeDayCanAdvance(activeDay, state) ? `
           <div class="summer-active-day-bar">
             <span>当前锁定：第 ${activeDay.day} 天 · ${escapeHtml(activeDay.title)}</span>
             <button class="btn btn-soft btn-sm" data-summer-action="route-auto" type="button">回到自动顺延</button>
           </div>
         ` : ""}
-        ${queue.length ? renderRollingQueue(queue, state, remainingDetailed) : renderRouteLearningSheet(planDay, state, { pendingRoute })}
+        ${gateTasks.length
+          ? renderDeferredGate(planDay, gateTasks, state)
+          : queue.length
+            ? renderRollingQueue(queue, state, remainingDetailed)
+            : renderRouteLearningSheet(planDay, state, { pendingRoute })}
         ${dailyGate ? renderDailyReflectionOverlay(dailyGate, state) : ""}
         ${renderSummerRewardFloat(state)}
         ${routeOverviewOpen ? renderRouteOverviewOverlay() : ""}
@@ -1447,7 +1614,7 @@
     const totalSteps = Math.max(1, tasks.length * 4);
     const doneSteps = tasks.reduce((sum, task) => sum + taskStepScore(task, state), 0);
     const completedTasks = tasks.filter((task) => taskReadyToAdvance(task, state)).length;
-    const currentTask = tasks.find((task) => !taskReadyToAdvance(task, state)) || tasks[tasks.length - 1] || null;
+    const currentTask = tasks.find((task) => !taskReadyToAdvance(task, state) && !taskIsDeferred(task, state)) || tasks[tasks.length - 1] || null;
     const currentInfo = currentTask ? taskState(state, currentTask.id) : {};
     const currentFlow = currentTask ? getTaskFlow(currentTask, currentInfo, state.pendingTaskId === currentTask.id || state.pendingRouteTaskId === currentTask.id) : null;
     const claims = availableRewardClaims(state);
@@ -1850,7 +2017,8 @@
   }
 
   function renderRollingQueue(tasks, state, remainingDetailed) {
-    const pendingTask = findTask(state.pendingTaskId);
+    const directPending = findTask(state.pendingTaskId);
+    const pendingTask = directPending && !taskIsDeferred(directPending, state) ? directPending : null;
     const nextTask = pendingTask || tasks.find((task) => !taskReadyToAdvance(task, state));
     const nextInfo = nextTask ? taskState(state, nextTask.id) : {};
     const nextText = nextTask
@@ -2082,6 +2250,7 @@
   }
 
   function taskNeedsImportDock(task, state) {
+    if (taskIsDeferred(task, state)) return false;
     const info = taskState(state, task.id);
     const pending = state.pendingTaskId === task.id || state.pendingRouteTaskId === task.id;
     const copiedForAi = Boolean(info.exampleQuizPromptCopiedAt || info.promptCopiedAt);
@@ -2090,7 +2259,7 @@
 
   function pendingImportTask(state) {
     const direct = findSummerTask(state.pendingTaskId || state.pendingRouteTaskId || "");
-    if (direct) return direct;
+    if (direct && !taskIsDeferred(direct, state)) return direct;
     return TASKS.concat(ROUTE_DAYS.flatMap((day) => routeVideoTasks(day))).find((task) => taskNeedsImportDock(task, state)) || null;
   }
 
@@ -2175,8 +2344,11 @@
           const step = routeVideoStepState(day, task, state);
           const isPending = state.pendingRouteTaskId === task.id;
           const needsReflection = Boolean(info.completed && info.reflectionRequired && !info.reflectionDone);
-          const firstOpenIndex = videos.findIndex((item) => !taskReadyToAdvance(routeVideoTask(day, item), state));
-          const isFutureByOrder = firstOpenIndex >= 0 && index > firstOpenIndex;
+          const firstOpenIndex = videos.findIndex((item) => {
+            const candidate = routeVideoTask(day, item);
+            return !taskReadyToAdvance(candidate, state) && !taskIsDeferred(candidate, state);
+          });
+          const isFutureByOrder = step.tone !== "deferred" && firstOpenIndex >= 0 && index > firstOpenIndex;
           const isNext = !step.tone && index === firstOpenIndex;
           return `
             <div class="summer-route-step ${step.tone} ${isNext ? "next" : ""} ${isFutureByOrder ? "future-order" : ""}">
@@ -2230,6 +2402,9 @@
         <button class="btn btn-${main.tone} btn-sm summer-video-next-btn" data-summer-action="${escapeHtml(main.action)}" data-task-id="${escapeHtml(task.id)}" type="button" ${main.disabled ? "disabled" : ""}>
           <span class="material-symbols-outlined">${escapeHtml(main.icon)}</span>${escapeHtml(main.label)}
         </button>
+        ${completed ? "" : `<button class="summer-rescue-entry compact" data-summer-action="support-open" data-task-id="${escapeHtml(task.id)}" type="button">
+          <span class="material-symbols-outlined">help</span>听不懂
+        </button>`}
         ${completed ? "" : `<details class="summer-more-actions compact">
           <summary>更多</summary>
           <div>
@@ -2254,6 +2429,7 @@
     if (taskReadyToAdvance(task, state)) {
       return { tone: "done", icon: "check_circle", label: "已完成" };
     }
+    if (taskIsDeferred(task, state)) return { tone: "deferred", icon: "bookmark", label: "待补基础" };
     if (info.completed && !info.reflectionDone) return { tone: "active", icon: "rate_review", label: "待收尾" };
     if (info.exampleQuizPromptCopiedAt) {
       return { tone: "active", icon: "edit_note", label: "写本节收尾" };
@@ -2271,7 +2447,7 @@
     const tasks = routeTasks(day);
     if (!tasks.length) return renderRoutePlaceholder(day);
     const completed = tasks.filter((task) => taskReadyToAdvance(task, state)).length;
-    const nextTask = tasks.find((task) => !taskReadyToAdvance(task, state));
+    const nextTask = tasks.find((task) => !taskReadyToAdvance(task, state) && !taskIsDeferred(task, state));
     return `
       <div class="summer-today-panel">
         <div class="summer-today-summary">
@@ -2386,9 +2562,10 @@
         const info = taskState(state, task.id);
         const examples = taskExamples(state, task.id);
         const ready = taskReadyToAdvance(task, state);
+        const deferred = taskIsDeferred(task, state);
         const needsReflection = info.completed && !info.reflectionDone;
-        const status = ready ? "已完成" : needsReflection ? "待收尾" : info.exampleQuizPromptCopiedAt ? "待写收尾" : examples.length ? `已收 ${examples.length} 图` : info.lastFocusedAt ? "已开始" : "未开始";
-        const tone = ready ? "done" : needsReflection || info.exampleQuizPromptCopiedAt || examples.length || info.lastFocusedAt ? "active" : "";
+        const status = ready ? "已完成" : deferred ? "待补基础" : needsReflection ? "待收尾" : info.exampleQuizPromptCopiedAt ? "待写收尾" : examples.length ? `已收 ${examples.length} 图` : info.lastFocusedAt ? "已开始" : "未开始";
+        const tone = ready ? "done" : deferred ? "deferred" : needsReflection || info.exampleQuizPromptCopiedAt || examples.length || info.lastFocusedAt ? "active" : "";
         return { task, title: video.title, meta: `${video.source || "B站资源"} · ${video.duration || "按需观看"}`, note: video.require || video.part || "", status, tone };
       })
       : [{
@@ -2407,10 +2584,11 @@
   }
 
   function renderRoutePreviewItem(item, state) {
+    const icon = item.tone === "done" ? "check_circle" : item.tone === "deferred" ? "bookmark" : item.tone === "active" ? "radio_button_checked" : "radio_button_unchecked";
     return `
       <article class="summer-route-preview-item ${item.tone}">
         <div class="summer-route-preview-main">
-          <span class="material-symbols-outlined">${item.tone === "done" ? "check_circle" : item.tone === "active" ? "radio_button_checked" : "radio_button_unchecked"}</span>
+          <span class="material-symbols-outlined">${icon}</span>
           <div>
             <strong>${escapeHtml(item.title)}</strong>
             <p>${escapeHtml(item.meta)}</p>
@@ -2425,12 +2603,14 @@
 
   function renderRouteDetailTask(task, state) {
     const info = taskState(state, task.id);
+    const deferred = taskIsDeferred(task, state);
     const needsReflection = info.completed && info.reflectionRequired && !info.reflectionDone;
-    const status = needsReflection ? "待收尾" : info.completed ? "已完成" : info.practicingAt ? "做题中" : info.watched ? "已看视频" : "未开始";
-    const tone = needsReflection ? "active" : info.completed ? "done" : info.watched || info.practicingAt ? "active" : "";
+    const status = deferred ? "待补基础" : needsReflection ? "待收尾" : info.completed ? "已完成" : info.practicingAt ? "做题中" : info.watched ? "已看视频" : "未开始";
+    const tone = deferred ? "deferred" : needsReflection ? "active" : info.completed ? "done" : info.watched || info.practicingAt ? "active" : "";
+    const icon = deferred ? "bookmark" : needsReflection ? "rate_review" : info.completed ? "check_circle" : info.watched ? "radio_button_checked" : "play_circle";
     return `
       <div class="summer-route-detail-task ${tone}">
-        <span class="material-symbols-outlined">${needsReflection ? "rate_review" : info.completed ? "check_circle" : info.watched ? "radio_button_checked" : "play_circle"}</span>
+        <span class="material-symbols-outlined">${icon}</span>
         <div>
           <strong>${escapeHtml(task.title)}</strong>
           <p>${escapeHtml(task.source)} · ${escapeHtml(task.duration)} · ${getPracticeItems(task).length || 0} 道小题</p>
@@ -2528,7 +2708,7 @@
 
   function renderDayGroup(title, subtitle, tasks, state) {
     if (!tasks.length) return "";
-    const firstOpenIndex = tasks.findIndex((task) => !taskReadyToAdvance(task, state));
+    const firstOpenIndex = tasks.findIndex((task) => !taskReadyToAdvance(task, state) && !taskIsDeferred(task, state));
     return `
       <div class="summer-day-group">
         <div class="summer-day-title">
@@ -2574,21 +2754,26 @@
 
   function renderTaskSupportDrawer(task, state, options = {}) {
     const info = taskState(state, task.id);
+    const support = taskSupport(info);
     const examples = taskExamples(state, task.id);
     const hasRecord = Boolean(info.lastImportedRecord);
     const completed = taskReadyToAdvance(task, state);
-    const open = !completed && (options.isPending || options.needsReflection || options.selectedStep >= 1 || hasRecord);
+    const open = !completed && (support?.status === "active" || support?.status === "deferred" || options.isPending || options.needsReflection || options.selectedStep >= 1 || hasRecord);
     const status = completed
       ? "已完成，可回看"
-      : options.needsReflection
-      ? "待写本节收尾"
-      : options.isPending
-        ? "等 Gemini 记录"
-        : hasRecord
-          ? "已有学习记录"
-          : examples.length
-            ? `${examples.length} 张例题`
-            : "截图 / 导入 / 收尾";
+      : support?.status === "deferred"
+        ? "待补基础"
+        : support?.status === "active"
+          ? "正在补基础"
+          : options.needsReflection
+            ? "待写本节收尾"
+            : options.isPending
+              ? "等 Gemini 记录"
+              : hasRecord
+                ? "已有学习记录"
+                : examples.length
+                  ? `${examples.length} 张例题`
+                  : "截图 / 导入 / 收尾";
     return `
       <details class="summer-task-support" ${open ? "open" : ""} data-task-support="${escapeHtml(task.id)}">
         <summary>
@@ -2600,6 +2785,7 @@
           ${completed
             ? renderCompletedTaskReview(task, state)
             : `
+              ${renderTaskRescuePanel(task, info)}
               ${renderExampleCollector(task, state, { compact: options.compact })}
               ${renderTaskImportDock(task, state, { compact: options.compact })}
               ${renderTaskReflectionPanel(task, state, { forceOpen: options.needsReflection })}
@@ -2758,11 +2944,16 @@
     const practiceItems = getPracticeItems(task);
     if (selectedStep === 0) {
       return `
-        <p class="summer-step-hint">
-          <span class="material-symbols-outlined">play_circle</span>
-          <strong>先看主线视频</strong>
-          <span>${escapeHtml(task.source)} · ${escapeHtml(task.duration)} · 建议专注 ${Number(task.focusMins || 25)} 分钟。按主按钮开始，其他操作已收进抽屉。</span>
-        </p>
+        <div class="summer-video-start-row">
+          <p class="summer-step-hint">
+            <span class="material-symbols-outlined">play_circle</span>
+            <strong>先看主线视频</strong>
+            <span>${escapeHtml(task.source)} · ${escapeHtml(task.duration)} · 建议专注 ${Number(task.focusMins || 25)} 分钟。按主按钮开始，其他操作已收进抽屉。</span>
+          </p>
+          <button class="summer-rescue-entry" data-summer-action="support-open" data-task-id="${escapeHtml(task.id)}" type="button">
+            <span class="material-symbols-outlined">help</span>听不懂 / 视频太难
+          </button>
+        </div>
       `;
     }
     if (selectedStep === 1) {
@@ -2966,6 +3157,109 @@
     `;
   }
 
+  function rescuePlan(task, reason) {
+    const prep = task.prep || {};
+    const custom = prep.rescue && typeof prep.rescue === "object" ? prep.rescue : {};
+    const concepts = Array.isArray(custom.concepts) && custom.concepts.length
+      ? custom.concepts.slice(0, 3)
+      : (Array.isArray(prep.concepts) ? prep.concepts.slice(0, 3) : []);
+    const reasonAction = {
+      concept: "先停下来补最前面的概念，不继续追后面的题型。",
+      formulas: "先不背整串公式，只认清每个量和最核心的一条关系。",
+      long: "不用硬看完整段，先完成下面的最小基础动作再回来。",
+    }[reason] || "先做下面这一小步，再决定要不要回主线。";
+    return {
+      pause: String(custom.pause || reasonAction),
+      concepts,
+      book: String(custom.book || prep.oneRound || ""),
+      keywords: Array.isArray(custom.keywords) ? custom.keywords.filter(Boolean) : [],
+      backup: String(prep.backup || ""),
+      links: Array.isArray(prep.backupLinks) ? prep.backupLinks : [],
+      check: String(custom.check || (concepts[0] ? `能否用自己的话说清“${concepts[0]}”是什么？` : "能否说清这节课最基础的一个概念？")),
+      avoid: String(custom.avoid || ""),
+    };
+  }
+
+  function buildSupportHelpCard(task, support) {
+    const safeSupport = support || { reason: "", attempted: [], note: "" };
+    const plan = rescuePlan(task, safeSupport.reason);
+    const attempts = [];
+    if (safeSupport.attempted?.includes("book")) attempts.push("已经翻过指定讲义");
+    if (safeSupport.attempted?.includes("basic-video")) attempts.push("已经找过基础课");
+    return [
+      "【补基础求助卡】",
+      `科目：${currentSubjectLabel()}`,
+      `原任务：第 ${task.day || "-"} 天 · ${task.title}`,
+      task.videoTitle ? `视频：${task.videoTitle}${task.duration ? `（${task.duration}）` : ""}` : "",
+      `我卡住的原因：${supportReasonLabel(safeSupport.reason)}`,
+      plan.concepts.length ? `需要先补：${plan.concepts.join("、")}` : "",
+      plan.book ? `讲义范围：${plan.book}` : "",
+      plan.keywords.length ? `可搜索关键词：${plan.keywords.join("、")}` : plan.backup ? `可搜索目录：${plan.backup}` : "",
+      attempts.length ? `我已经试过：${attempts.join("、")}` : "我还没有成功找到合适的基础解释。",
+      safeSupport.note ? `具体不懂：${safeSupport.note}` : "",
+      plan.check ? `我现在还回答不了：${plan.check}` : "",
+      "请从零基础开始，一次只解释一个概念；先用直白语言和一个最简单例子，不要直接堆公式或进入综合题。每解释一步先问我是否听懂，再继续。",
+    ].filter(Boolean).join("\n");
+  }
+
+  function renderTaskRescuePanel(task, info) {
+    const support = taskSupport(info);
+    if (!support || support.status === "resolved") return "";
+    const reasons = [
+      ["concept", "概念没学过"],
+      ["formulas", "公式太多"],
+      ["long", "视频太长"],
+    ];
+    const plan = rescuePlan(task, support.reason);
+    const attempted = new Set(support.attempted);
+    return `
+      <section class="summer-rescue-panel ${support.status}">
+        <div class="summer-rescue-head">
+          <span class="material-symbols-outlined">support</span>
+          <div>
+            <strong>${support.status === "deferred" ? "这节已放入待补基础" : "先说卡在哪里"}</strong>
+            <p>${support.status === "deferred" ? "它还没有完成，也不会计入奖励；本周复盘前要回来。" : "选一个最接近的原因，网站只给你当前要做的一步。"}</p>
+          </div>
+        </div>
+        <div class="summer-rescue-reasons" role="group" aria-label="选择卡住原因">
+          ${reasons.map(([value, label]) => `
+            <button class="${support.reason === value ? "selected" : ""}" data-summer-action="support-reason" data-task-id="${escapeHtml(task.id)}" data-support-reason="${value}" type="button">${label}</button>
+          `).join("")}
+        </div>
+        ${support.reason ? `
+          <div class="summer-rescue-action">
+            <span>现在只做这一步</span>
+            <strong>${escapeHtml(plan.pause)}</strong>
+            ${plan.concepts.length ? `<p>先补：${escapeHtml(plan.concepts.join("、"))}</p>` : ""}
+          </div>
+          <div class="summer-rescue-resources">
+            ${plan.book ? `<p><span class="material-symbols-outlined">menu_book</span><strong>翻书</strong>${escapeHtml(plan.book)}</p>` : ""}
+            ${plan.keywords.length ? `<p><span class="material-symbols-outlined">search</span><strong>目录搜索</strong>${escapeHtml(plan.keywords.join("、"))}</p>` : plan.backup ? `<p><span class="material-symbols-outlined">search</span><strong>目录搜索</strong>${escapeHtml(plan.backup)}</p>` : ""}
+            ${plan.avoid ? `<p class="avoid"><span class="material-symbols-outlined">do_not_disturb_on</span><strong>先不学</strong>${escapeHtml(plan.avoid)}</p>` : ""}
+            ${plan.links.length ? `<div>${plan.links.map((link) => `<a class="btn btn-soft btn-sm" href="${escapeHtml(link.url)}" target="_blank" rel="noreferrer"><span class="material-symbols-outlined">open_in_new</span>${escapeHtml(link.label || "打开资源")}</a>`).join("")}</div>` : ""}
+          </div>
+          <div class="summer-rescue-attempts">
+            ${plan.book ? `<button class="${attempted.has("book") ? "selected" : ""}" data-summer-action="support-attempt" data-task-id="${escapeHtml(task.id)}" data-support-attempt="book" type="button"><span class="material-symbols-outlined">${attempted.has("book") ? "check_box" : "check_box_outline_blank"}</span>已经翻过讲义</button>` : ""}
+            ${plan.keywords.length || plan.backup ? `<button class="${attempted.has("basic-video") ? "selected" : ""}" data-summer-action="support-attempt" data-task-id="${escapeHtml(task.id)}" data-support-attempt="basic-video" type="button"><span class="material-symbols-outlined">${attempted.has("basic-video") ? "check_box" : "check_box_outline_blank"}</span>已经看过基础课</button>` : ""}
+          </div>
+          <label class="summer-rescue-note">
+            <span>还卡在哪里（可选）</span>
+            <textarea data-support-note data-task-id="${escapeHtml(task.id)}" rows="2" placeholder="例如：不知道为什么引力能让卫星转圈。">${escapeHtml(support.note)}</textarea>
+          </label>
+          <div class="summer-rescue-check">
+            <span class="material-symbols-outlined">quiz</span>
+            <div><strong>回原任务前先问自己</strong><p>${escapeHtml(plan.check)}</p></div>
+          </div>
+          <div class="summer-rescue-actions">
+            <button class="btn btn-primary btn-sm" data-summer-action="support-resolved" data-task-id="${escapeHtml(task.id)}" type="button"><span class="material-symbols-outlined">check_circle</span>解决了，回原任务</button>
+            <button class="btn btn-soft btn-sm" data-summer-action="support-help" data-task-id="${escapeHtml(task.id)}" type="button"><span class="material-symbols-outlined">content_copy</span>还是不懂，复制求助卡</button>
+            <button class="btn btn-ghost btn-sm" data-summer-action="support-defer" data-task-id="${escapeHtml(task.id)}" type="button"><span class="material-symbols-outlined">bookmark_add</span>先放一放</button>
+          </div>
+        ` : ""}
+      </section>
+    `;
+  }
+
   function renderPrep(task) {
     const prep = task.prep;
     if (!prep) return "";
@@ -3022,6 +3316,9 @@
     });
     container.querySelectorAll("[data-example-note]").forEach((el) => {
       el.addEventListener("blur", handleExampleNote);
+    });
+    container.querySelectorAll("[data-support-note]").forEach((el) => {
+      el.addEventListener("blur", handleSupportNote);
     });
     container.querySelectorAll(".summer-example-statuses button").forEach((el) => {
       el.addEventListener("pointerdown", captureExamplePointerAnchor);
@@ -3115,6 +3412,14 @@
       const day = ROUTE_DAYS.find((item) => item.day === dayNo);
       if (!day) return;
       const state = readState();
+      const blocked = deferredTasksBlockingDay(day, state);
+      if (blocked.length) {
+        state.routeDetailDay = day.day;
+        writeState(state);
+        refreshHome({ preserveScroll: true });
+        window.MochiApp?.toast?.(`先补回 ${blocked.length} 个“待补基础”，再进入这一天`);
+        return;
+      }
       state.activeRouteDay = day.day;
       state.routeDetailDay = day.day;
       state.routeDays[day.day] = {
@@ -3132,6 +3437,14 @@
       const day = ROUTE_DAYS.find((item) => item.day === dayNo);
       if (!day) return;
       const state = readState();
+      const blocked = deferredTasksBlockingDay(day, state);
+      if (blocked.length) {
+        state.routeDetailDay = day.day;
+        writeState(state);
+        refreshHome({ preserveScroll: true });
+        window.MochiApp?.toast?.(`先补回 ${blocked.length} 个“待补基础”，再继续`);
+        return;
+      }
       const current = routeDayState(state, day.day);
       state.routeDays[day.day] = {
         ...current,
@@ -3194,6 +3507,102 @@
       return;
     }
     if (!task) return;
+    if (action === "support-open") {
+      const anchor = taskAnchorOptions(task.id, event.currentTarget);
+      updateTaskSupport(task.id, {
+        status: "active",
+        openedAt: taskSupport(taskState(readState(), task.id))?.openedAt || new Date().toISOString(),
+      });
+      updateTask(task.id, { activeStep: 0 });
+      refreshHome(anchor);
+      return;
+    }
+    if (action === "support-reason") {
+      const reason = event.currentTarget.dataset.supportReason || "";
+      if (!SUPPORT_REASONS.has(reason)) return;
+      const anchor = taskAnchorOptions(task.id, event.currentTarget);
+      updateTaskSupport(task.id, { status: "active", reason });
+      refreshHome(anchor);
+      return;
+    }
+    if (action === "support-attempt") {
+      const attempt = event.currentTarget.dataset.supportAttempt || "";
+      if (attempt !== "book" && attempt !== "basic-video") return;
+      const anchor = taskAnchorOptions(task.id, event.currentTarget);
+      const support = taskSupport(taskState(readState(), task.id));
+      const attempted = new Set(support?.attempted || []);
+      if (attempted.has(attempt)) attempted.delete(attempt);
+      else attempted.add(attempt);
+      updateTaskSupport(task.id, { status: "active", attempted: Array.from(attempted) });
+      refreshHome(anchor);
+      return;
+    }
+    if (action === "support-resolved") {
+      const anchor = taskAnchorOptions(task.id, event.currentTarget);
+      const now = new Date().toISOString();
+      updateTaskSupport(task.id, { status: "resolved", resolvedAt: now, deferredAt: "" });
+      updateTask(task.id, { activeStep: 0 });
+      refreshHome(anchor);
+      window.MochiApp?.toast?.("已回到原任务；真正完成视频、练习和收尾后才计入奖励");
+      return;
+    }
+    if (action === "support-help") {
+      const note = String(event.currentTarget.closest(".summer-rescue-panel")?.querySelector("[data-support-note]")?.value || "").trim();
+      updateTaskSupport(task.id, { note });
+      const support = taskSupport(taskState(readState(), task.id));
+      const card = buildSupportHelpCard(task, support);
+      const ok = await copyText(card);
+      updateTaskSupport(task.id, { helpCardCopiedAt: new Date().toISOString() });
+      if (ok) window.MochiApp?.toast?.("求助卡已复制，可以粘给 AI、老师或同学");
+      else showTextFallback("复制补基础求助卡", "浏览器没有放行剪贴板。点下面文本框后 Ctrl+A / Ctrl+C。", card);
+      return;
+    }
+    if (action === "support-defer") {
+      const state = readState();
+      const current = taskState(state, task.id);
+      const support = taskSupport(current) || {};
+      const now = new Date().toISOString();
+      state.tasks[task.id] = {
+        ...current,
+        support: { ...support, status: "deferred", deferredAt: now, resolvedAt: "" },
+        updatedAt: now,
+      };
+      if (state.pendingTaskId === task.id) state.pendingTaskId = "";
+      if (state.pendingRouteTaskId === task.id) {
+        state.pendingRouteTaskId = "";
+        state.pendingRouteDay = 0;
+      }
+      const day = taskRouteDay(task);
+      if (day && Number(state.activeRouteDay || 0) === day.day && routeDayCanAdvance(day, state)) state.activeRouteDay = 0;
+      writeState(state);
+      refreshHome({ preserveScroll: true });
+      window.MochiApp?.toast?.(`已放入“待补基础”；${deferredDeadlineLabel(task)}，不算完成、不计奖励`);
+      return;
+    }
+    if (action === "support-return") {
+      const state = readState();
+      const current = taskState(state, task.id);
+      const support = taskSupport(current) || {};
+      const now = new Date().toISOString();
+      state.tasks[task.id] = {
+        ...current,
+        activeStep: 0,
+        support: { ...support, status: "active", deferredAt: "", openedAt: support.openedAt || now },
+        updatedAt: now,
+      };
+      const day = taskRouteDay(task);
+      if (day) {
+        state.activeRouteDay = day.day;
+        state.routeDetailDay = day.day;
+      }
+      state.pendingTaskId = "";
+      state.pendingRouteDay = 0;
+      state.pendingRouteTaskId = "";
+      writeState(state);
+      refreshHome({ preserveScroll: true });
+      window.MochiApp?.toast?.("已回到原任务，先补最小基础，再继续主线");
+      return;
+    }
     if (action === "open-pending-import") {
       openTaskImportDock(task.id);
       return;
@@ -4005,6 +4414,12 @@
     if (hint) hint.textContent = value ? "已保存。复习时可以从总计划回看。" : "已清空备注，离开输入框会自动保存。";
   }
 
+  function handleSupportNote(event) {
+    const taskId = event.currentTarget.dataset.taskId || "";
+    if (!taskId) return;
+    updateTaskSupport(taskId, { note: String(event.currentTarget.value || "").trim() });
+  }
+
   function saveTaskReflection(task, trigger) {
     const form = trigger.closest("[data-reflection-form='task']");
     const panel = trigger.closest(".summer-task-reflection-card");
@@ -4519,10 +4934,14 @@
   }
 
   function showPromptFallback(prompt) {
+    showTextFallback("复制过关小题 Prompt", "浏览器没有放行剪贴板。点下面文本框后 Ctrl+A / Ctrl+C，再粘给 AI。", prompt);
+  }
+
+  function showTextFallback(title, hint, text) {
     window.MochiApp?.modal?.(`
-      <h3>复制过关小题 Prompt</h3>
-      <p class="muted">浏览器没有放行剪贴板。点下面文本框后 Ctrl+A / Ctrl+C，再粘给 AI。</p>
-      <textarea class="summer-prompt-fallback" rows="9" readonly>${escapeHtml(prompt)}</textarea>
+      <h3>${escapeHtml(title)}</h3>
+      <p class="muted">${escapeHtml(hint)}</p>
+      <textarea class="summer-prompt-fallback" rows="9" readonly>${escapeHtml(text)}</textarea>
       <button class="btn btn-primary u-full-width u-mt-3" data-action="close-modal" type="button">我复制好了</button>
     `);
     setTimeout(() => {
