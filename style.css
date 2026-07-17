@@ -9727,16 +9727,10 @@ body.focus-mode #view {
   font-weight: 1000;
 }
 
-.summer-video-start-row {
+.summer-task-rescue-entry-row {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.summer-video-start-row .summer-step-hint {
-  flex: 1 1 auto;
-  min-width: 0;
+  justify-content: flex-end;
+  margin-left: 34px;
 }
 
 .summer-rescue-entry {
@@ -12599,8 +12593,8 @@ body.focus-mode #view {
     justify-content: center;
   }
 
-  .summer-video-start-row {
-    flex-direction: column;
+  .summer-task-rescue-entry-row {
+    margin-left: 0;
   }
 
   .summer-rescue-entry,

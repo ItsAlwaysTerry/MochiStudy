@@ -2759,6 +2759,13 @@
             </div>
           </div>
           ${renderTaskStepper(task, flow, selectedStep, rescueActive)}
+          ${completed ? "" : `
+            <div class="summer-task-rescue-entry-row">
+              <button class="summer-rescue-entry" data-summer-action="support-open" data-task-id="${escapeHtml(task.id)}" type="button">
+                <span class="material-symbols-outlined">help</span>看不懂 / 视频太难
+              </button>
+            </div>
+          `}
           ${renderTaskRescueSlot(task, s)}
           <div class="summer-normal-task-content" ${rescueActive ? `aria-label="正常任务已暂停"` : ""}>
             ${rescueActive ? `<p class="summer-task-paused-label"><span class="material-symbols-outlined">pause_circle</span>正常任务已暂停</p>` : ""}
@@ -2957,16 +2964,11 @@
     const practiceItems = getPracticeItems(task);
     if (selectedStep === 0) {
       return `
-        <div class="summer-video-start-row">
-          <p class="summer-step-hint">
-            <span class="material-symbols-outlined">play_circle</span>
-            <strong>先看主线视频</strong>
-            <span>${escapeHtml(task.source)} · ${escapeHtml(task.duration)} · 建议专注 ${Number(task.focusMins || 25)} 分钟。按主按钮开始，其他操作已收进抽屉。</span>
-          </p>
-          <button class="summer-rescue-entry" data-summer-action="support-open" data-task-id="${escapeHtml(task.id)}" type="button">
-            <span class="material-symbols-outlined">help</span>听不懂 / 视频太难
-          </button>
-        </div>
+        <p class="summer-step-hint">
+          <span class="material-symbols-outlined">play_circle</span>
+          <strong>先看主线视频</strong>
+          <span>${escapeHtml(task.source)} · ${escapeHtml(task.duration)} · 建议专注 ${Number(task.focusMins || 25)} 分钟。按主按钮开始，其他操作已收进抽屉。</span>
+        </p>
       `;
     }
     if (selectedStep === 1) {
