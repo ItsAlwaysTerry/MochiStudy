@@ -8498,29 +8498,36 @@ body.focus-mode #view {
 
 .summer-route-hero {
   display: block;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-left: 4px solid var(--tertiary);
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--tertiary-container) 20%, var(--surface));
 }
 
 .summer-hero-title-line {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 14px;
 }
 
-.summer-hero-title-line > div:first-child {
+.summer-hero-copy {
   min-width: 0;
 }
 
 .summer-route-hero h3 {
-  margin: 2px 0 4px;
-  color: var(--physics);
-  font-size: var(--fs-lg);
+  margin: 3px 0 4px;
+  color: var(--text-primary);
+  font-size: 20px;
+  line-height: 1.25;
 }
 
-.summer-route-hero p {
+.summer-route-hero .summer-hero-description {
   margin: 0;
   color: var(--text-secondary);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);
+  font-weight: 700;
   line-height: 1.45;
 }
 
@@ -8532,29 +8539,41 @@ body.focus-mode #view {
   letter-spacing: 0;
 }
 
+.summer-route-hero .summer-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--tertiary) !important;
+}
+
+.summer-route-hero .summer-kicker .material-symbols-outlined {
+  font-size: 16px;
+}
+
 .summer-hero-stats {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 6px;
+  gap: 7px;
   flex: 0 0 auto;
-  max-width: 330px;
+  max-width: 390px;
 }
 
 .summer-hero-stat {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 4px;
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 1px 5px;
   flex: 0 1 auto;
   min-width: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
+  min-height: 44px;
+  padding: 6px 9px;
+  border: 1px solid color-mix(in srgb, var(--tertiary) 18%, var(--line));
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
   color: var(--text-secondary);
   font-size: var(--fs-xs);
   line-height: 1.35;
-  white-space: nowrap;
 }
 
 .summer-hero-stat span {
@@ -8565,16 +8584,17 @@ body.focus-mode #view {
 
 .summer-hero-stat strong {
   min-width: 0;
-  color: var(--physics);
-  font-size: var(--fs-xs);
+  color: var(--tertiary);
+  font-size: var(--fs-sm);
   font-weight: 1000;
   line-height: 1.2;
 }
 
 .summer-hero-stat small {
+  grid-column: 1 / -1;
   min-width: 0;
   color: var(--text-secondary);
-  font-size: var(--fs-xs);
+  font-size: 10px;
   font-weight: 700;
   line-height: 1.2;
 }
@@ -12519,8 +12539,15 @@ body.focus-mode #view {
   }
 
   .summer-hero-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     justify-content: flex-start;
+    width: 100%;
     max-width: none;
+  }
+
+  .summer-hero-stat {
+    width: 100%;
   }
 
   .summer-route-grid {

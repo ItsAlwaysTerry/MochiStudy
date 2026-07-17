@@ -1136,10 +1136,10 @@
         ${renderSubjectTabs()}
         <div class="summer-route-hero">
           <div class="summer-hero-title-line">
-            <div>
-            <p class="summer-kicker">${activeSubject === "physics" ? "暑假物理" : escapeHtml(currentSubjectLabel())}滚动任务</p>
-            <h3>${escapeHtml(hero.title)}</h3>
-            <p>${escapeHtml(hero.description)}</p>
+            <div class="summer-hero-copy">
+              <p class="summer-kicker"><span class="material-symbols-outlined">calendar_today</span>${activeSubject === "physics" ? "暑假物理" : escapeHtml(currentSubjectLabel())}滚动任务</p>
+              <h3>${escapeHtml(hero.title)}</h3>
+              <p class="summer-hero-description">${escapeHtml(hero.description)}</p>
             </div>
             <div class="summer-hero-stats" aria-label="今日${escapeHtml(currentSubjectLabel())}任务概览">
               ${hero.stats.map((item) => `
