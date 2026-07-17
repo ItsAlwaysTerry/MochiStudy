@@ -1,8 +1,12 @@
 (function () {
   const FARM_KEY = "farm_state";
   const SUBJECTS = ["math", "physics", "chemistry"];
-  const FRAME_W = 16;
-  const FRAME_H = 32;
+  const CAT_CROP_SHEET = "assets/farm/cat_crops.png";
+  const CAT_FRAME_W = 128;
+  const CAT_FRAME_H = 128;
+  const CAT_SPRITE_COLS = 6;
+  const CAT_SPRITE_ROWS = 3;
+  const SUBJECT_CROP_ROWS = { math: 0, physics: 1, chemistry: 2 };
   const DEFAULT_FARM_CONFIG = {
     harvestTarget: 15,
     growthStages: [0, 3, 6, 10, 15],
@@ -46,17 +50,13 @@
   };
 
   const GROWTH_FRAMES = [
-    { stage: 0, label: "休眠", col: -1 },
-    { stage: 1, label: "种子", col: 0 },
-    { stage: 2, label: "发芽", col: 1 },
-    { stage: 3, label: "幼苗", col: 3 },
-    { stage: 4, label: "开花", col: 5 },
-    { stage: 5, label: "成熟", col: 7 },
+    { stage: 0, label: "rest", col: 0 },
+    { stage: 1, label: "seed", col: 1 },
+    { stage: 2, label: "sprout", col: 2 },
+    { stage: 3, label: "seedling", col: 3 },
+    { stage: 4, label: "bloom", col: 4 },
+    { stage: 5, label: "mature", col: 5 },
   ];
-
-  const SCALE = 3;
-  const CROP_W = FRAME_W * SCALE;
-  const CROP_H = FRAME_H * SCALE;
 
   function config() {
     return window.MochiApp?.GAME_CONFIG?.farm || DEFAULT_FARM_CONFIG;
@@ -189,22 +189,20 @@
   }
 
   function cropSpriteStyle(subject, stage) {
-    if (stage < 1) return "";
-    const def = getCropDef(subject);
     const frame = GROWTH_FRAMES[stage];
     if (!frame || frame.col < 0) return "";
-    const x = -(frame.col * FRAME_W * SCALE);
-    const y = -(def.cropY * SCALE);
+    const row = SUBJECT_CROP_ROWS[subject] ?? 0;
+    const x = -(frame.col * CAT_FRAME_W);
+    const y = -(row * CAT_FRAME_H);
     return [
-      "background-image:url('assets/farm/crops_.png')",
-      `background-size:${256 * SCALE}px ${672 * SCALE}px`,
+      `background-image:url('${CAT_CROP_SHEET}')`,
+      `background-size:${CAT_FRAME_W * CAT_SPRITE_COLS}px ${CAT_FRAME_H * CAT_SPRITE_ROWS}px`,
       `background-position:${x}px ${y}px`,
       "background-repeat:no-repeat",
-      `width:${CROP_W}px`,
-      `height:${CROP_H}px`,
+      `width:${CAT_FRAME_W}px`,
+      `height:${CAT_FRAME_H}px`,
       "image-rendering:pixelated",
       "image-rendering:crisp-edges",
-      "mix-blend-mode:screen",
     ].join(";");
   }
 
@@ -315,7 +313,7 @@
     return `
       <div class="mini-plot subject-${subject}">
         <div class="mini-plot-sprite">
-          ${stage > 0 ? `<div class="mini-crop-sprite" style="${cropSpriteStyle(subject, stage)}"></div>` : `<div class="mini-plot-empty"></div>`}
+          <div class="mini-crop-sprite" style="${cropSpriteStyle(subject, stage)}"></div>
         </div>
         <span class="mini-plot-label">${subjectDef.label}</span>
         <span class="mini-plot-count">${recordCount}/${harvestTarget}</span>

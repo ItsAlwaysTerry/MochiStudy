@@ -10798,7 +10798,7 @@ body.focus-mode #view {
 
 .mini-farm-row {
   display: flex;
-  gap: 5px;
+  gap: 6px;
   justify-content: space-between;
 }
 
@@ -10809,31 +10809,31 @@ body.focus-mode #view {
   align-items: center;
   gap: 3px;
   min-width: 0;
-  padding: 6px 3px;
+  padding: 6px 3px 7px;
   border-radius: 10px;
   background: #3a2010;
 }
 
 .mini-plot-sprite {
-  width: 38px;
-  height: 38px;
+  width: 58px;
+  height: 58px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
   overflow: hidden;
-  border-radius: 8px;
-  background: #5c3d1e;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(156, 205, 126, 0.22), #5c3d1e 72%);
 }
 
 .mini-crop-sprite {
   flex-shrink: 0;
-  transform: scale(0.44);
+  transform: scale(0.46);
   transform-origin: center bottom;
 }
 
 .mini-plot-empty {
-  width: 38px;
-  height: 38px;
+  width: 58px;
+  height: 58px;
 }
 
 .mini-plot-label {

@@ -28,6 +28,7 @@ modules/
   reviewPage.js     — 复习页渲染（window.MochiReviewPage）
 assets/farm/
   crops_.png        — 星露谷物语植物精灵图（已授权）
+  cat_crops.png     — 猫咪植物农场精灵图，3 行 × 6 列，对应三科与六个成长阶段
   tools_.png
   Craftables_.png
   critters_.png
@@ -125,7 +126,7 @@ sidebar_expanded              — 桌面端侧边栏展开状态，"1" 为展开
 - 作物生长由该科目本轮累计导入记录条数驱动（recordCount）
 - 生长阶段：0条=荒地，1-2条=种子，3-5条=发芽，6-9条=幼苗，10-14条=开花，15条+=成熟
 - 收获后 recordCount 归零，开始下一轮
-- 精灵图使用 assets/farm/crops_.png，必须加 image-rendering:pixelated 和 mix-blend-mode:screen
+- 作物精灵使用 PNG sprite sheet；当前首页农场使用 assets/farm/cat_crops.png，并保留 image-rendering:pixelated
 - 农场升级基于 totalHarvests（总收获次数），不基于 xp
 - 无农场币系统，已删除
 
@@ -192,7 +193,7 @@ sidebar_expanded              — 桌面端侧边栏展开状态，"1" 为展开
 
 1. 不能随意改动 study_log 的字段结构，这个数据将来要给AI分析用；当前每条记录包含 `originalQuestion`，`questionsCompleted` 固定为 1
 2. 不能改动备份文件的 version 和 data 结构，导入时靠这个判断兼容性
-3. 精灵图不能用 SVG 或 emoji 替代，必须用 crops_.png
+3. 农场作物不能用 SVG 或 emoji 替代，必须使用 PNG sprite sheet；当前使用 assets/farm/cat_crops.png
 4. 知识点名称必须来自预设列表，不能自由发明
 5. 农场币系统已删除，不要重新加回来
 6. 种子/水桶/肥料资源系统已删除，不要重新加回来
@@ -724,3 +725,10 @@ v34 之后的改动：
 - **抽奖二段式**：浮窗“打开抽奖盘”只展示棋盘，不消耗奖励；学生需要再点“摇骰子开始”才进入抽奖，骰子滚动约 4.5 秒后再走格结算。
 - **今日总复盘降摩擦**：整体状态按“很顺 / 正常 / 有点累 / 卡住了”排序；删除“明天开始前先看”输入和回看展示，避免学生填写无用项。
 - **缓存版本号**：`index.html` 静态资源版本号更新为 `20260715i`。
+
+### V5.31 猫咪植物农场精灵（build `20260716m`）
+
+- **农场素材替换实验**：新增 `assets/farm/cat_crops.png`，由用户生成的 3 行 × 6 列猫咪植物图处理为透明 sprite sheet；三行分别对应数学、物理、化学，六列对应休眠、种子、发芽、幼苗、开花、成熟。
+- **农场渲染接入**：`modules/farm.js` 的 `cropSpriteStyle()` 改为读取猫咪植物精灵表，不改 `farm_state`、`recordCount`、成长阈值或收获逻辑；0 条记录时也显示休眠小种子，仍通过 `0/15` 表示未开始。
+- **迷你农场可读性**：放大 `.mini-plot-sprite`，去掉旧星露谷素材专用的 `mix-blend-mode: screen`，保留 `image-rendering: pixelated`，让成熟态猫咪花在首页右栏更清楚。
+- **缓存版本号**：`index.html` 静态资源版本号更新为 `20260716m`。
