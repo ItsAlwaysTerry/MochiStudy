@@ -1254,8 +1254,9 @@
     trigger?.blur?.();
     const dieEl = document.querySelectorAll("[data-econ-die]")[idx] || null;
     const final = Math.floor(Math.random() * 6) + 1;
-    // 减速旋转：帧间隔由快到慢，越接近停下越慢，像抽奖那样制造悬疑感
-    const spinDelays = [48, 55, 64, 75, 90, 110, 135, 166, 205, 252, 310];
+    // 减速旋转：帧间隔由快到慢，越接近停下越慢，像抽奖那样制造悬疑感。
+    // 20 帧连续咔哒、总时长约 3 秒（比原来翻倍），音效随之贯穿整个过程。
+    const spinDelays = Array.from({ length: 20 }, (_, k) => Math.round(46 * Math.pow(1.115, k)));
     let i = 0;
     const spin = () => {
       if (dieEl) { dieEl.textContent = diceFace(Math.floor(Math.random() * 6) + 1); dieEl.classList.add("rolling"); }
@@ -1352,7 +1353,7 @@
         window.MochiApp?.sparkle?.(float, Number(anim.drawn || 0) >= 50 ? "★" : "¥");
         setTimeout(() => float.classList.remove("drawn"), 900);
       }
-      playRewardSound(econTone(anim.drawn));
+      playPrizeFanfare(Number(anim.drawn || 0) >= 50); // 出抽奖结果：命运交响曲搞笑小旋律
     }, 80);
     const paidNote = Number(anim.paid) < Number(anim.drawn) ? `本周已达上限，实发 ¥${anim.paid}` : `¥${anim.paid} 已到账`;
     window.MochiApp?.toast?.(`抽中 ¥${anim.drawn}，${paidNote}`);
@@ -3656,6 +3657,49 @@
   function playWalkTick(remaining) {
     const freq = remaining <= 4 ? 660 + (5 - Math.max(0, remaining)) * 95 : 610;
     econBeep({ freq, type: "triangle", dur: 0.09, vol: 0.05 });
+  }
+  // 出抽奖结果：贝多芬《命运交响曲》开头动机(G G G ♭E / F F F D)→胜利琶音改编的搞笑小旋律，
+  // 用给零花钱配"命运交响曲"的反差制造喜感；大奖更响更亮。约 3.3 秒。
+  function playPrizeFanfare(big) {
+    const ctx = econAudio();
+    if (!ctx) return;
+    try {
+      const t0 = ctx.currentTime + 0.03;
+      const G4 = 392.0, Eb4 = 311.13, F4 = 349.23, D4 = 293.66;
+      const C5 = 523.25, E5 = 659.25, G5 = 783.99, C6 = 1046.5;
+      // [频率, 起始秒, 时长秒]
+      const seq = [
+        [G4, 0.00, 0.13], [G4, 0.16, 0.13], [G4, 0.32, 0.13], [Eb4, 0.48, 0.46],
+        [F4, 1.05, 0.13], [F4, 1.21, 0.13], [F4, 1.37, 0.13], [D4, 1.53, 0.54],
+        [C5, 2.20, 0.16], [E5, 2.40, 0.16], [G5, 2.60, 0.16], [C6, 2.82, 0.58],
+      ];
+      seq.forEach(([freq, off, dur]) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.value = freq;
+        const start = t0 + off;
+        const vol = big ? 0.16 : 0.11;
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(vol, start + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+        osc.connect(gain).connect(ctx.destination);
+        // 大奖叠一个低八度更厚
+        if (big) {
+          const osc2 = ctx.createOscillator();
+          const gain2 = ctx.createGain();
+          osc2.type = "sine";
+          osc2.frequency.value = freq / 2;
+          gain2.gain.setValueAtTime(0.0001, start);
+          gain2.gain.exponentialRampToValueAtTime(vol * 0.6, start + 0.02);
+          gain2.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+          osc2.connect(gain2).connect(ctx.destination);
+          osc2.start(start); osc2.stop(start + dur + 0.03);
+        }
+        osc.start(start);
+        osc.stop(start + dur + 0.03);
+      });
+    } catch { /* 音效失败不影响流程 */ }
   }
 
   function playRewardSound(tone = "coin") {
