@@ -27,11 +27,11 @@
 
       <div class="review-actions-row">
         <p class="review-actions-hint">下面是系统建议复习的；想自己挑范围测，点右边 →</p>
-        <div style="display:flex;gap:8px;flex-shrink:0">
-          <button class="btn btn-soft btn-sm" data-action="copy-ai-prompt" data-prompt-path="./skill/gaokao啃卷子.md" type="button">
+        <div class="u-review-actions-inline">
+          <button class="btn btn-ghost btn-sm" data-action="copy-ai-prompt" data-prompt-path="./skill/gaokao啃卷子.md" type="button">
             <span class="material-symbols-outlined">description</span>啃卷子
           </button>
-          <button class="btn btn-primary btn-sm" data-review-action="open-quiz" type="button">
+          <button class="btn btn-ghost btn-sm" data-review-action="open-quiz" type="button">
             <span class="material-symbols-outlined">casino</span>出测验
           </button>
         </div>
@@ -175,7 +175,7 @@
           <li class="review-step"><span class="review-step-num">3</span><span class="review-step-text">把 AI 输出的<b>全部记录</b>一起粘到下面，一次导入</span></li>
         </ol>
         <textarea id="session-input" data-session-input rows="4" placeholder="粘贴 AI 的全部输出（多段 MOCHI-RECORD）"></textarea>
-        <button class="btn btn-primary" data-review-action="session-import" type="button" style="width:100%;margin-top:8px">
+        <button class="btn btn-primary u-full-width u-mt-2" data-review-action="session-import" type="button">
           <span class="material-symbols-outlined">download_done</span>导入全部记录
         </button>
         <div class="review-import-result" data-session-result hidden></div>
@@ -213,7 +213,7 @@
       result.innerHTML = `
         <strong>这条记录和当前复习项不太一样</strong>
         <p class="muted">当前复习的是 ${escapeHtml(item.subjectLabel)} · ${escapeHtml(item.nodeLabel)}，但粘贴内容识别为 ${escapeHtml(subjectLabel(record.subject))} · ${escapeHtml(normalizedLabel || "未知知识点")}。可以仍然导入，它会归到识别到的知识点下，只是不计入本次复习项。</p>
-        <button class="btn btn-soft btn-sm" data-review-action="import-anyway" data-review-key="${escapeHtml(item.key)}" type="button" style="margin-top:8px">
+        <button class="btn btn-soft btn-sm u-mt-2" data-review-action="import-anyway" data-review-key="${escapeHtml(item.key)}" type="button">
           <span class="material-symbols-outlined">download_done</span>按「${escapeHtml(subjectLabel(record.subject))} · ${escapeHtml(normalizedLabel || "未知知识点")}」导入
         </button>
       `;
@@ -390,10 +390,10 @@
       const hasAnyLog = (window.MochiApp?.readStudyLogs?.() || []).length > 0;
       // 零数据（还没开始）和已追平（都复习过了）是两种不同的空，文案要分开。
       if (!hasAnyLog) {
-        return `<div class="review-empty"><span class="material-symbols-outlined">rate_review</span><p>还没有学习记录。先去首页导入一条，复习队列会自动排起来。</p><button class="btn btn-soft btn-sm" data-route="home" type="button" style="margin-top:10px"><span class="material-symbols-outlined">upload_file</span>去导入</button></div>`;
+        return `<div class="review-empty"><span class="material-symbols-outlined">rate_review</span><p>还没有学习记录。先去首页导入一条，复习队列会自动排起来。</p><button class="btn btn-soft btn-sm u-mt-3" data-route="home" type="button"><span class="material-symbols-outlined">upload_file</span>去导入</button></div>`;
       }
       // 已追平：系统没有建议项，但想继续主动测的学生不该卡死，就地出测验。
-      return `<div class="review-empty"><span class="material-symbols-outlined">task_alt</span><p>目前没有系统建议的薄弱点 👍 想自己挑范围测，点下面出一份测验。</p><button class="btn btn-soft btn-sm" data-review-action="open-quiz" type="button" style="margin-top:10px"><span class="material-symbols-outlined">casino</span>出测验</button></div>`;
+      return `<div class="review-empty"><span class="material-symbols-outlined">task_alt</span><p>目前没有系统建议的薄弱点 👍 想自己挑范围测，点下面出一份测验。</p><button class="btn btn-soft btn-sm u-mt-3" data-review-action="open-quiz" type="button"><span class="material-symbols-outlined">casino</span>出测验</button></div>`;
     }
     const allVisible = [...todaySuggestions, ...activeItems];
     const rows = allVisible.map((item) => renderReviewRow(item, todayKeys.has(item.key))).join("");
@@ -417,15 +417,15 @@
     return `
       <article class="review-row ${expanded ? "active" : ""} ${isToday ? "review-row-today" : ""}" data-review-card data-review-key="${escapeHtml(item.key)}" style="--subject-color:${escapeHtml(item.subjectColor || "#864d61")}">
         <div class="review-row-main">
-          <span class="chip ${item.subject} review-row-chip">${escapeHtml(item.subjectLabel)}</span>
-          ${isToday ? `<span class="review-today-badge">今日</span>` : ""}
-          <div class="review-row-info">
+          <div class="review-row-headline">
             <strong>${formatRichText(item.nodeLabel)}</strong>
-            <span class="review-row-reason">${formatRichText(reason)}</span>
+            <span class="chip ${item.subject} review-row-chip">${escapeHtml(item.subjectLabel)}</span>
+            ${isToday ? `<span class="chip review-today-badge">今日</span>` : ""}
           </div>
-          <button class="btn btn-soft btn-sm review-row-start" data-review-action="start" data-review-origin="${isToday ? "suggestion" : "row"}" data-review-key="${escapeHtml(item.key)}" type="button">
+          <button class="btn btn-tonal btn-sm review-row-start" data-review-action="start" data-review-origin="${isToday ? "suggestion" : "row"}" data-review-key="${escapeHtml(item.key)}" type="button">
             <span class="material-symbols-outlined">play_arrow</span>开始
           </button>
+          <span class="review-row-reason">${formatRichText(reason)}</span>
         </div>
         ${expanded ? renderImportPanel(item) : ""}
       </article>

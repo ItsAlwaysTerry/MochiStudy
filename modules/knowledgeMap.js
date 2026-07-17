@@ -347,24 +347,24 @@
           <p>每条学习记录都会变成一张卡片，按知识点收进这里。</p>
         </div>
       </div>
-      <div class="subject-tabs archive-tabs">
+      <div class="subject-tabs archive-tabs archive-subject-tabs seg seg-sm" role="tablist" aria-label="学习档案科目">
         ${Object.entries(SUBJECTS).map(([key, item]) => {
           const active = key === subjectKey ? "active" : "";
           const count = item.nodes.filter((node) => logsForNode(logs, key, node.label).length > 0).length;
-          return `<button class="subject-tab ${active}" data-card-subject="${key}" style="--subject-color:${item.color}">${item.label} (${count})</button>`;
+          return `<button class="subject-tab seg-item ${active}" data-card-subject="${key}" style="--subject-color:${item.color}" type="button" aria-selected="${key === subjectKey}">${item.label}<span class="seg-count">${count}</span></button>`;
         }).join("")}
       </div>
       <div class="archive-actions-row">
-        <button class="btn btn-soft btn-sm" data-archive-action="relearn" type="button">
+        <button class="btn btn-ghost btn-sm" data-archive-action="relearn" type="button">
           <span class="material-symbols-outlined">school</span>从零重学
         </button>
-        <button class="btn btn-soft btn-sm" data-action="copy-ai-prompt" data-prompt-path="./skill/gaokao啃卷子.md" type="button">
+        <button class="btn btn-ghost btn-sm" data-action="copy-ai-prompt" data-prompt-path="./skill/gaokao啃卷子.md" type="button">
           <span class="material-symbols-outlined">description</span>啃卷子
         </button>
-        <button class="btn btn-primary btn-sm" data-archive-action="quiz-subject" type="button">
+        <button class="btn btn-ghost btn-sm" data-archive-action="quiz-subject" type="button">
           <span class="material-symbols-outlined">casino</span>出测验
         </button>
-        <button class="btn btn-outline btn-sm" data-card-export>
+        <button class="btn btn-ghost btn-sm" data-card-export>
           <span class="material-symbols-outlined">ios_share</span>导出档案
         </button>
       </div>
@@ -383,7 +383,7 @@
         <span class="material-symbols-outlined">collections_bookmark</span>
         <h3>${escapeHtml(label)}还没有学习记录</h3>
         <p class="muted">导入第一条记录后，这里会出现你的第一张卡片 🌱</p>
-        <button class="btn btn-soft btn-sm" data-route="home" type="button" style="margin-top:10px">
+        <button class="btn btn-soft btn-sm u-mt-3" data-route="home" type="button">
           <span class="material-symbols-outlined">upload_file</span>去导入第一条
         </button>
       </section>
@@ -455,7 +455,7 @@
             <small>下一步</small>
             <p>${formatRichText(summary.nextAction || (summary.lowStarCount ? `${summary.lowStarCount}次低星，适合继续压缩成一条稳定套路。` : "最近记录比较稳定，先保留精华即可。"))}</p>
             ${(summary.nextReviewDate && summary.nextReviewDate <= new Date().toISOString().slice(0, 10) && summary.count > 0)
-              ? `<button class="btn btn-soft btn-sm" style="margin-top:8px" data-archive-action="go-review" data-review-key="${escapeHtml(summary.subject + "::" + summary.node.label)}" type="button"><span class="material-symbols-outlined">rate_review</span>去复习页</button>`
+              ? `<button class="btn btn-soft btn-sm u-mt-2" data-archive-action="go-review" data-review-key="${escapeHtml(summary.subject + "::" + summary.node.label)}" type="button"><span class="material-symbols-outlined">rate_review</span>去复习页</button>`
               : ""}
           </div>
         </div>
@@ -465,12 +465,14 @@
             <p>${formatRichText(summary.reviewNote)}</p>
           </div>
         ` : ""}
-        <button class="btn btn-primary btn-sm archive-quiz-node-btn" data-archive-action="quiz-node" data-review-key="${escapeHtml(summary.subject + "::" + summary.node.label)}" type="button">
-          <span class="material-symbols-outlined">quiz</span>测这个知识点
-        </button>
+        <div class="digest-footer-actions">
+          <button class="btn btn-tonal btn-sm archive-quiz-node-btn" data-archive-action="quiz-node" data-review-key="${escapeHtml(summary.subject + "::" + summary.node.label)}" type="button">
+            <span class="material-symbols-outlined">quiz</span>测这个知识点
+          </button>
+        </div>
         <div class="archive-cards-head">
           <span>${cardsLabel}</span>
-          <span class="study-card-list-hint">点右上角 <span class="material-symbols-outlined" style="font-size:14px;vertical-align:-2px">add_task</span> 可多选一起测</span>
+          <span class="study-card-list-hint">点右上角 <span class="material-symbols-outlined u-icon-inline">add_task</span> 可多选一起测</span>
         </div>
         <div class="study-card-list" data-card-list data-card-list-subject="${escapeHtml(subjectKey)}" data-card-list-node-label="${escapeHtml(summary.node.label)}">
           ${summary.entries.map((log, index) => renderStudyCard(log, subjectKey, index, summary.node.label)).join("")}
@@ -492,7 +494,7 @@
     const hasDetail = hasRoutine || hasOriginalQuestion;
     const quizSelected = STATE.quizSelected.has(id);
     return `
-      <article class="study-card${expanded ? " expand-open" : ""}${quizSelected ? " card-quiz-selected" : ""}"
+      <article class="study-card card-sub${expanded ? " expand-open" : ""}${quizSelected ? " card-quiz-selected" : ""}"
         data-card-id="${escapeHtml(id)}"
         data-card-subject="${escapeHtml(subjectKey)}"
         data-card-node-label="${escapeHtml(nodeLabel)}"

@@ -60,6 +60,8 @@
   }
 
   const GAME_CONFIG = loadGameConfig();
+  // Keep this in sync with index.html asset ?v= cache-bust suffix when shipping UI changes.
+  const BUILD_ID = "build-20260716u";
 
   function loadAdminConfig() {
     return GAME_CONFIG;
@@ -92,10 +94,10 @@
   // 权重是相对的：某项概率 = 它的权重 ÷ 所有权重之和（下面 8 项之和=100，所以权重≈百分比）。
   const LOTTERY_CONFIG_DEFAULTS = {
     items: [
-      { id: 1, label: "零花钱 ¥20", type: "reward", weight: 28, color: "#f5c518" },
-      { id: 2, label: "零花钱 ¥30", type: "reward", weight: 20, color: "#f5c518" },
+      { id: 1, label: "零花钱 ¥20", type: "reward", weight: 28, color: "#d9a13f" },
+      { id: 2, label: "零花钱 ¥30", type: "reward", weight: 20, color: "#d9a13f" },
       { id: 3, label: "一份你爱吃的零食 / 饮料", type: "reward", weight: 12, color: "#50b070" },
-      { id: 4, label: "零花钱 ¥50", type: "reward", weight: 14, color: "#f5c518" },
+      { id: 4, label: "零花钱 ¥50", type: "reward", weight: 14, color: "#d9a13f" },
       { id: 5, label: "晚睡 / 多玩手机 30 分钟", type: "reward", weight: 8, color: "#50b070" },
       { id: 6, label: "和朋友出去玩一下午", type: "bigReward", weight: 7, color: "#e07020" },
       { id: 7, label: "零花钱 ¥100", type: "bigReward", weight: 7, color: "#e07020" },
@@ -1528,7 +1530,7 @@
         <div class="lottery-result-actions">
           <button class="btn btn-soft lottery-share-btn" data-action="share-result" type="button">📋 复制分享图</button>
           ${state.lotteryTickets > 0
-            ? `<button class="btn btn-primary lottery-spin-btn" data-action="spin-lottery" type="button" style="width:100%">再来一次</button>`
+            ? `<button class="btn btn-primary lottery-spin-btn u-full-width" data-action="spin-lottery" type="button">再来一次</button>`
             : `<p class="muted lottery-done-msg">暂时没有机会了，继续学习获得更多！</p>`}
         </div>
       `;
@@ -1563,7 +1565,7 @@
     ctx.scale(2, 2);
 
     // ── Background ──────────────────────────────────────────────────
-    ctx.fillStyle = "#120c10";
+    ctx.fillStyle = "#2d1420";
     ctx.fillRect(0, 0, W, H);
     const chosenColor = chosenPrize.color || "#864d61";
     const grad = ctx.createRadialGradient(W / 2, H * 0.4, 0, W / 2, H * 0.4, 240);
@@ -1609,13 +1611,13 @@
 
       // Border — gold for chosen, colored for others
       ctx.lineWidth = isChosen ? 2 : 1;
-      ctx.strokeStyle = isChosen ? "#f5c518cc" : color + "66";
+      ctx.strokeStyle = isChosen ? "#d9a13fcc" : color + "66";
       ctx.stroke();
 
       // Gold glow on chosen
       if (isChosen) {
         ctx.save();
-        ctx.shadowColor = "#f5c51866";
+        ctx.shadowColor = "#d9a13f66";
         ctx.shadowBlur = 14;
         drawRoundRect(x, y, cW, cH, 8);
         ctx.stroke();
@@ -1645,7 +1647,7 @@
 
       // "✓ 我的" marker on chosen card
       if (isChosen) {
-        ctx.fillStyle = "#f5c518";
+        ctx.fillStyle = "#d9a13f";
         ctx.font = "bold 8px sans-serif";
         ctx.fillText("✓ 我的", x + cW / 2, y + cH - 9);
       }
@@ -1784,14 +1786,14 @@
     // 不带 tab（后台刷新、点底部「学习」）时保留当前子 tab，避免把正在复习/看档案的用户弹回「今日」。
     if (tab === "today" || tab === "review" || tab === "map") learnActiveTab = tab;
     container.innerHTML = `
-      <div class="learn-tab-bar">
-        <button class="learn-tab-btn ${learnActiveTab === "today" ? "active" : ""}" data-action="learn-tab" data-tab="today" type="button">
+      <div class="learn-tab-bar seg" role="tablist" aria-label="学习页">
+        <button class="learn-tab-btn seg-item ${learnActiveTab === "today" ? "active" : ""}" data-action="learn-tab" data-tab="today" type="button" aria-selected="${learnActiveTab === "today"}">
           <span class="material-symbols-outlined">today</span>今日学习
         </button>
-        <button class="learn-tab-btn ${learnActiveTab === "review" ? "active" : ""}" data-action="learn-tab" data-tab="review" type="button">
+        <button class="learn-tab-btn seg-item ${learnActiveTab === "review" ? "active" : ""}" data-action="learn-tab" data-tab="review" type="button" aria-selected="${learnActiveTab === "review"}">
           <span class="material-symbols-outlined">rate_review</span>复习队列
         </button>
-        <button class="learn-tab-btn ${learnActiveTab === "map" ? "active" : ""}" data-action="learn-tab" data-tab="map" type="button">
+        <button class="learn-tab-btn seg-item ${learnActiveTab === "map" ? "active" : ""}" data-action="learn-tab" data-tab="map" type="button" aria-selected="${learnActiveTab === "map"}">
           <span class="material-symbols-outlined">collections_bookmark</span>学习档案
         </button>
       </div>
@@ -1936,7 +1938,7 @@
           <span class="material-symbols-outlined">emoji_events</span>
           <div>
             <h3>还没有开启赛季</h3>
-            <p class="muted">赛季期间可以看倒计时、称号和热力图。赛季管理在<a href="?admin=1" style="color:var(--primary);margin-left:4px">管理后台</a>。</p>
+            <p class="muted">赛季期间可以看倒计时、称号和热力图。赛季管理在<a class="u-link-primary" href="?admin=1">管理后台</a>。</p>
           </div>
         </div>
         ${hasData ? `
@@ -1960,7 +1962,7 @@
           </div>
           `).join("")}
         </div>
-        ` : `<p class="muted" style="margin-top:16px">还没有任何学习记录，先去首页导入第一条吧。</p>`}
+        ` : `<p class="muted u-mt-6">还没有任何学习记录，先去首页导入第一条吧。</p>`}
       </section>
     `;
   }
@@ -2005,7 +2007,7 @@
           </div>
           <div class="season-countdown">
             <span class="season-days-left">${daysLeft}</span>
-            <span class="muted" style="font-size:12px">天后结束</span>
+            <span class="muted u-text-xs">天后结束</span>
           </div>
         </div>
 
@@ -2013,7 +2015,7 @@
           <div class="season-progress-track">
             <div class="season-progress-fill" style="width:${pct}%"></div>
           </div>
-          <span class="muted" style="font-size:11px">${pct}%</span>
+          <span class="muted u-text-xs">${pct}%</span>
         </div>
 
         <div class="season-stats-row">
@@ -2217,7 +2219,7 @@
       <text x="${p.x}" y="${H + 16}" text-anchor="middle" fill="rgba(255,255,255,0.3)" font-size="9">W${p.w.slice(-2)}</text>
     `).join("");
     return `
-      <svg width="${W}" height="${H + 24}" viewBox="0 0 ${W} ${H + 24}" style="max-width:100%;overflow:visible">
+      <svg class="u-svg-fit" width="${W}" height="${H + 24}" viewBox="0 0 ${W} ${H + 24}">
         ${polyline ? `<polyline points="${polyline}" fill="none" stroke="var(--primary)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>` : ""}
         ${dots}
         ${labels}
@@ -2414,7 +2416,7 @@
       return `<rect x="${L + col * STEP}" y="${T + row * STEP}" width="${CELL}" height="${CELL}" rx="4" fill="var(--primary)" opacity="${opacity}"><title>${dateKey}${inRange ? ": " + count + "条记录" : ""}</title></rect>`;
     }).join("");
 
-    return `<div class="chart-heatmap-wrap"><svg width="${svgW}" height="${svgH}" style="display:block;margin:0 auto">${dayLabels}${monthLabels}${cells}</svg></div>`;
+    return `<div class="chart-heatmap-wrap"><svg class="u-svg-center" width="${svgW}" height="${svgH}">${dayLabels}${monthLabels}${cells}</svg></div>`;
   }
 
   function renderTrendV2(logs) {
@@ -2492,7 +2494,7 @@
 
     return `
       <div class="chart-trend-wrap">
-        <svg width="100%" viewBox="0 0 ${W} ${H}" style="display:block;overflow:visible">
+        <svg class="u-svg-visible" width="100%" viewBox="0 0 ${W} ${H}">
           <defs>
             <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stop-color="var(--primary)" stop-opacity="0.34"/>
@@ -2542,7 +2544,7 @@
         <section class="card">
           <h3>赛季管理</h3>
           <p class="muted">${escapeHtml(current.name)} 正在进行：${escapeHtml(current.startDate)} - ${escapeHtml(current.endDate)}</p>
-          <div class="settings-list" style="margin-top:18px">
+          <div class="settings-list u-mt-7">
             <button class="btn btn-danger" data-action="end-season" type="button">
               <span class="material-symbols-outlined">flag</span>
               结束当前赛季并存档
@@ -2555,7 +2557,7 @@
       <section class="card">
         <h3>赛季管理</h3>
         <p class="muted">开启后，赛季页会按这个时间范围统计学习记录、专注、称号和图表。</p>
-        <form id="season-form" class="form-grid" style="margin-top:18px">
+        <form id="season-form" class="form-grid u-mt-7">
           <div class="field"><label>赛季名称</label><input name="name" required value="${nextId === "S1" ? "第一赛季" : `第${nextId.slice(1)}赛季`}" placeholder="例如：第一赛季" /></div>
           <div class="field"><label>开始日期</label><input name="startDate" type="date" required value="${today}" /></div>
           <div class="field"><label>结束日期</label><input name="endDate" type="date" required value="${defaultEnd}" /></div>
@@ -3026,7 +3028,7 @@
     return `
       <section class="admin-section">
         <h3>抽奖转盘内容</h3>
-        <p style="font-size:12px;color:var(--muted);margin:0 0 10px">权重是相对的：某项中奖概率 = 它的权重 ÷ 所有权重之和。右侧「概率」会随你改权重实时更新。想让某个奖更常中就调高它的权重，想让大奖更稀有就调低。</p>
+        <p class="u-admin-note">权重是相对的：某项中奖概率 = 它的权重 ÷ 所有权重之和。右侧「概率」会随你改权重实时更新。想让某个奖更常中就调高它的权重，想让大奖更稀有就调低。</p>
         <div class="admin-row">
           <label>每次翻牌张数</label>
           <input type="number" min="1" max="10" class="admin-input admin-input-sm" id="admin-lottery-pick-count" value="${pickCount}" />
@@ -3052,7 +3054,7 @@
           <option value="punish" ${item.type === "punish" ? "selected" : ""}>惩罚</option>
         </select>
         <input type="number" min="1" max="100" class="admin-input admin-input-sm" placeholder="权重" data-field="weight" value="${Number(item.weight || 10)}" />
-        <span class="admin-lottery-prob" data-prob title="当前中奖概率" style="min-width:46px;text-align:right;font-weight:700;color:var(--muted)">—</span>
+        <span class="admin-lottery-prob u-prob-cell" data-prob title="当前中奖概率">—</span>
         <button class="btn-icon" data-admin-action="remove-lottery-item" type="button" aria-label="删除项目">删除</button>
       </div>
     `;
@@ -3324,7 +3326,7 @@
         <h3>数据调整</h3>
         <p class="muted admin-help">用于版本更新或数据迁移后手动补齐数据，保存后立即生效。</p>
 
-        <p style="font-size:12px;font-weight:600;margin:12px 0 4px;color:var(--muted)">农场进度</p>
+        <p class="u-debug-section-label">农场进度</p>
         <div class="admin-row">
           <label>数学 recordCount</label>
           <input type="number" min="0" class="admin-input admin-input-sm" id="adj-math-rc" value="${Number(plots.math?.recordCount || 0)}" />
@@ -3346,7 +3348,7 @@
           <input type="number" min="0" class="admin-input admin-input-sm" id="adj-farm-xp" value="${Number(farmState.xp || 0)}" />
         </div>
 
-        <p style="font-size:12px;font-weight:600;margin:12px 0 4px;color:var(--muted)">勋章 / 抽奖</p>
+        <p class="u-debug-section-label">勋章 / 抽奖</p>
         <div class="admin-row">
           <label>totalSmall（累计小勋章）</label>
           <input type="number" min="0" class="admin-input admin-input-sm" id="adj-total-small" value="${Number(achState.totalSmall || 0)}" />
@@ -3364,7 +3366,7 @@
           <input type="number" min="0" class="admin-input admin-input-sm" id="adj-used-lottery" value="${Number(achState.usedLotteryCount || 0)}" />
         </div>
 
-        <p style="font-size:12px;font-weight:600;margin:12px 0 4px;color:var(--muted)">补录专注记录</p>
+        <p class="u-debug-section-label">补录专注记录</p>
         <div class="admin-row">
           <label>日期</label>
           <input type="date" class="admin-input admin-input-sm" id="adj-focus-date" value="${todayKey()}" />
@@ -3374,7 +3376,7 @@
           <input type="number" min="1" class="admin-input admin-input-sm" id="adj-focus-mins" value="25" />
         </div>
 
-        <div style="margin-top:12px">
+        <div class="u-mt-4">
           <button class="btn btn-primary" data-admin-action="save-data-adjust">保存数据调整</button>
         </div>
       </section>
@@ -3474,7 +3476,7 @@
   function lotteryColorForType(type) {
     if (type === "bigReward") return "#e07020";
     if (type === "punish") return "#9c27b0";
-    return "#f5c518";
+    return "#d9a13f";
   }
 
   function collectAdminLotteryItems(overlay) {
@@ -3688,6 +3690,21 @@
     const focusEndSound = localStorage.getItem("focus_end_sound") || "soft";
     const restReminderSound = localStorage.getItem("rest_reminder_sound") || "melody";
     const readingPreferences = readReadingPreferences();
+    const settingsGroup = (id, icon, title, summary, body) => `
+      <details class="card settings-group" id="settings-group-${id}" data-settings-group="${id}">
+        <summary class="settings-group-summary">
+          <span class="settings-group-icon material-symbols-outlined">${icon}</span>
+          <span class="settings-group-copy">
+            <strong>${title}</strong>
+            <span>${summary}</span>
+          </span>
+          <span class="material-symbols-outlined settings-group-chevron">expand_more</span>
+        </summary>
+        <div class="settings-group-body">
+          ${body}
+        </div>
+      </details>
+    `;
     container.innerHTML = `
       <div class="page-head">
         <div>
@@ -3695,250 +3712,286 @@
           <p>API Key 和学习数据只保存在本地浏览器。</p>
         </div>
       </div>
-      <div class="grid schedule-grid">
-        <section class="card settings-section">
-          <h3>阅读外观</h3>
-          <div class="settings-row">
-            <div>
-              <strong>复习 / 学习档案字体</strong>
-              <p class="muted" style="font-size:13px;margin-top:2px">换复习队列、学习档案、卡片原题和复习材料里的阅读字体。</p>
-            </div>
-            <select id="reading-font-select" class="settings-select settings-select-wide" aria-label="复习和学习档案字体">
-              ${readingOptionTags(READING_FONT_OPTIONS, readingPreferences.font.value)}
-            </select>
-          </div>
-          <div class="settings-row">
-            <div>
-              <strong>阅读字号</strong>
-              <p class="muted" style="font-size:13px;margin-top:2px">只放大复习和学习档案里的正文，不影响导航和按钮布局。</p>
-            </div>
-            <select id="reading-size-select" class="settings-select settings-select-wide" aria-label="复习和学习档案字号">
-              ${readingOptionTags(READING_SIZE_OPTIONS, readingPreferences.size.value)}
-            </select>
-          </div>
-          <div class="settings-reading-preview" data-reading-preview>
-            <strong data-reading-current>${escapeHtml(readingPreferences.font.label)} · ${escapeHtml(readingPreferences.size.label)}</strong>
-            <p>例：函数图像的平移、受力分析、离子方程式。原题和卡点要一眼看清，字要圆一点、稳一点，也要够大。</p>
-            <p class="muted" data-reading-hint style="margin-top:6px">${escapeHtml(readingPreferences.font.hint)}</p>
-          </div>
-        </section>
-        <section class="card settings-section">
-          <h3>提醒设置</h3>
-          <div class="settings-row">
-            <div>
-              <strong>休息结束提醒音</strong>
-              <p class="muted" style="font-size:13px;margin-top:2px">休息结束后每隔30秒响一次，点击页面任意地方停止，最多提醒5分钟</p>
-            </div>
-            <label class="toggle-switch">
-              <input type="checkbox" id="sound-reminder-toggle" ${localStorage.getItem("sound_reminder_enabled") === "true" ? "checked" : ""} onchange="localStorage.setItem('sound_reminder_enabled', this.checked ? 'true' : 'false')">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-          <div class="settings-row">
-            <div>
-              <strong>休息结束铃声</strong>
-              <p class="muted" style="font-size:13px;margin-top:2px">休息结束遮罩出现时播放；每30秒重复一次</p>
-            </div>
-            <select id="rest-reminder-sound-select" class="settings-select" aria-label="休息结束铃声">
-              <option value="melody" ${restReminderSound === "melody" ? "selected" : ""}>温柔旋律</option>
-              <option value="bell" ${restReminderSound === "bell" ? "selected" : ""}>小风铃</option>
-              <option value="soft" ${restReminderSound === "soft" ? "selected" : ""}>低柔三音</option>
-              <option value="bright" ${restReminderSound === "bright" ? "selected" : ""}>清亮提示</option>
-            </select>
-          </div>
-          <div class="settings-row">
-            <div>
-              <strong>专注到点提示音</strong>
-              <p class="muted" style="font-size:13px;margin-top:2px">设定时间到点或结束本轮时播放；自由专注没有到点提醒</p>
-            </div>
-            <select id="focus-end-sound-select" class="settings-select" aria-label="专注到点提示音">
-              <option value="off" ${focusEndSound === "off" ? "selected" : ""}>不响</option>
-              <option value="soft" ${focusEndSound === "soft" ? "selected" : ""}>轻柔双音</option>
-              <option value="bell" ${focusEndSound === "bell" ? "selected" : ""}>小风铃</option>
-              <option value="ding" ${focusEndSound === "ding" ? "selected" : ""}>清脆短音</option>
-            </select>
-          </div>
-        </section>
-        <section class="card" style="grid-column:1 / -1">
-          <h3>AI 使用指南</h3>
-          <p class="muted" style="margin-top:4px">四个 AI Prompt，分别用于做题（含拍整张卷排优先级啃卷子）、复习旧卡点、综合测验、从零重学一章。复制后粘贴到 AI（如 Gemini）的智能体设定里，即可激活对应的 AI 角色。</p>
-          <div class="ai-guide-prompts" style="margin-top:16px;display:flex;flex-direction:column;gap:12px">
-            <details class="ai-prompt-entry">
-              <summary class="ai-prompt-summary">
-                <span class="ai-prompt-icon material-symbols-outlined">psychology</span>
-                <div class="ai-prompt-meta">
-                  <strong>高中理科 AI 家教</strong>
-                  <span class="muted" style="font-size:12px">做题就用这一个 · 发一道题直接做，或拍整张卷选「帮我排优先级」(排除已会→排序→逐题带) · 脚手架引导 → 总结套路 → 每题输出 MOCHI-RECORD</span>
-                </div>
-                <button class="btn btn-soft btn-sm ai-prompt-copy-btn" data-action="copy-ai-prompt" data-prompt-path="./skill/gaokao私教.md" type="button">
-                  <span class="material-symbols-outlined">content_copy</span>复制 Prompt
-                </button>
-              </summary>
-              <div class="ai-prompt-steps">
-                <p><strong>使用方法：</strong>在 AI（如 Gemini）新建一个智能体（Gem）或对话，把 Prompt 粘进去，以后做题一直用它。发一道题就直接带你做；拍整张卷子时它会问你「想自己定顺序，还是我帮你排个优先级」——选排序它就读图列题、让你报掉已经会的、给剩下的题排序，再一道一道带。每搞定一道输出一条 MOCHI-RECORD，你复制粘进导入框，再做下一道。</p>
-                <p class="muted" style="font-size:12px;margin-top:6px">两种用法一个智能体：① 自由做题（你说题号）② 啃卷子（拍整张卷→排除已会→排序→逐题带）· 都是做一道粘一条</p>
+      <div class="settings-anchor-row" aria-label="设置分组">
+        <button class="chip settings-anchor-chip" data-action="open-settings-group" data-settings-group="reading" type="button">阅读外观</button>
+        <button class="chip settings-anchor-chip" data-action="open-settings-group" data-settings-group="reminders" type="button">提醒设置</button>
+        <button class="chip settings-anchor-chip" data-action="open-settings-group" data-settings-group="ai" type="button">AI</button>
+        <button class="chip settings-anchor-chip" data-action="open-settings-group" data-settings-group="data" type="button">数据</button>
+        <button class="chip settings-anchor-chip" data-action="open-settings-group" data-settings-group="holidays" type="button">假期管理</button>
+        <button class="chip settings-anchor-chip" data-action="open-settings-group" data-settings-group="about" type="button">更新与关于</button>
+      </div>
+      <div class="settings-groups">
+        ${settingsGroup("reading", "format_size", "阅读外观", "复习、学习档案和材料阅读的字体字号。", `
+          <div class="settings-subsection card-sub">
+            <div class="settings-row">
+              <div>
+                <strong>复习 / 学习档案字体</strong>
+                <p class="muted u-text-sm u-mt-tiny">换复习队列、学习档案、卡片原题和复习材料里的阅读字体。</p>
               </div>
-            </details>
-            <details class="ai-prompt-entry">
-              <summary class="ai-prompt-summary">
-                <span class="ai-prompt-icon material-symbols-outlined">replay</span>
-                <div class="ai-prompt-meta">
-                  <strong>高考复习 AI 私教</strong>
-                  <span class="muted" style="font-size:12px">复习时用 · 读取学习档案 → 针对历史卡点出题 → 输出增强版 MOCHI-RECORD</span>
-                </div>
-                <button class="btn btn-soft btn-sm ai-prompt-copy-btn" data-action="copy-ai-prompt" data-prompt-path="./skill/gaokao复习私教.md" type="button">
-                  <span class="material-symbols-outlined">content_copy</span>复制 Prompt
-                </button>
-              </summary>
-              <div class="ai-prompt-steps">
-                <p><strong>使用方法：</strong>在「学习」页找到待复习的知识点，点「复制材料」，把内容粘贴给这个 AI。复习结束后把 AI 输出的记录粘贴回复习页导入。</p>
-                <p class="muted" style="font-size:12px;margin-top:6px">流程：读取历史卡点 → 选1-2个优先复习点 → 出变式题 → 2层提示不给答案 → 复盘套路 → 输出含关键突破的记录</p>
+              <div class="field settings-control-field">
+                <select id="reading-font-select" class="settings-select settings-select-wide" aria-label="复习和学习档案字体">
+                  ${readingOptionTags(READING_FONT_OPTIONS, readingPreferences.font.value)}
+                </select>
               </div>
-            </details>
-            <details class="ai-prompt-entry">
-              <summary class="ai-prompt-summary">
-                <span class="ai-prompt-icon material-symbols-outlined">quiz</span>
-                <div class="ai-prompt-meta">
-                  <strong>高考综合测验 AI 私教</strong>
-                  <span class="muted" style="font-size:12px">综合测验时用 · 读取测验包 → 多知识点依次出题 → 一次性输出全部 MOCHI-RECORD</span>
-                </div>
-                <button class="btn btn-soft btn-sm ai-prompt-copy-btn" data-action="copy-ai-prompt" data-prompt-path="./skill/gaokao综合测验.md" type="button">
-                  <span class="material-symbols-outlined">content_copy</span>复制 Prompt
-                </button>
-              </summary>
-              <div class="ai-prompt-steps">
-                <p><strong>使用方法：</strong>在「学习 → 复习队列」点右上角「综合测验」复制测验包，粘给这个 AI。做完后把它输出的全部记录一起粘回复习页的综合测验面板导入。</p>
-                <p class="muted" style="font-size:12px;margin-top:6px">流程：读取测验包 → 按热身→核心弱点顺序出题 → 每个知识点一道 → 全部做完一次性输出所有记录</p>
-              </div>
-            </details>
-            <details class="ai-prompt-entry">
-              <summary class="ai-prompt-summary">
-                <span class="ai-prompt-icon material-symbols-outlined">school</span>
-                <div class="ai-prompt-meta">
-                  <strong>从零重学 AI 私教</strong>
-                  <span class="muted" style="font-size:12px">某章太烂、想从头学时用 · 从最基础一小步一小步带学会 → 学会一步就输出记录</span>
-                </div>
-                <button class="btn btn-soft btn-sm ai-prompt-copy-btn" data-action="copy-ai-prompt" data-prompt-path="./skill/gaokao重学.md" type="button">
-                  <span class="material-symbols-outlined">content_copy</span>复制 Prompt
-                </button>
-              </summary>
-              <div class="ai-prompt-steps">
-                <p><strong>使用方法：</strong>在「学习 → 学习档案」点「从零重学」，选一个想重学的知识点，会自动复制讲解材料；粘给这个 AI 跟着一步步学，把它输出的记录粘回面板导入。</p>
-                <p class="muted" style="font-size:12px;margin-top:6px">流程：先用大白话讲这章在解决什么 → 拆成最小台阶一步步教 → 每步出超简单题确认 → 学会一步输出一条记录</p>
-              </div>
-            </details>
-          </div>
-        </section>
-        <section class="card">
-          <h3>AI 配置</h3>
-          <form id="api-form" class="form-grid" style="margin-top:18px">
-            <div class="field">
-              <label>Base URL</label>
-              <input name="baseUrl" value="${config.baseUrl || ""}" placeholder="https://api.deepseek.com/v1" />
-              <p class="field-hint">常用：OpenAI https://api.openai.com/v1<br>DeepSeek https://api.deepseek.com/v1<br>Kimi https://api.moonshot.cn/v1<br>通义千问 https://dashscope.aliyuncs.com/compatible-mode/v1<br>Anthropic https://api.anthropic.com/v1</p>
             </div>
-            <div class="field"><label>API Key</label><input type="password" name="apiKey" value="${config.apiKey || ""}" placeholder="sk-..." /></div>
-            <div class="field"><label>模型名称</label><input name="model" value="${config.model || ""}" placeholder="deepseek-chat / moonshot-v1-8k / qwen-plus" /></div>
-            <button class="btn btn-primary" type="submit"><span class="material-symbols-outlined">save</span>保存配置</button>
-          </form>
-        </section>
-        <section class="card">
-          <h3>数据备份与恢复</h3>
-          <p class="muted">备份会打包当前浏览器里保存的全部 Mochii 数据。恢复会覆盖当前数据。</p>
-          <div class="settings-list" style="margin-top:18px">
-            <button class="btn btn-outline" data-action="export-data"><span class="material-symbols-outlined">download</span>导出备份</button>
-            <label class="btn btn-outline" style="cursor:pointer"><span class="material-symbols-outlined">upload</span>导入恢复<input id="backup-import" type="file" accept="application/json" hidden /></label>
-          </div>
-        </section>
-        <section class="card">
-          <h3>数据管理</h3>
-          <p class="muted">清理测试数据或重新开始前，建议先导出备份。</p>
-          <div class="settings-list" style="margin-top:18px">
-            <button class="btn btn-outline" data-action="clear-progress">
-              <span class="material-symbols-outlined">restart_alt</span>
-              清空学习进度
-            </button>
-            <p class="field-hint">删除学习记录、专注记录、农场进度和学习状态；保留 API、假期、提醒音、游戏参数等设置。</p>
-            <button class="btn btn-danger" data-action="factory-reset">
-              <span class="material-symbols-outlined">delete_forever</span>
-              恢复出厂设置
-            </button>
-            <p class="field-hint">删除当前浏览器里 Mochii 的全部已知数据和设置，适合彻底重来。</p>
-          </div>
-        </section>
-        <section class="card" style="grid-column:1 / -1">
-          <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
-            <div>
-              <h3>假期管理</h3>
-              <p class="muted">周六日自动开放学习。寒暑假和法定假期请手动添加。上学期间临时想学习，点首页的「今天想学习」按钮即可，当天有效。</p>
+            <div class="settings-row">
+              <div>
+                <strong>阅读字号</strong>
+                <p class="muted u-text-sm u-mt-tiny">只放大复习和学习档案里的正文，不影响导航和按钮布局。</p>
+              </div>
+              <div class="field settings-control-field">
+                <select id="reading-size-select" class="settings-select settings-select-wide" aria-label="复习和学习档案字号">
+                  ${readingOptionTags(READING_SIZE_OPTIONS, readingPreferences.size.value)}
+                </select>
+              </div>
             </div>
-            <button class="btn btn-primary" data-action="open-holiday-form"><span class="material-symbols-outlined">add</span>添加假期</button>
+            <div class="settings-reading-preview" data-reading-preview>
+              <strong data-reading-current>${escapeHtml(readingPreferences.font.label)} · ${escapeHtml(readingPreferences.size.label)}</strong>
+              <p>例：函数图像的平移、受力分析、离子方程式。原题和卡点要一眼看清，字要圆一点、稳一点，也要够大。</p>
+              <p class="muted u-mt-6px" data-reading-hint>${escapeHtml(readingPreferences.font.hint)}</p>
+            </div>
           </div>
-          <div class="mode-switch" style="margin-top:18px">
-            <button class="${mode === "auto" ? "active" : ""}" data-action="set-holiday-mode" data-mode="auto">自动判断</button>
-            <button class="${mode === "holiday" ? "active" : ""}" data-action="set-holiday-mode" data-mode="holiday">强制假期</button>
-            <button class="${mode === "school" ? "active" : ""}" data-action="set-holiday-mode" data-mode="school">强制冬眠</button>
+        `)}
+        ${settingsGroup("reminders", "notifications_active", "提醒设置", "休息提醒音、铃声和专注到点提示音。", `
+          <div class="settings-subsection card-sub">
+            <div class="settings-row">
+              <div>
+                <strong>休息结束提醒音</strong>
+                <p class="muted u-text-sm u-mt-tiny">休息结束后每隔30秒响一次，点击页面任意地方停止，最多提醒5分钟</p>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="sound-reminder-toggle" ${localStorage.getItem("sound_reminder_enabled") === "true" ? "checked" : ""} onchange="localStorage.setItem('sound_reminder_enabled', this.checked ? 'true' : 'false')">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="settings-row">
+              <div>
+                <strong>休息结束铃声</strong>
+                <p class="muted u-text-sm u-mt-tiny">休息结束遮罩出现时播放；每30秒重复一次</p>
+              </div>
+              <div class="field settings-control-field">
+                <select id="rest-reminder-sound-select" class="settings-select" aria-label="休息结束铃声">
+                  <option value="melody" ${restReminderSound === "melody" ? "selected" : ""}>温柔旋律</option>
+                  <option value="bell" ${restReminderSound === "bell" ? "selected" : ""}>小风铃</option>
+                  <option value="soft" ${restReminderSound === "soft" ? "selected" : ""}>低柔三音</option>
+                  <option value="bright" ${restReminderSound === "bright" ? "selected" : ""}>清亮提示</option>
+                </select>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <strong>专注到点提示音</strong>
+                <p class="muted u-text-sm u-mt-tiny">设定时间到点或结束本轮时播放；自由专注没有到点提醒</p>
+              </div>
+              <div class="field settings-control-field">
+                <select id="focus-end-sound-select" class="settings-select" aria-label="专注到点提示音">
+                  <option value="off" ${focusEndSound === "off" ? "selected" : ""}>不响</option>
+                  <option value="soft" ${focusEndSound === "soft" ? "selected" : ""}>轻柔双音</option>
+                  <option value="bell" ${focusEndSound === "bell" ? "selected" : ""}>小风铃</option>
+                  <option value="ding" ${focusEndSound === "ding" ? "selected" : ""}>清脆短音</option>
+                </select>
+              </div>
+            </div>
           </div>
-          <p class="field-hint" style="margin-top:10px">周六日无需手动设置；临时开放只对当天生效，第二天自动恢复自动判断。</p>
-          <div class="table-wrap" style="margin-top:18px">
-            <table class="holiday-table">
-              <thead><tr><th>假期名称</th><th>开始日期</th><th>结束日期</th><th>操作</th></tr></thead>
-              <tbody>
-                ${getHolidays().map((holiday) => `
-                  <tr>
-                    <td>${holiday.label}</td>
-                    <td>${holiday.start}</td>
-                    <td>${holiday.end}</td>
-                    <td><button class="btn btn-outline btn-sm" data-action="delete-holiday" data-holiday-id="${holiday.id}">删除</button></td>
-                  </tr>
-                `).join("")}
-              </tbody>
-            </table>
+        `)}
+        ${settingsGroup("ai", "auto_awesome", "AI", "AI 使用指南和 API 配置。", `
+          <div class="settings-subsection card-sub">
+            <h3>AI 使用指南</h3>
+            <p class="muted u-mt-1">四个 AI Prompt，分别用于做题（含拍整张卷排优先级啃卷子）、复习旧卡点、综合测验、从零重学一章。复制后粘贴到 AI（如 Gemini）的智能体设定里，即可激活对应的 AI 角色。</p>
+            <div class="ai-guide-prompts u-mt-6 u-stack-3">
+              <details class="ai-prompt-entry">
+                <summary class="ai-prompt-summary">
+                  <span class="ai-prompt-icon material-symbols-outlined">psychology</span>
+                  <div class="ai-prompt-meta">
+                    <strong>高中理科 AI 家教</strong>
+                    <span class="muted u-text-xs">做题就用这一个 · 发一道题直接做，或拍整张卷选「帮我排优先级」(排除已会→排序→逐题带) · 脚手架引导 → 总结套路 → 每题输出 MOCHI-RECORD</span>
+                  </div>
+                  <button class="btn btn-soft btn-sm ai-prompt-copy-btn" data-action="copy-ai-prompt" data-prompt-path="./skill/gaokao私教.md" type="button">
+                    <span class="material-symbols-outlined">content_copy</span>复制 Prompt
+                  </button>
+                </summary>
+                <div class="ai-prompt-steps">
+                  <p><strong>使用方法：</strong>在 AI（如 Gemini）新建一个智能体（Gem）或对话，把 Prompt 粘进去，以后做题一直用它。发一道题就直接带你做；拍整张卷子时它会问你「想自己定顺序，还是我帮你排个优先级」——选排序它就读图列题、让你报掉已经会的、给剩下的题排序，再一道一道带。每搞定一道输出一条 MOCHI-RECORD，你复制粘进导入框，再做下一道。</p>
+                  <p class="muted u-text-xs u-mt-6px">两种用法一个智能体：① 自由做题（你说题号）② 啃卷子（拍整张卷→排除已会→排序→逐题带）· 都是做一道粘一条</p>
+                </div>
+              </details>
+              <details class="ai-prompt-entry">
+                <summary class="ai-prompt-summary">
+                  <span class="ai-prompt-icon material-symbols-outlined">replay</span>
+                  <div class="ai-prompt-meta">
+                    <strong>高考复习 AI 私教</strong>
+                    <span class="muted u-text-xs">复习时用 · 读取学习档案 → 针对历史卡点出题 → 输出增强版 MOCHI-RECORD</span>
+                  </div>
+                  <button class="btn btn-soft btn-sm ai-prompt-copy-btn" data-action="copy-ai-prompt" data-prompt-path="./skill/gaokao复习私教.md" type="button">
+                    <span class="material-symbols-outlined">content_copy</span>复制 Prompt
+                  </button>
+                </summary>
+                <div class="ai-prompt-steps">
+                  <p><strong>使用方法：</strong>在「学习」页找到待复习的知识点，点「复制材料」，把内容粘贴给这个 AI。复习结束后把 AI 输出的记录粘贴回复习页导入。</p>
+                  <p class="muted u-text-xs u-mt-6px">流程：读取历史卡点 → 选1-2个优先复习点 → 出变式题 → 2层提示不给答案 → 复盘套路 → 输出含关键突破的记录</p>
+                </div>
+              </details>
+              <details class="ai-prompt-entry">
+                <summary class="ai-prompt-summary">
+                  <span class="ai-prompt-icon material-symbols-outlined">quiz</span>
+                  <div class="ai-prompt-meta">
+                    <strong>高考综合测验 AI 私教</strong>
+                    <span class="muted u-text-xs">综合测验时用 · 读取测验包 → 多知识点依次出题 → 一次性输出全部 MOCHI-RECORD</span>
+                  </div>
+                  <button class="btn btn-soft btn-sm ai-prompt-copy-btn" data-action="copy-ai-prompt" data-prompt-path="./skill/gaokao综合测验.md" type="button">
+                    <span class="material-symbols-outlined">content_copy</span>复制 Prompt
+                  </button>
+                </summary>
+                <div class="ai-prompt-steps">
+                  <p><strong>使用方法：</strong>在「学习 → 复习队列」点右上角「综合测验」复制测验包，粘给这个 AI。做完后把它输出的全部记录一起粘回复习页的综合测验面板导入。</p>
+                  <p class="muted u-text-xs u-mt-6px">流程：读取测验包 → 按热身→核心弱点顺序出题 → 每个知识点一道 → 全部做完一次性输出所有记录</p>
+                </div>
+              </details>
+              <details class="ai-prompt-entry">
+                <summary class="ai-prompt-summary">
+                  <span class="ai-prompt-icon material-symbols-outlined">school</span>
+                  <div class="ai-prompt-meta">
+                    <strong>从零重学 AI 私教</strong>
+                    <span class="muted u-text-xs">某章太烂、想从头学时用 · 从最基础一小步一小步带学会 → 学会一步就输出记录</span>
+                  </div>
+                  <button class="btn btn-soft btn-sm ai-prompt-copy-btn" data-action="copy-ai-prompt" data-prompt-path="./skill/gaokao重学.md" type="button">
+                    <span class="material-symbols-outlined">content_copy</span>复制 Prompt
+                  </button>
+                </summary>
+                <div class="ai-prompt-steps">
+                  <p><strong>使用方法：</strong>在「学习 → 学习档案」点「从零重学」，选一个想重学的知识点，会自动复制讲解材料；粘给这个 AI 跟着一步步学，把它输出的记录粘回面板导入。</p>
+                  <p class="muted u-text-xs u-mt-6px">流程：先用大白话讲这章在解决什么 → 拆成最小台阶一步步教 → 每步出超简单题确认 → 学会一步输出一条记录</p>
+                </div>
+              </details>
+            </div>
           </div>
-        </section>
-        <section class="card" style="grid-column:1 / -1">
-          <h3>更新到最新版本</h3>
-          <p class="muted" style="margin-top:4px">换一台电脑、或想同步我最新改的版本时，在<strong>那台电脑的项目文件夹</strong>里打开终端（Git Bash / 命令行），按下面操作。前提是这个文件夹当初是用 <code>git clone</code> 拉下来的。</p>
+          <div class="settings-subsection card-sub">
+            <h3>AI 配置</h3>
+            <form id="api-form" class="form-grid u-mt-7">
+              <div class="field">
+                <label>Base URL</label>
+                <input name="baseUrl" value="${config.baseUrl || ""}" placeholder="https://api.deepseek.com/v1" />
+                <p class="field-hint">常用：OpenAI https://api.openai.com/v1<br>DeepSeek https://api.deepseek.com/v1<br>Kimi https://api.moonshot.cn/v1<br>通义千问 https://dashscope.aliyuncs.com/compatible-mode/v1<br>Anthropic https://api.anthropic.com/v1</p>
+              </div>
+              <div class="field"><label>API Key</label><input type="password" name="apiKey" value="${config.apiKey || ""}" placeholder="sk-..." /></div>
+              <div class="field"><label>模型名称</label><input name="model" value="${config.model || ""}" placeholder="deepseek-chat / moonshot-v1-8k / qwen-plus" /></div>
+              <button class="btn btn-primary" type="submit"><span class="material-symbols-outlined">save</span>保存配置</button>
+            </form>
+          </div>
+        `)}
+        ${settingsGroup("data", "folder_copy", "数据", "备份与恢复、清空进度和恢复出厂设置。", `
+          <div class="settings-subsection card-sub">
+            <h3>数据备份与恢复</h3>
+            <p class="muted">备份会打包当前浏览器里保存的全部 Mochii 数据。恢复会覆盖当前数据。</p>
+            <div class="settings-list u-mt-7">
+              <button class="btn btn-ghost" data-action="export-data"><span class="material-symbols-outlined">download</span>导出备份</button>
+              <label class="btn btn-ghost u-pointer"><span class="material-symbols-outlined">upload</span>导入恢复<input id="backup-import" type="file" accept="application/json" hidden /></label>
+            </div>
+          </div>
+          <div class="settings-subsection card-sub">
+            <h3>数据管理</h3>
+            <p class="muted">清理测试数据或重新开始前，建议先导出备份。</p>
+            <div class="settings-list u-mt-7">
+              <button class="btn btn-danger-ghost" data-action="clear-progress">
+                <span class="material-symbols-outlined">restart_alt</span>
+                清空学习进度
+              </button>
+              <p class="field-hint">删除学习记录、专注记录、农场进度和学习状态；保留 API、假期、提醒音、游戏参数等设置。</p>
+              <button class="btn btn-danger-ghost" data-action="factory-reset">
+                <span class="material-symbols-outlined">delete_forever</span>
+                恢复出厂设置
+              </button>
+              <p class="field-hint">删除当前浏览器里 Mochii 的全部已知数据和设置，适合彻底重来。</p>
+            </div>
+          </div>
+        `)}
+        ${settingsGroup("holidays", "event_available", "假期管理", "假期日期、临时模式和假期列表。", `
+          <div class="settings-subsection card-sub">
+            <div class="u-inline-between">
+              <div>
+                <h3>假期管理</h3>
+                <p class="muted">周六日自动开放学习。寒暑假和法定假期请手动添加。上学期间临时想学习，点首页的「今天想学习」按钮即可，当天有效。</p>
+              </div>
+              <button class="btn btn-primary" data-action="open-holiday-form"><span class="material-symbols-outlined">add</span>添加假期</button>
+            </div>
+            <div class="mode-switch u-mt-7">
+              <button class="${mode === "auto" ? "active" : ""}" data-action="set-holiday-mode" data-mode="auto">自动判断</button>
+              <button class="${mode === "holiday" ? "active" : ""}" data-action="set-holiday-mode" data-mode="holiday">强制假期</button>
+              <button class="${mode === "school" ? "active" : ""}" data-action="set-holiday-mode" data-mode="school">强制冬眠</button>
+            </div>
+            <p class="field-hint u-mt-3">周六日无需手动设置；临时开放只对当天生效，第二天自动恢复自动判断。</p>
+            <div class="table-wrap u-mt-7">
+              <table class="holiday-table">
+                <thead><tr><th>假期名称</th><th>开始日期</th><th>结束日期</th><th>操作</th></tr></thead>
+                <tbody>
+                  ${getHolidays().map((holiday) => `
+                    <tr>
+                      <td>${holiday.label}</td>
+                      <td>${holiday.start}</td>
+                      <td>${holiday.end}</td>
+                      <td><button class="btn btn-ghost btn-sm" data-action="delete-holiday" data-holiday-id="${holiday.id}">删除</button></td>
+                    </tr>
+                  `).join("")}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `)}
+        ${settingsGroup("about", "info", "更新与关于", "更新命令、首次安装命令和构建信息。", `
+          <div class="settings-subsection card-sub">
+            <h3>更新到最新版本</h3>
+            <p class="muted u-mt-1">换一台电脑、或想同步我最新改的版本时，在<strong>那台电脑的项目文件夹</strong>里打开终端（Git Bash / 命令行），按下面操作。前提是这个文件夹当初是用 <code>git clone</code> 拉下来的。</p>
 
-          <div class="update-step">
-            <div class="update-step-head">
-              <strong>① 常规更新（多数情况用这个）</strong>
-              <button class="btn btn-soft btn-sm" data-action="copy-cmd" data-copy-text="git checkout main&#10;git pull origin main" type="button"><span class="material-symbols-outlined">content_copy</span>复制命令</button>
-            </div>
-            <pre class="update-cmd">git checkout main
+            <div class="update-step">
+              <div class="update-step-head">
+                <strong>① 常规更新（多数情况用这个）</strong>
+                <button class="btn btn-soft btn-sm" data-action="copy-cmd" data-copy-text="git checkout main&#10;git pull origin main" type="button"><span class="material-symbols-outlined">content_copy</span>复制命令</button>
+              </div>
+              <pre class="update-cmd">git checkout main
 git pull origin main</pre>
-            <p class="field-hint">把代码切到 main 分支，拉取 GitHub 上的最新版本。拉完浏览器刷新即可。</p>
-          </div>
+              <p class="field-hint">把代码切到 main 分支，拉取 GitHub 上的最新版本。拉完浏览器刷新即可。</p>
+            </div>
 
-          <details class="update-step" style="margin-top:14px">
-            <summary class="update-step-summary"><strong>② 拉取报错？强制和 GitHub 保持一致</strong></summary>
-            <div style="margin-top:10px">
-              <button class="btn btn-soft btn-sm" data-action="copy-cmd" data-copy-text="git fetch origin&#10;git checkout main&#10;git reset --hard origin/main" type="button"><span class="material-symbols-outlined">content_copy</span>复制命令</button>
-              <pre class="update-cmd" style="margin-top:10px">git fetch origin
+            <details class="update-step u-mt-5">
+              <summary class="update-step-summary"><strong>② 拉取报错？强制和 GitHub 保持一致</strong></summary>
+              <div class="u-mt-3">
+                <button class="btn btn-soft btn-sm" data-action="copy-cmd" data-copy-text="git fetch origin&#10;git checkout main&#10;git reset --hard origin/main" type="button"><span class="material-symbols-outlined">content_copy</span>复制命令</button>
+                <pre class="update-cmd u-mt-3">git fetch origin
 git checkout main
 git reset --hard origin/main</pre>
-              <p class="field-hint" style="color:#c0392b">⚠️ <code>reset --hard</code> 会丢弃那台电脑上所有未提交的本地改动，只保留 GitHub 上的版本。确认没有要保留的东西再用。</p>
-            </div>
-          </details>
+                <p class="field-hint u-danger-text">⚠️ <code>reset --hard</code> 会丢弃那台电脑上所有未提交的本地改动，只保留 GitHub 上的版本。确认没有要保留的东西再用。</p>
+              </div>
+            </details>
 
-          <details class="update-step" style="margin-top:14px">
-            <summary class="update-step-summary"><strong>③ 那台电脑还没有这个项目（首次）</strong></summary>
-            <div style="margin-top:10px">
-              <button class="btn btn-soft btn-sm" data-action="copy-cmd" data-copy-text="git clone https://github.com/ItsAlwaysTerry/MochiStudy.git" type="button"><span class="material-symbols-outlined">content_copy</span>复制命令</button>
-              <pre class="update-cmd" style="margin-top:10px">git clone https://github.com/ItsAlwaysTerry/MochiStudy.git</pre>
-              <p class="field-hint">把整个项目克隆到本地，进文件夹后用浏览器打开 index.html 即可。</p>
-            </div>
-          </details>
+            <details class="update-step u-mt-5">
+              <summary class="update-step-summary"><strong>③ 那台电脑还没有这个项目（首次）</strong></summary>
+              <div class="u-mt-3">
+                <button class="btn btn-soft btn-sm" data-action="copy-cmd" data-copy-text="git clone https://github.com/ItsAlwaysTerry/MochiStudy.git" type="button"><span class="material-symbols-outlined">content_copy</span>复制命令</button>
+                <pre class="update-cmd u-mt-3">git clone https://github.com/ItsAlwaysTerry/MochiStudy.git</pre>
+                <p class="field-hint">把整个项目克隆到本地，进文件夹后用浏览器打开 index.html 即可。</p>
+              </div>
+            </details>
 
-          <p class="field-hint" style="margin-top:14px">确认成功：运行 <code>git log --oneline -3</code>，最上面一条是最新提交即可；网站是纯静态的，拉完直接用浏览器打开 <code>index.html</code>。</p>
-        </section>
-        <section class="card">
-          <h3>关于</h3>
-          <p class="muted">Mochii v3.0 · 原生 HTML/CSS/JavaScript · 粘贴学习记录驱动档案、农场和日历。</p>
-        </section>
+            <p class="field-hint u-mt-5">确认成功：运行 <code>git log --oneline -3</code>，最上面一条是最新提交即可；网站是纯静态的，拉完直接用浏览器打开 <code>index.html</code>。</p>
+          </div>
+          <div class="settings-subsection card-sub">
+            <h3>关于</h3>
+            <p class="muted">Mochii v3.0 · 原生 HTML/CSS/JavaScript · 粘贴学习记录驱动档案、农场和日历。</p>
+            <p class="muted u-mt-2">构建 ${BUILD_ID}</p>
+          </div>
+        `)}
       </div>
     `;
     updateReadingPreview(container);
+  }
+
+  function openSettingsGroup(group) {
+    const details = document.getElementById(`settings-group-${group || ""}`);
+    if (!details) return;
+    details.open = true;
+    requestAnimationFrame(() => {
+      details.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
 
   function renderAchievements(container) {
@@ -3948,75 +4001,77 @@ git reset --hard origin/main</pre>
     const cfg = loadAchievementConfig();
     const earned = calcAchievements();
     const progress = buildAchievementProgress(cfg);
+    const lotteryTickets = Number(state.lotteryTickets || 0);
 
     container.innerHTML = `
-      <div class="page-head">
-        <div>
-          <h2>勋章收藏</h2>
-          <p>勋章会按累计阈值重复获得，自动换成抽奖机会。</p>
+      <div class="achievements-page">
+        <div class="page-head">
+          <div>
+            <h2>勋章收藏</h2>
+            <p>勋章会按累计阈值重复获得，自动换成抽奖机会。</p>
+          </div>
         </div>
+
+        <section class="card lottery-entry-card ${lotteryTickets > 0 ? "has-tickets" : "is-quiet"}">
+          <div class="lottery-entry-inner">
+            <div class="lottery-entry-copy">
+              <div class="lottery-tickets-display">
+                <span class="lottery-tickets-num">${lotteryTickets}</span>
+                <span class="lottery-tickets-label">
+                  <strong>次抽奖机会</strong>
+                  <span>每 ${cfg.lottery.smallPerDraw} 个小勋章或 ${cfg.lottery.bigPerDraw} 个大勋章换 1 次抽奖</span>
+                </span>
+              </div>
+              <div class="badge-summary badge-summary-compact" aria-label="勋章统计">
+                <div class="badge-summary-item">
+                  <span class="badge-summary-num">${state.totalBig || 0}</span>
+                  <span class="badge-summary-label">大勋章</span>
+                </div>
+                <div class="badge-summary-divider"></div>
+                <div class="badge-summary-item">
+                  <span class="badge-summary-num">${state.totalSmall || 0}</span>
+                  <span class="badge-summary-label">小勋章</span>
+                </div>
+                <div class="badge-summary-divider"></div>
+                <div class="badge-summary-item">
+                  <span class="badge-summary-num">${state.usedLotteryCount || 0}</span>
+                  <span class="badge-summary-label">已抽奖</span>
+                </div>
+              </div>
+            </div>
+            <button class="btn btn-primary" data-action="open-lottery" ${lotteryTickets === 0 ? "disabled" : ""}>
+              <span class="material-symbols-outlined">casino</span>
+              去抽奖
+            </button>
+          </div>
+        </section>
+
+        <section class="card">
+          <h3 class="u-mb-5">大勋章</h3>
+          <div class="badge-grid">
+            ${renderBadgeItem("big", "nodeRecords", "知识深耕", `每 ${cfg.big.nodeRecords} 条/知识点`, earned.big.nodeRecords, state.recentNew?.big?.nodeRecords || 0, "book_4", progress.big.nodeRecords)}
+            ${renderBadgeItem("big", "totalRecords", "刷题达人", `每累计 ${cfg.big.totalRecords} 条记录`, earned.big.totalRecords, state.recentNew?.big?.totalRecords || 0, "edit_note", progress.big.totalRecords)}
+            ${renderBadgeItem("big", "focusHours", "专注大师", `每累计 ${cfg.big.focusHours} 小时专注`, earned.big.focusHours, state.recentNew?.big?.focusHours || 0, "timer", progress.big.focusHours)}
+            ${renderBadgeItem("big", "farmLevel", "农场传说", `农场每升 ${cfg.big.farmLevelStep} 级`, earned.big.farmLevel, state.recentNew?.big?.farmLevel || 0, "agriculture", progress.big.farmLevel)}
+            ${renderBadgeItem("big", "studyDays", "长期坚持", `每累计 ${cfg.big.studyDays} 个学习日`, earned.big.studyDays, state.recentNew?.big?.studyDays || 0, "calendar_month", progress.big.studyDays)}
+          </div>
+        </section>
+
+        <section class="card">
+          <h3 class="u-mb-5">小勋章</h3>
+          <div class="badge-grid">
+            ${renderBadgeItem("small", "focusHours", "专注时光", `每 ${cfg.small.focusHours} 小时专注`, earned.small.focusHours, state.recentNew?.small?.focusHours || 0, "local_fire_department", progress.small.focusHours)}
+            ${renderBadgeItem("small", "studyDays", "坚持打卡", `每 ${cfg.small.studyDays} 个学习日`, earned.small.studyDays, state.recentNew?.small?.studyDays || 0, "check_circle", progress.small.studyDays)}
+            ${renderBadgeItem("small", "recordCount", "勤奋记录", `每 ${cfg.small.recordCount} 条记录`, earned.small.recordCount, state.recentNew?.small?.recordCount || 0, "menu_book", progress.small.recordCount)}
+            ${renderBadgeItem("small", "balancedWeeks", "均衡发展", `每 ${cfg.small.balancedWeeks} 个三科均衡周`, earned.small.balancedWeeks, state.recentNew?.small?.balancedWeeks || 0, "balance", progress.small.balancedWeeks)}
+            ${renderBadgeItem("small", "harvests", "丰收季节", `每收获 ${cfg.small.harvests} 次农场`, earned.small.harvests, state.recentNew?.small?.harvests || 0, "psychiatry", progress.small.harvests)}
+          </div>
+        </section>
+
+        ${renderSummerAchievements()}
+        ${renderSummerRewardHistory()}
+        ${renderLotteryHistory()}
       </div>
-
-      <section class="card lottery-entry-card">
-        <div class="lottery-entry-inner">
-          <div class="lottery-tickets-display">
-            <span class="lottery-tickets-num">${state.lotteryTickets || 0}</span>
-            <span class="lottery-tickets-label">次抽奖机会</span>
-          </div>
-          <button class="btn btn-primary" data-action="open-lottery" ${(state.lotteryTickets || 0) === 0 ? "disabled" : ""}>
-            <span class="material-symbols-outlined">casino</span>
-            去抽奖
-          </button>
-        </div>
-        <p class="muted lottery-rule-text">
-          每 ${cfg.lottery.smallPerDraw} 个小勋章或 ${cfg.lottery.bigPerDraw} 个大勋章换 1 次抽奖
-        </p>
-      </section>
-
-      <section class="card">
-        <div class="badge-summary">
-          <div class="badge-summary-item">
-            <span class="badge-summary-num">${state.totalBig || 0}</span>
-            <span class="badge-summary-label">大勋章</span>
-          </div>
-          <div class="badge-summary-divider"></div>
-          <div class="badge-summary-item">
-            <span class="badge-summary-num">${state.totalSmall || 0}</span>
-            <span class="badge-summary-label">小勋章</span>
-          </div>
-          <div class="badge-summary-divider"></div>
-          <div class="badge-summary-item">
-            <span class="badge-summary-num">${state.usedLotteryCount || 0}</span>
-            <span class="badge-summary-label">已抽奖</span>
-          </div>
-        </div>
-      </section>
-
-      <section class="card">
-        <h3 style="margin-bottom:16px">大勋章</h3>
-        <div class="badge-grid">
-          ${renderBadgeItem("big", "nodeRecords", "知识深耕", `每 ${cfg.big.nodeRecords} 条/知识点`, earned.big.nodeRecords, state.recentNew?.big?.nodeRecords || 0, "book_4", progress.big.nodeRecords)}
-          ${renderBadgeItem("big", "totalRecords", "刷题达人", `每累计 ${cfg.big.totalRecords} 条记录`, earned.big.totalRecords, state.recentNew?.big?.totalRecords || 0, "edit_note", progress.big.totalRecords)}
-          ${renderBadgeItem("big", "focusHours", "专注大师", `每累计 ${cfg.big.focusHours} 小时专注`, earned.big.focusHours, state.recentNew?.big?.focusHours || 0, "timer", progress.big.focusHours)}
-          ${renderBadgeItem("big", "farmLevel", "农场传说", `农场每升 ${cfg.big.farmLevelStep} 级`, earned.big.farmLevel, state.recentNew?.big?.farmLevel || 0, "agriculture", progress.big.farmLevel)}
-          ${renderBadgeItem("big", "studyDays", "长期坚持", `每累计 ${cfg.big.studyDays} 个学习日`, earned.big.studyDays, state.recentNew?.big?.studyDays || 0, "calendar_month", progress.big.studyDays)}
-        </div>
-      </section>
-
-      <section class="card">
-        <h3 style="margin-bottom:16px">小勋章</h3>
-        <div class="badge-grid">
-          ${renderBadgeItem("small", "focusHours", "专注时光", `每 ${cfg.small.focusHours} 小时专注`, earned.small.focusHours, state.recentNew?.small?.focusHours || 0, "local_fire_department", progress.small.focusHours)}
-          ${renderBadgeItem("small", "studyDays", "坚持打卡", `每 ${cfg.small.studyDays} 个学习日`, earned.small.studyDays, state.recentNew?.small?.studyDays || 0, "check_circle", progress.small.studyDays)}
-          ${renderBadgeItem("small", "recordCount", "勤奋记录", `每 ${cfg.small.recordCount} 条记录`, earned.small.recordCount, state.recentNew?.small?.recordCount || 0, "menu_book", progress.small.recordCount)}
-          ${renderBadgeItem("small", "balancedWeeks", "均衡发展", `每 ${cfg.small.balancedWeeks} 个三科均衡周`, earned.small.balancedWeeks, state.recentNew?.small?.balancedWeeks || 0, "balance", progress.small.balancedWeeks)}
-          ${renderBadgeItem("small", "harvests", "丰收季节", `每收获 ${cfg.small.harvests} 次农场`, earned.small.harvests, state.recentNew?.small?.harvests || 0, "psychiatry", progress.small.harvests)}
-        </div>
-      </section>
-
-      ${renderSummerAchievements()}
-      ${renderSummerRewardHistory()}
-      ${renderLotteryHistory()}
     `;
   }
 
@@ -4029,7 +4084,7 @@ git reset --hard origin/main</pre>
       const badges = Math.floor(Number(current || 0) / per);
       const toNext = (badges + 1) * per - Number(current || 0);
       return `
-        <div class="badge-item summer-honor-item ${badges > 0 ? "badge-earned" : ""}">
+        <div class="badge-item summer-honor-item ${badges > 0 ? "badge-earned" : "badge-empty"}">
           <div class="badge-summary-row">
             <div class="badge-icon"><span class="material-symbols-outlined">${icon}</span></div>
             <div class="badge-info">
@@ -4042,9 +4097,9 @@ git reset --hard origin/main</pre>
     };
     return `
       <section class="card summer-honor-card">
-        <h3 style="margin-bottom:6px">暑假计划成就</h3>
-        <p class="muted" style="margin:0 0 14px">跟着暑假计划一路收集的荣誉徽章（纯收藏，奖金走首页能量浮窗抽奖）。</p>
-        <div class="badge-grid">
+        <h3 class="u-mb-2">暑假计划成就</h3>
+        <p class="muted u-achievement-note">跟着暑假计划一路收集的荣誉徽章（纯收藏，奖金走首页能量浮窗抽奖）。</p>
+        <div class="badge-grid card-sub">
           ${item("smart_display", "看课达人", s.nodesCompleted, 5, "个节点")}
           ${item("local_fire_department", "达标日勋章", s.qualDays, 3, "个达标日")}
           ${item("military_tech", "阶段勋章", s.stages, 1, "个阶段")}
@@ -4070,7 +4125,7 @@ git reset --hard origin/main</pre>
               <p class="muted">完成暑假任务后，右下角能量浮窗抽到的奖励会记录在这里。</p>
             </div>
           </div>
-          <p class="muted" style="text-align:center;padding:14px 0">暂无暑假奖励记录</p>
+          <div class="card-sub"><p class="muted u-empty-note">暂无暑假奖励记录</p></div>
         </section>
       `;
     }
@@ -4108,7 +4163,7 @@ git reset --hard origin/main</pre>
             <strong>${totalAmount} 元</strong>
           </div>
         </div>
-        <div class="summer-reward-history-list">${rows}</div>
+        <div class="summer-reward-history-list card-sub">${rows}</div>
       </section>
     `;
   }
@@ -4122,8 +4177,8 @@ git reset --hard origin/main</pre>
     if (history.length === 0) {
       return `
         <section class="card">
-          <h3 style="margin-bottom:12px">抽奖历史</h3>
-          <p class="muted" style="text-align:center;padding:16px 0">暂无抽奖记录</p>
+          <h3 class="u-mb-4">抽奖历史</h3>
+          <div class="card-sub"><p class="muted u-empty-note-loose">暂无抽奖记录</p></div>
         </section>
       `;
     }
@@ -4140,17 +4195,19 @@ git reset --hard origin/main</pre>
     }).join("");
     return `
       <section class="card">
-        <h3 style="margin-bottom:12px">抽奖历史</h3>
-        <div class="lottery-history-list">${rows}</div>
+        <h3 class="u-mb-4">抽奖历史</h3>
+        <div class="lottery-history-list card-sub">${rows}</div>
       </section>
     `;
   }
 
   function renderBadgeItem(type, key, label, desc, totalEarned, newCount, icon, progress) {
     const pendingCount = Math.max(0, Number(newCount || 0));
+    const earnedCount = Number(totalEarned || 0);
+    const earnedClass = earnedCount > 0 ? "badge-earned" : "badge-empty";
     const rule = progress || {};
     return `
-      <details class="badge-item ${pendingCount > 0 ? "badge-new" : ""}" data-badge-type="${type}" data-badge-key="${key}">
+      <details class="badge-item ${earnedClass} ${pendingCount > 0 ? "badge-new" : ""}" data-badge-type="${type}" data-badge-key="${key}">
         <summary class="badge-summary-row">
           <div class="badge-icon"><span class="material-symbols-outlined">${icon}</span></div>
           <div class="badge-info">
@@ -4158,7 +4215,7 @@ git reset --hard origin/main</pre>
             <span class="muted">${desc}</span>
           </div>
           <div class="badge-count">
-            <span class="badge-total">x${Number(totalEarned || 0)}</span>
+            <span class="badge-total">x${earnedCount}</span>
             ${pendingCount > 0 ? `<span class="badge-new-tag">+${pendingCount}</span>` : ""}
           </div>
           <span class="material-symbols-outlined badge-expand-icon">expand_more</span>
@@ -4186,7 +4243,7 @@ git reset --hard origin/main</pre>
     el.className = "toast";
     el.textContent = message;
     toastRoot.appendChild(el);
-    setTimeout(() => el.remove(), 2600);
+    setTimeout(() => el.remove(), 2400);
   }
 
   let _audioCtx = null;
@@ -4600,7 +4657,7 @@ ${record.originalQuestion || "暂无原题描述。"}
       sparkle(result, "★");
       textarea.value = "";
       window.MochiPet.renderMiniState();
-      if (!document.body.classList.contains("focus-mode")) {
+      if (!document.body.classList.contains("focus-mode") && currentRoute() !== "home") {
         window.MochiFarm?.refreshFarmSummary?.();
         refreshVisibleRoute();
       }
@@ -4647,7 +4704,7 @@ ${record.originalQuestion || "暂无原题描述。"}
     sparkle(result, "★");
     textarea.value = "";
     window.MochiPet.renderMiniState();
-    if (!document.body.classList.contains("focus-mode")) {
+    if (!document.body.classList.contains("focus-mode") && currentRoute() !== "home") {
       window.MochiFarm?.refreshFarmSummary?.();
       refreshVisibleRoute();
     }
@@ -4756,8 +4813,8 @@ ${record.originalQuestion || "暂无原题描述。"}
         <div class="commitment-field">
           <label class="commitment-label">这一轮目标</label>
           ${presets.length ? `<p class="commitment-presets-label">点一个快速填入，或自己写：</p>${presetHtml}` : ""}
-          <input id="commitment-goal" class="commitment-goal-input" type="text"
-            placeholder="比如：三角函数大题 2 道 / 搞懂电磁感应这个概念" maxlength="40" autocomplete="off" style="margin-top:8px" />
+          <input id="commitment-goal" class="commitment-goal-input u-mt-2" type="text"
+            placeholder="比如：三角函数大题 2 道 / 搞懂电磁感应这个概念" maxlength="40" autocomplete="off" />
           <p class="commitment-tip">越具体越好——写"做几道""搞懂哪个"，别写"学习"</p>
         </div>
         <div class="commitment-field">
@@ -4768,7 +4825,7 @@ ${record.originalQuestion || "暂无原题描述。"}
             <button class="commitment-dur-btn" data-mins="60" type="button">1 小时</button>
             <button class="commitment-dur-btn commitment-dur-custom" data-mins="custom" type="button">自定义</button>
           </div>
-          <input id="commitment-custom-mins" class="commitment-custom-input" type="number" min="5" max="180" placeholder="输入分钟数（5-180）" style="display:none" />
+          <input id="commitment-custom-mins" class="commitment-custom-input u-hidden" type="number" min="5" max="180" placeholder="输入分钟数（5-180）" />
         </div>
         <button id="commitment-start" class="btn commitment-start-btn" type="button" disabled>
           <span class="material-symbols-outlined">timer</span>开始这一轮
@@ -5036,7 +5093,7 @@ ${record.originalQuestion || "暂无原题描述。"}
               <span class="material-symbols-outlined">self_improvement</span>
               开始休息 ${restMins} 分钟
             </button>
-            <button class="btn btn-ghost btn-sm" data-action="end-today" type="button" style="color:rgba(255,255,255,0.35);margin-top:4px">
+            <button class="btn btn-ghost btn-sm u-focus-quiet-action" data-action="end-today" type="button">
               结束今天的学习
             </button>
           </div>
@@ -5062,13 +5119,12 @@ ${record.originalQuestion || "暂无原题描述。"}
             ${timer.freeMode ? `
               <circle cx="110" cy="110" r="${radius}" fill="none" stroke="var(--primary)" stroke-width="8" stroke-linecap="round" opacity="0.75"></circle>
             ` : `
-            <circle class="focus-ring-progress" cx="110" cy="110" r="${radius}" fill="none"
+            <circle class="focus-ring-progress u-stroke-transition" cx="110" cy="110" r="${radius}" fill="none"
               stroke="${overTime ? "var(--tertiary)" : "var(--primary)"}" stroke-width="6"
               stroke-linecap="round"
               stroke-dasharray="${circumference}"
               stroke-dashoffset="${dashOffset}"
-              transform="rotate(-90 110 110)"
-              style="transition:stroke-dashoffset 1s linear"></circle>
+              transform="rotate(-90 110 110)"></circle>
             `}
           </svg>
           <div class="focus-time-display">
@@ -5085,7 +5141,7 @@ ${record.originalQuestion || "暂无原题描述。"}
             <span class="material-symbols-outlined">collapse_content</span>
             收起计时
           </button>
-          <button class="btn btn-ghost btn-sm" data-action="give-up" type="button" style="color:rgba(255,255,255,0.35);margin-top:4px">
+          <button class="btn btn-ghost btn-sm u-focus-quiet-action" data-action="give-up" type="button">
             放弃本轮
           </button>
         </div>
@@ -5096,7 +5152,7 @@ ${record.originalQuestion || "暂无原题描述。"}
           </button>
           <div class="focus-import-body" hidden>
             <textarea id="focus-record-paste" rows="2" placeholder="粘贴 AI 给你的记录，自动导入"></textarea>
-            <button class="btn btn-soft btn-sm" data-action="parse-focus-record" style="width:100%;margin-top:6px" type="button">导入</button>
+            <button class="btn btn-soft btn-sm u-full-width u-mt-6px" data-action="parse-focus-record" type="button">导入</button>
             <div id="focus-upload-result" class="focus-upload-result"></div>
           </div>
         </div>
@@ -5914,6 +5970,7 @@ ${record.originalQuestion || "暂无原题描述。"}
       }
       if (name === "copy-ai-prompt") { copyAiPromptFile(action); return; }
       if (name === "copy-cmd") { copyCmd(action); return; }
+      if (name === "open-settings-group") { openSettingsGroup(action.dataset.settingsGroup); return; }
       if (name === "export-data") exportData();
       if (name === "clear-progress") clearProgressData();
       if (name === "factory-reset" || name === "clear-data") factoryResetData();

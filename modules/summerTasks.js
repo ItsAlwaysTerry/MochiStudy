@@ -969,19 +969,21 @@
       <section class="card summer-task-card">
         ${renderSubjectTabs()}
         <div class="summer-route-hero">
-          <div>
+          <div class="summer-hero-title-line">
+            <div>
             <p class="summer-kicker">${activeSubject === "physics" ? "暑假物理" : escapeHtml(currentSubjectLabel())}滚动任务</p>
             <h3>${escapeHtml(hero.title)}</h3>
             <p>${escapeHtml(hero.description)}</p>
-          </div>
-          <div class="summer-hero-stats" aria-label="今日${escapeHtml(currentSubjectLabel())}任务概览">
-            ${hero.stats.map((item) => `
-              <div class="summer-hero-stat">
+            </div>
+            <div class="summer-hero-stats" aria-label="今日${escapeHtml(currentSubjectLabel())}任务概览">
+              ${hero.stats.map((item) => `
+              <span class="summer-hero-stat">
                 <span>${escapeHtml(item.label)}</span>
                 <strong>${escapeHtml(item.value)}</strong>
                 ${item.note ? `<small>${escapeHtml(item.note)}</small>` : ""}
-              </div>
+              </span>
             `).join("")}
+            </div>
           </div>
         </div>
         ${activeDay && !routeDayCompleted(activeDay, state) ? `
@@ -1053,7 +1055,7 @@
 
   function sharedRewardFallback() {
     return {
-      collapsed: false, position: null,
+      collapsed: true, position: null,
       paidTodayDate: "", paidToday: 0,
       weekKey: "", weekPaid: 0,
       dailySmallDate: "", dailySmallPaid: 0,
@@ -1543,8 +1545,9 @@
     const eco = syncEconomy();
     const r = readSharedReward();
     const collapsed = Boolean(r.collapsed);
-    const pos = r.position && Number.isFinite(r.position.x) && Number.isFinite(r.position.y)
-      ? `left:${Math.max(8, Number(r.position.x))}px;top:${Math.max(8, Number(r.position.y))}px;right:auto;bottom:auto` : "";
+    const hasPosition = r.position && Number.isFinite(r.position.x) && Number.isFinite(r.position.y);
+    const pos = hasPosition
+      ? `left:${Math.max(REWARD_EDGE_INSET, Number(r.position.x))}px;top:${Math.max(REWARD_EDGE_INSET, Number(r.position.y))}px;right:auto;bottom:auto` : "";
     const energy = eco.energy;
     const daily = Number(r.dailyTickets || 0);
     const stageT = Number(r.stageTickets || 0);
@@ -1579,15 +1582,16 @@
     const headTitle = draw
       ? (draw.phase === "ready" ? "摇骰子抽奖" : drawResult ? "抽奖结果" : "走格中")
       : (canDraw ? `可抽奖 ${tickets} 次` : "今日能量");
+    const collapsedTitle = canDraw ? `⚡${energy} · 可抽${tickets}` : `⚡${energy}`;
     return `
-      <aside class="summer-reward-float ${collapsed ? "collapsed" : ""} ${canDraw ? "ready" : ""} ${drawRunning ? "drawing" : ""}" data-summer-reward style="--reward-angle:${energyAngle}deg;${pos}">
+      <aside class="summer-reward-float ${collapsed ? "collapsed" : ""} ${canDraw ? "ready" : ""} ${drawRunning ? "drawing" : ""}" data-summer-reward data-reward-positioned="${hasPosition ? "true" : "false"}" style="--reward-angle:${energyAngle}deg;${pos}">
         <div class="summer-reward-head" data-summer-reward-drag role="button" tabindex="0" aria-label="${collapsed ? "展开" : "收起"}今日能量">
           <span class="summer-reward-icon">
             <span class="material-symbols-outlined ${iconClass}">${iconGlyph}</span>
           </span>
           <div>
-            <strong>${headTitle}</strong>
-            <span>今日 ${energy} 个节点 · ¥${earnedToday}/${ECON.dailyCap}</span>
+            <strong>${collapsed ? collapsedTitle : headTitle}</strong>
+            ${collapsed ? "" : `<span>今日 ${energy} 个节点 · ¥${earnedToday}/${ECON.dailyCap}</span>`}
           </div>
           <span class="summer-reward-arrow material-symbols-outlined">${collapsed ? "keyboard_arrow_up" : "keyboard_arrow_down"}</span>
         </div>
@@ -1746,11 +1750,12 @@
     return `
       <div class="summer-today-panel">
         <div class="summer-today-summary">
-          <div>
+          <p>
+            <span class="material-symbols-outlined">visibility</span>
             <strong>${pendingTask ? "当前有关联导入" : "当前只看这几条"}</strong>
             <span>还剩 ${remainingDetailed} 节详细任务</span>
-          </div>
-          <p>${nextText}</p>
+            <span>${nextText}</span>
+          </p>
         </div>
         ${renderDayGroup("滚动任务队列", "按未完成优先排序；不用手动挪计划。", tasks, state)}
       </div>
@@ -2630,7 +2635,7 @@
     return `
       <div class="summer-stepper" aria-label="任务步骤">
         ${steps.map((label, index) => `
-          <button class="${index < flow.step ? "done" : index === flow.step ? "active" : ""} ${index > flow.step ? "future" : ""} ${index === selectedStep ? "selected" : ""}" data-summer-action="show-step" data-task-id="${escapeHtml(task.id)}" data-step="${index}" type="button" aria-pressed="${index === selectedStep ? "true" : "false"}">
+          <button class="chip ${index < flow.step ? "done" : index === flow.step ? "active" : ""} ${index > flow.step ? "future" : ""} ${index === selectedStep ? "selected" : ""}" data-summer-action="show-step" data-task-id="${escapeHtml(task.id)}" data-step="${index}" type="button" aria-pressed="${index === selectedStep ? "true" : "false"}">
             <i>${index < flow.step ? "✓" : index + 1}</i>${label}
           </button>
         `).join("")}
@@ -2642,27 +2647,21 @@
     const practiceItems = getPracticeItems(task);
     if (selectedStep === 0) {
       return `
-        <section class="summer-step-panel">
-          <div class="summer-step-panel-head">
-            <span class="material-symbols-outlined">play_circle</span>
-            <div>
-              <strong>先看主线视频</strong>
-              <p>${escapeHtml(task.source)} · ${escapeHtml(task.duration)} · 建议专注 ${Number(task.focusMins || 25)} 分钟。按主按钮开始，其他操作已收进抽屉。</p>
-            </div>
-          </div>
-        </section>
+        <p class="summer-step-hint">
+          <span class="material-symbols-outlined">play_circle</span>
+          <strong>先看主线视频</strong>
+          <span>${escapeHtml(task.source)} · ${escapeHtml(task.duration)} · 建议专注 ${Number(task.focusMins || 25)} 分钟。按主按钮开始，其他操作已收进抽屉。</span>
+        </p>
       `;
     }
     if (selectedStep === 1) {
       return `
         <section class="summer-step-panel summer-step-panel-practice">
-          <div class="summer-step-panel-head">
+          <p class="summer-step-hint">
             <span class="material-symbols-outlined">edit_note</span>
-            <div>
-              <strong>做过关小题</strong>
-              <p>${practiceItems.length ? `这节课有 ${practiceItems.length} 道小题。先自己想，再复制给 AI 带做。` : "这节课先收集视频例题截图，再用 MOCHI-RECORD 完成学习闭环。"}</p>
-            </div>
-          </div>
+            <strong>做过关小题</strong>
+            <span>${practiceItems.length ? `这节课有 ${practiceItems.length} 道小题。先自己想，再复制给 AI 带做。` : "这节课先收集视频例题截图，再用 MOCHI-RECORD 完成学习闭环。"}</span>
+          </p>
           ${renderPrep(task)}
           ${renderPracticeItems(task, practiceItems)}
         </section>
@@ -2671,33 +2670,25 @@
     if (selectedStep === 2) {
       const readyToReflect = Boolean(taskInfo.completed || taskInfo.exampleQuizPromptCopiedAt || taskInfo.promptCopiedAt);
       return `
-        <section class="summer-step-panel">
-          <div class="summer-step-panel-head">
-            <span class="material-symbols-outlined">edit_note</span>
-            <div>
-              <strong>本节收尾</strong>
-              <p>${readyToReflect ? "打开下面的“学习材料与记录”，粘回记录后写一句给未来自己的提醒。" : "先完成做题或复制同类测验包，再写本节收尾。"}</p>
-            </div>
-          </div>
-        </section>
+        <p class="summer-step-hint">
+          <span class="material-symbols-outlined">edit_note</span>
+          <strong>本节收尾</strong>
+          <span>${readyToReflect ? "打开下面的“学习材料与记录”，粘回记录后写一句给未来自己的提醒。" : "先完成做题或复制同类测验包，再写本节收尾。"}</span>
+        </p>
       `;
     }
     return `
-      <section class="summer-step-panel ${taskInfo.completed && (!taskInfo.reflectionRequired || taskInfo.reflectionDone) ? "done" : ""}">
-        <div class="summer-step-panel-head">
-          <span class="material-symbols-outlined">${taskInfo.completed && (!taskInfo.reflectionRequired || taskInfo.reflectionDone) ? "check_circle" : "flag"}</span>
-          <div>
-            <strong>${taskInfo.completed && (!taskInfo.reflectionRequired || taskInfo.reflectionDone) ? "这节已完成" : "完成条件"}</strong>
-            <p>${taskInfo.completed && (!taskInfo.reflectionRequired || taskInfo.reflectionDone) ? "已经写完本节收尾，后面复习能回看。" : "看完视频、做完练题，并保存本节收尾后才会顺延。"}</p>
-          </div>
-        </div>
-      </section>
+      <p class="summer-step-hint ${taskInfo.completed && (!taskInfo.reflectionRequired || taskInfo.reflectionDone) ? "done" : ""}">
+        <span class="material-symbols-outlined">${taskInfo.completed && (!taskInfo.reflectionRequired || taskInfo.reflectionDone) ? "check_circle" : "flag"}</span>
+        <strong>${taskInfo.completed && (!taskInfo.reflectionRequired || taskInfo.reflectionDone) ? "这节已完成" : "完成条件"}</strong>
+        <span>${taskInfo.completed && (!taskInfo.reflectionRequired || taskInfo.reflectionDone) ? "已经写完本节收尾，后面复习能回看。" : "看完视频、做完练题，并保存本节收尾后才会顺延。"}</span>
+      </p>
     `;
   }
 
   function renderTaskActions(task, flow) {
     const disabled = flow.action === "done" ? " disabled" : "";
-    const primaryClass = flow.tone === "done" ? "btn-soft" : "btn-primary";
+    const primaryClass = flow.tone === "done" ? "btn-ghost" : "btn-primary";
     return `
       <div class="summer-task-actions">
         <button class="btn ${primaryClass} btn-sm summer-next-btn" data-summer-action="${escapeHtml(flow.action)}" data-task-id="${escapeHtml(task.id)}" type="button"${disabled}>
@@ -2706,16 +2697,16 @@
         ${flow.action === "open-task-support" && flow.tone === "done" ? "" : `<details class="summer-more-actions">
           <summary>更多操作</summary>
           <div>
-            <a class="btn btn-soft btn-sm" href="${escapeHtml(task.url)}" target="_blank" rel="noreferrer">
+            <a class="btn btn-ghost btn-sm" href="${escapeHtml(task.url)}" target="_blank" rel="noreferrer">
               <span class="material-symbols-outlined">open_in_new</span>打开资源
             </a>
-            <button class="btn btn-soft btn-sm" data-summer-action="focus" data-task-id="${escapeHtml(task.id)}" type="button">
+            <button class="btn btn-ghost btn-sm" data-summer-action="focus" data-task-id="${escapeHtml(task.id)}" type="button">
               <span class="material-symbols-outlined">timer</span>开始专注
             </button>
-            <button class="btn btn-soft btn-sm" data-summer-action="practice" data-task-id="${escapeHtml(task.id)}" type="button">
+            <button class="btn btn-ghost btn-sm" data-summer-action="practice" data-task-id="${escapeHtml(task.id)}" type="button">
               <span class="material-symbols-outlined">edit_note</span>${flow.hasPractice ? "做小题" : "收集例题"}
             </button>
-            <button class="btn btn-soft btn-sm" data-summer-action="watched" data-task-id="${escapeHtml(task.id)}" type="button">
+            <button class="btn btn-ghost btn-sm" data-summer-action="watched" data-task-id="${escapeHtml(task.id)}" type="button">
               <span class="material-symbols-outlined">visibility</span>标记看完
             </button>
           </div>
@@ -2928,6 +2919,10 @@
       el.addEventListener("pointerdown", handleRewardDragStart);
       el.addEventListener("keydown", handleRewardHeadKeydown);
     });
+    const rewardFloat = container.querySelector("[data-summer-reward]");
+    if (rewardFloat?.dataset.rewardPositioned === "true") {
+      requestAnimationFrame(() => clampRewardIntoViewport(rewardFloat, { persist: true }));
+    }
     const activeReward = rewardState(readState()).drawAnimation;
     if (activeReward?.active) scheduleRewardAnimation(activeReward, 220);
     hydrateExampleImages(container);
@@ -3737,11 +3732,39 @@
 
   // 整个头部区域既能点按（轻触=展开/收起）又能拖动（按住移动=挪位置），
   // 用移动距离区分两者，不用把点击区和拖拽区拆成两块（此前拆分导致交互割裂、易误触）。
+  const REWARD_EDGE_INSET = 16;
+  const REWARD_MOBILE_BOTTOM_SAFE = 88;
   const REWARD_DRAG_THRESHOLD = 6;
+
+  function rewardBottomInset() {
+    return window.matchMedia?.("(max-width: 980px)")?.matches ? REWARD_MOBILE_BOTTOM_SAFE : REWARD_EDGE_INSET;
+  }
+
+  function clampRewardPosition(x, y, width, height) {
+    const maxX = Math.max(REWARD_EDGE_INSET, window.innerWidth - width - REWARD_EDGE_INSET);
+    const maxY = Math.max(REWARD_EDGE_INSET, window.innerHeight - height - rewardBottomInset());
+    return {
+      x: Math.min(Math.max(REWARD_EDGE_INSET, x), maxX),
+      y: Math.min(Math.max(REWARD_EDGE_INSET, y), maxY),
+    };
+  }
+
+  function clampRewardIntoViewport(float, options = {}) {
+    if (!float?.getBoundingClientRect) return null;
+    const rect = float.getBoundingClientRect();
+    const next = clampRewardPosition(rect.left, rect.top, rect.width, rect.height);
+    float.style.left = `${next.x}px`;
+    float.style.top = `${next.y}px`;
+    float.style.right = "auto";
+    float.style.bottom = "auto";
+    if (options.persist) writeSharedReward({ position: { x: Math.round(next.x), y: Math.round(next.y) } });
+    return next;
+  }
 
   function handleRewardDragStart(event) {
     const float = event.currentTarget.closest("[data-summer-reward]");
     if (!float) return;
+    event.preventDefault();
     const rect = float.getBoundingClientRect();
     const offsetX = event.clientX - rect.left;
     const offsetY = event.clientY - rect.top;
@@ -3757,10 +3780,9 @@
       }
       const width = float.offsetWidth || rect.width;
       const height = float.offsetHeight || rect.height;
-      const x = Math.min(Math.max(8, moveEvent.clientX - offsetX), window.innerWidth - width - 8);
-      const y = Math.min(Math.max(8, moveEvent.clientY - offsetY), window.innerHeight - height - 8);
-      float.style.left = `${x}px`;
-      float.style.top = `${y}px`;
+      const next = clampRewardPosition(moveEvent.clientX - offsetX, moveEvent.clientY - offsetY, width, height);
+      float.style.left = `${next.x}px`;
+      float.style.top = `${next.y}px`;
       float.style.right = "auto";
       float.style.bottom = "auto";
     };
@@ -3768,9 +3790,10 @@
       float.removeEventListener("pointermove", move);
       float.removeEventListener("pointerup", up);
       float.removeEventListener("pointercancel", up);
+      float.releasePointerCapture?.(event.pointerId);
       if (dragged) {
-        const nextRect = float.getBoundingClientRect();
-        writeSharedReward({ position: { x: Math.round(nextRect.left), y: Math.round(nextRect.top) } });
+        const next = clampRewardIntoViewport(float);
+        if (next) writeSharedReward({ position: { x: Math.round(next.x), y: Math.round(next.y) } });
       } else {
         toggleRewardCollapsed();
       }
@@ -4120,7 +4143,7 @@
       <h3>手动复制例题图片</h3>
       <p class="muted">浏览器没有放行“直接复制图片”。右键下面图片复制，或者把图片拖到 Gemini 对话框里。</p>
       <img class="summer-image-copy-fallback" src="${escapeHtml(url)}" alt="${escapeHtml(title || "例题图片")}">
-      <button class="btn btn-primary" data-action="close-modal" type="button" style="width:100%;margin-top:10px">我处理好了</button>
+      <button class="btn btn-primary u-full-width u-mt-3" data-action="close-modal" type="button">我处理好了</button>
     `);
   }
 
@@ -4383,7 +4406,7 @@
       <h3>复制过关小题 Prompt</h3>
       <p class="muted">浏览器没有放行剪贴板。点下面文本框后 Ctrl+A / Ctrl+C，再粘给 AI。</p>
       <textarea class="summer-prompt-fallback" rows="9" readonly>${escapeHtml(prompt)}</textarea>
-      <button class="btn btn-primary" data-action="close-modal" type="button" style="width:100%;margin-top:10px">我复制好了</button>
+      <button class="btn btn-primary u-full-width u-mt-3" data-action="close-modal" type="button">我复制好了</button>
     `);
     setTimeout(() => {
       const textarea = document.querySelector(".summer-prompt-fallback");

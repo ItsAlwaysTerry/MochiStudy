@@ -533,3 +533,16 @@ v34 之后的改动：
 - **调试**：`?debug=1` 面板加「重置奖励」（`debugResetReward()` 清 `summer_reward`，撞上限后可重测）、「+暑假券」（`debugGrantTickets(2,1)`）。
 - **验证**：codex 真机截图证实抽奖链路端到端跑通（曾实测抽中 ¥20/¥50）；蛋糕居中已由用户确认；后续 codex 因机器到 OpenAI 网络不稳（`tls handshake eof`）时改用本地模拟 + 用户肉眼确认。npm 版 codex CLI 因太旧读不懂新模型目录 `max` 档报「加载出错」，已更新 `0.137.0→0.144.5`。
 - **备查**：`docs/review-batch/reward-economy-design.md`（含第十二节预算上限说明）、`docs/review-batch/骰子恢复实测.md`。
+
+### UI 现代化改造 Phase 0–5（builds `20260716p`–`20260716u`，2026-07-17）
+
+全站视觉/交互重构，方向「暖白极简」：梅红 `#864d61` 唯一行动色，科目色降为微识别，卡片最多两层面。计划文档 `docs/ui-redesign-plan.md`；每阶段报告 + 前后截图在 `docs/review-batch/ui-phase-N-report.md` + `screenshots/ui-phase-N/`。分工：Claude 计划+验收，codex 全部执行+CDP 截图/冒烟。
+
+- **Phase 0 地基**（`p`）：`:root` 新 token（`--ink/--ink-2/--ink-3/--line/--r-lg/md/xs/full/--fs-xs..num/--sp-1..6/--shadow-1/2/--good/warn/bad/gold`），旧 token 改为别名保兼容；`.btn-primary/.btn-tonal(=btn-soft)/.btn-ghost/.btn-sm`、`.seg/.seg-item`、`.chip`、`.card-sub`、`.field` 组件类；硬编码圆角/字号/色值大迁移（跳过区：抽奖深色、奖励金橙、`--study-reading-*`、专用大数字）；JS 内联 style 只剩动态值（进度宽度/CSS 变量/动画延迟/精灵定位）。
+- **Phase 1 全局秩序**（`q`）：能量浮窗默认收起为胶囊（沿用 `summer_reward.collapsed/position`），拖动边界视口内 16px、移动端底部安全区 88px，有券时脉冲；toast 顶部居中 z-index 1000；顶栏去卡片化，**build 号移到设置页「关于」（`app.js` `BUILD_ID` 常量，升 `?v=` 时必须同步）**；导航激活态统一 `--primary-tint` 底 + `--primary` 字；style.css 顶部有全站 z-index 清册注释（改浮层先看它）。
+- **Phase 2 首页**（`r`）：暑假任务卡嵌套 5 层→2 层（队列项=分隔线列表、步骤=`.chip` 行内、提示=一行小字、材料抽屉=轻链接行）；streak 横幅单行化；右栏顺序 专注卡→导入子块（`.card-sub`）→成长卡（迷你农场+本周趋势合并）；地块底色改暖土渐变（精灵可见性已验证，`pixelated`/`screen` 未动）；移动端 `.home-flow` 底部 padding 112px。
+- **Phase 3 学习页**（`s`）：页面 tab 和科目切换改 `.seg` 分段控制器、动作按钮统一 `.btn-ghost.btn-sm`（形状=功能）；复习行改两行制，**复习原因永不截断**；档案摘要 4 列→双列、「测这个知识点」降为常规宽 `.btn-tonal`；卡片详情用 `--line` 分隔不再套框。
+- **Phase 4 勋章+设置**（`t`）：抽奖机会压成单行 `.lottery-entry-card`（has-tickets/is-quiet）；勋章行 `badge-empty`（x0 轻空态：透明底+灰字+去饱和图标）/`badge-earned`（实底+`--primary-tint` 数量 chip）；设置页六组 `<details class="settings-group">` 手风琴（默认全收）+顶部锚点 chips（`data-action="open-settings-group"`）；`.field` 表单统一；`html{scroll-padding-top:112px}`。
+- **Phase 5 收官**（`u`）：沉浸态「放弃本轮」白描边 ghost、deciding 按钮纵向等宽、导入区半透明卡底；抽奖 overlay 底色桥接为深梅 `#2d1420` 渐变+金色统一 `--gold`（三段式玩法/动画/音效/保底零改动）；移动端点击目标≥40px、收起态能量胶囊移至顶栏右侧；死 CSS 删 `.schedule-grid`/`.home-grid`（`.muyu-*` 等存疑项保守保留，见报告）；`reviewEngine.js` `buildPrimaryReason()` 拼接前 strip 卡点末尾句号（修双句号）。
+- **一处行为修正**：首页导入成功后不再调 `refreshFarmSummary()`+`refreshVisibleRoute()`（`currentRoute()!=="home"` 才刷）——否则全量 `renderFarm()` 会立即冲掉打卡成功卡。代价：首页成长卡数字延迟到下次渲染才更新（成功卡内进度条是新值）。
+- **验证**：每阶段 `node --check` 全过 + 同角度截图对比；Phase 5 末 CDP 实点冒烟（专注全流程→三 tab→抽奖完整流程→设置→导入 MOCHI-RECORD）零 console error。

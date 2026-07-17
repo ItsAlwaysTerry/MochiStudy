@@ -588,28 +588,28 @@
           <span class="material-symbols-outlined">timer</span>
           <div>
             <small>今日专注</small>
-            <strong>${formatMinutes(stats.totalMinutes)}</strong>
+            <strong class="today-stat-num">${formatMinutes(stats.totalMinutes)}</strong>
           </div>
         </article>
         <article class="today-stat">
           <span class="material-symbols-outlined">schedule</span>
           <div>
             <small>学习时段</small>
-            <strong>${escapeHtml(stats.windowLabel)}</strong>
+            <strong class="today-stat-text">${escapeHtml(stats.windowLabel)}</strong>
           </div>
         </article>
         <article class="today-stat">
           <span class="material-symbols-outlined">style</span>
           <div>
             <small>导入卡片</small>
-            <strong>${stats.cardCount}张</strong>
+            <strong class="today-stat-num">${stats.cardCount}张</strong>
           </div>
         </article>
         <article class="today-stat">
           <span class="material-symbols-outlined">auto_stories</span>
           <div>
             <small>涉及科目</small>
-            <strong>${stats.subjectCount}科</strong>
+            <strong class="today-stat-num">${stats.subjectCount}科</strong>
           </div>
         </article>
       </section>
@@ -787,10 +787,10 @@
     const options = dates.map((d) => `<option value="${d}"${d === viewDate ? " selected" : ""}>${d} ${weekdayLabel(d)}${d === todayKey() ? "（今天）" : ""}</option>`).join("");
     return `
       <div class="today-date-switcher">
-        <button class="today-date-nav" data-day-prev ${olderDate ? "" : "disabled"} type="button" aria-label="更早一天"><span class="material-symbols-outlined">chevron_left</span></button>
-        <select class="today-date-select" data-day-select>${options}</select>
-        <button class="today-date-nav" data-day-next ${newerDate ? "" : "disabled"} type="button" aria-label="更近一天"><span class="material-symbols-outlined">chevron_right</span></button>
-        ${isToday ? "" : `<button class="btn btn-soft btn-sm" data-day-today type="button">回到今天</button>`}
+        <button class="btn btn-ghost btn-sm today-date-nav" data-day-prev ${olderDate ? "" : "disabled"} type="button" aria-label="更早一天"><span class="material-symbols-outlined">chevron_left</span></button>
+        <div class="field today-date-field"><select class="today-date-select" data-day-select aria-label="选择日期">${options}</select></div>
+        <button class="btn btn-ghost btn-sm today-date-nav" data-day-next ${newerDate ? "" : "disabled"} type="button" aria-label="更近一天"><span class="material-symbols-outlined">chevron_right</span></button>
+        ${isToday ? "" : `<button class="btn btn-ghost btn-sm" data-day-today type="button">回到今天</button>`}
       </div>
     `;
   }

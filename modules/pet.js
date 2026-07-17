@@ -195,13 +195,13 @@
             <span class="material-symbols-outlined">psychology</span>
             <h3>动态专注</h3>
           </div>
-          <p class="muted" style="text-align:center;font-size:13px;margin:2px 0 14px">每一轮开始前，先定个小目标和时间</p>
-          <button class="btn btn-primary" data-action="open-commitment" style="width:100%" ${enabled ? "" : "disabled"}>
+          <p class="muted u-pet-start-note">每一轮开始前，先定个小目标和时间</p>
+          <button class="btn btn-primary u-full-width" data-action="open-commitment" ${enabled ? "" : "disabled"}>
             <span class="material-symbols-outlined">play_arrow</span>
             开始专注
           </button>
           ${!enabled
-            ? `<p class="muted" style="text-align:center;font-size:12px;margin-top:8px">放假回来再开始专注吧</p>`
+            ? `<p class="muted u-center-note-xs">放假回来再开始专注吧</p>`
             : ""
           }
           <div class="timer-today-stats">
@@ -228,10 +228,10 @@
           <div class="timer-ring-wrap">
             <svg class="timer-ring" viewBox="0 0 120 120">
               <circle cx="60" cy="60" r="54" fill="none" stroke="var(--surface-high)" stroke-width="6"></circle>
-              <circle class="timer-ring-progress" cx="60" cy="60" r="54" fill="none"
+              <circle class="timer-ring-progress u-stroke-transition" cx="60" cy="60" r="54" fill="none"
                 stroke="${overTime ? "var(--tertiary)" : "var(--primary)"}" stroke-width="6" stroke-linecap="round"
                 stroke-dasharray="${circumference}" stroke-dashoffset="${dashOffset}"
-                transform="rotate(-90 60 60)" style="transition:stroke-dashoffset 1s linear"></circle>
+                transform="rotate(-90 60 60)"></circle>
             </svg>
             <div class="timer-display">
               <span class="timer-time">${mins}:${secs}</span>
@@ -282,7 +282,7 @@
               </div>
             </div>
           </div>
-          <p class="muted" style="text-align:center;font-size:12px;margin-top:8px">休息结束后会有提醒音，点击页面回来继续 🔔</p>
+          <p class="muted u-center-note-xs">休息结束后会有提醒音，点击页面回来继续 🔔</p>
         </section>
       `;
     }

@@ -281,14 +281,14 @@
           ${HOME_REVIEW_STATE.importError ? `<p class="home-review-msg home-review-msg-error">${escapeAttr(HOME_REVIEW_STATE.importError)}</p>` : ""}
           ${HOME_REVIEW_STATE.importResult ? `
             <p class="home-review-msg home-review-msg-success">${escapeAttr(HOME_REVIEW_STATE.importResult)}</p>
-            <button class="btn btn-soft btn-sm" data-home-review-action="dismiss" type="button" style="margin-top:6px">继续</button>
+            <button class="btn btn-soft btn-sm u-mt-6px" data-home-review-action="dismiss" type="button">继续</button>
           ` : `
             <ol class="review-stepper review-stepper-compact">
               <li class="review-step done"><span class="review-step-num"><span class="material-symbols-outlined">check</span></span><span class="review-step-text">材料已复制</span></li>
               <li class="review-step"><span class="review-step-num">2</span><span class="review-step-text">去复习 AI 做题，再把输出（含 MOCHI-RECORD）粘到下面</span></li>
             </ol>
-            <textarea id="home-review-paste" rows="3" placeholder="粘贴 AI 输出（含 MOCHI-RECORD 那段即可）" style="width:100%;box-sizing:border-box;margin-top:8px"></textarea>
-            <button class="btn btn-primary btn-sm" data-home-review-action="import" data-review-key="${escapeAttr(item.key)}" style="width:100%;margin-top:6px" type="button">
+            <textarea class="u-upload-field" id="home-review-paste" rows="3" placeholder="粘贴 AI 输出（含 MOCHI-RECORD 那段即可）"></textarea>
+            <button class="btn btn-primary btn-sm u-full-width u-mt-6px" data-home-review-action="import" data-review-key="${escapeAttr(item.key)}" type="button">
               <span class="material-symbols-outlined">download_done</span>导入复习结果
             </button>
           `}
@@ -331,15 +331,10 @@
       .filter((log) => log.type === "focus" && log.completed && log.date === today)
       .reduce((sum, log) => sum + Number(log.duration || 0), 0);
 
-    const streakSub = streak >= 2
-      ? `连续 ${streak} 天`
-      : todayCount > 0
-        ? "今天已经开始了"
-        : "导入一条就开始生长";
-
-    const statLine = todayCount > 0 && minutes > 0
-      ? `今天 ${todayCount} 张卡片 · ${minutes} 分钟专注`
-      : `今天已导入 ${todayCount} 张卡片`;
+    const streakPart = `连续 ${streak} 天`;
+    const statLine = todayCount > 0
+      ? `今天 ${todayCount} 张卡片 · ${minutes} 分钟专注 · ${streakPart}`
+      : `今天还没开始，打一张就够了 · ${streakPart}`;
 
     return `
       <section class="card streak-banner ${todayCount > 0 ? "" : "streak-banner-zero"}">
@@ -347,7 +342,6 @@
           <span class="material-symbols-outlined streak-fire-icon">${todayCount > 0 ? "local_fire_department" : "bedtime"}</span>
           <div class="streak-banner-text">
             <strong class="streak-num">${escapeAttr(statLine)}</strong>
-            <span class="streak-sub">${escapeAttr(streakSub)}</span>
           </div>
           ${todayCount > 0
             ? `<button class="btn btn-soft btn-sm" data-route="today" type="button">报告</button>`
@@ -388,14 +382,14 @@
       `;
     }).join("");
     return `
-      <section class="card week-trend-card">
+      <div class="week-trend-card">
         <div class="week-trend-head">
           <span class="material-symbols-outlined">bar_chart</span>
           <h3>本周学习</h3>
           <span class="week-trend-total">共 ${weekTotal} 张</span>
         </div>
         <div class="week-trend-bars">${bars}</div>
-      </section>
+      </div>
     `;
   }
 
@@ -549,20 +543,28 @@
   function renderMiniFarmCard(state, farmLv, nextLv, harvestPct) {
     const [m, p, c] = SUBJECTS.map((s) => state.plots[s]?.recordCount || 0);
     const weekTotal = calcWeekTotal();
+    const weekTrend = renderWeekTrend();
     return `
-      <section class="card mini-farm-card">
+      <section class="card mini-farm-card growth-card">
         <div class="mini-farm-header">
-          <span class="farm-level-badge">农场 Lv.${farmLv.level} · 数${m}物${p}化${c}</span>
-          <span class="farm-xp-hint">${nextLv ? `还需 ${nextLv.minHarvests - state.totalHarvests} 次收获` : "已达最高等级"}</span>
+          <span class="farm-level-badge">成长 · 农场 Lv.${farmLv.level}</span>
+          <span class="farm-xp-hint">数${m} 物${p} 化${c} · ${nextLv ? `还需 ${nextLv.minHarvests - state.totalHarvests} 次收获` : "已达最高等级"}</span>
         </div>
-        <div class="mini-farm-row">
-          ${SUBJECTS.map((subject) => renderMiniPlot(subject, state)).join("")}
+        <div class="growth-farm-section">
+          <div class="mini-farm-row">
+            ${SUBJECTS.map((subject) => renderMiniPlot(subject, state)).join("")}
+          </div>
+          <div class="mini-farm-xp-track">
+            <div class="mini-farm-xp-fill" style="width:${harvestPct}%"></div>
+          </div>
+          ${weekTotal ? `<p class="mini-farm-week-hint">本周新增 ${weekTotal} 张卡片</p>` : ""}
         </div>
-        <div class="mini-farm-xp-track">
-          <div class="mini-farm-xp-fill" style="width:${harvestPct}%"></div>
+        ${weekTrend ? `
+        <div class="growth-divider"></div>
+        <div class="growth-week-section">
+          ${weekTrend}
         </div>
-        ${weekTotal ? `<p class="mini-farm-week-hint">本周新增 ${weekTotal} 张卡片</p>` : ""}
-        ${renderWeekTrend()}
+        ` : ""}
       </section>
     `;
   }
@@ -625,10 +627,12 @@
           ${!hasRecords && holiday ? renderAiGuideCard(true) : ""}
         </div>
         <div class="home-right-stack">
-          ${renderMiniFarmCard(state, farmLv, nextLv, harvestPct)}
+          <div class="home-focus-panel">
+            ${window.MochiPet?.renderTimer?.(true) || ""}
+          </div>
           ${holiday
             ? `
-              <section class="card import-card home-import-card">
+              <section class="card-sub import-card home-import-card">
                 <div class="import-header">
                   <span class="material-symbols-outlined">upload_file</span>
                   <div>
@@ -636,7 +640,7 @@
                   </div>
                 </div>
                 <textarea id="record-paste" rows="3" placeholder="把 AI 给你的记录整段粘进来，会自动导入"></textarea>
-                <button class="btn btn-primary" data-action="parse-record" style="width:100%;margin-top:8px">
+                <button class="btn btn-primary u-full-width u-mt-2" data-action="parse-record">
                   <span class="material-symbols-outlined">auto_awesome</span>确认导入
                 </button>
                 <div id="upload-result" class="upload-result" hidden></div>
@@ -646,14 +650,12 @@
               <section class="card farm-hibernate-card">
                 <p class="farm-hibernate-icon">😴</p>
                 <p class="farm-hibernate-title">农场休眠中</p>
-                <p class="muted" style="font-size:13px">放假回来继续种植吧。</p>
-                <button class="btn btn-soft" data-action="set-holiday-mode" data-mode="holiday" style="margin-top:12px">今天想学习</button>
+                <p class="muted u-text-sm">放假回来继续种植吧。</p>
+                <button class="btn btn-soft u-mt-4" data-action="set-holiday-mode" data-mode="holiday">今天想学习</button>
               </section>
             `
           }
-          <div class="home-focus-panel">
-            ${window.MochiPet?.renderTimer?.(true) || ""}
-          </div>
+          ${renderMiniFarmCard(state, farmLv, nextLv, harvestPct)}
           ${renderHomeStatusArea(hasRecords)}
           ${hasRecords ? renderAiGuideCard(false) : ""}
         </div>

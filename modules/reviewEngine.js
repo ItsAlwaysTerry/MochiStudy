@@ -305,7 +305,8 @@
     if (input.status === "consolidating") return `刚复习过，${input.nextReviewDate || "过几天"} 再巩固，避免今天反复消耗。`;
     if (input.mainPainPoint) {
       const prefix = input.lowStarCount ? `${input.lowStarCount}次低星` : `${input.recencyDays}天没碰`;
-      return `${prefix}，主要卡在“${input.mainPainPoint}”。`;
+      const painPoint = String(input.mainPainPoint || "").replace(/[。．.]+$/u, "");
+      return `${prefix}，主要卡在“${painPoint}”。`;
     }
     if (input.lastReviewResult) return `上次复习结果是“${input.lastReviewResult}”，需要确认是否真的稳了。`;
     return input.reasons[0] || "最近需要轻量回顾。";
