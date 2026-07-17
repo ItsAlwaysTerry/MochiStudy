@@ -61,7 +61,7 @@
 
   const GAME_CONFIG = loadGameConfig();
   // Keep this in sync with index.html asset ?v= cache-bust suffix when shipping UI changes.
-  const BUILD_ID = "build-20260717h";
+  const BUILD_ID = "build-20260717j";
 
   function loadAdminConfig() {
     return GAME_CONFIG;

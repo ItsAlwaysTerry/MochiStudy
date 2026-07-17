@@ -1266,7 +1266,7 @@
     if (have <= 0) { window.MochiApp?.toast?.("这种券不够了"); return; }
     const blocked = econKindBlocked(kind);
     if (blocked) {
-      window.MochiApp?.toast?.(blocked === "week" ? "本周奖金已封顶，券留到下周" : "今天奖金已达上限，日常券留到明天");
+      window.MochiApp?.toast?.(blocked === "week" ? "本周奖金已封顶，券留到下周" : "今天奖金已达上限，小奖券留到明天");
       return;
     }
     writeSharedReward({ draw: {
@@ -1368,7 +1368,7 @@
       ${phase === "ready" ? `<button class="summer-reward-roll" data-summer-action="reward-roll" type="button">
         <span class="material-symbols-outlined">casino</span>${rolledCount === 0 ? "摇骰子" : remaining ? `再摇一颗（还剩 ${remaining}）` : "开始走格"}
       </button>` : phase === "result" ? `<div class="summer-reward-result ${rewardToneClass(econTone(d.drawn))}">
-        <span>${d.kind === "stage" ? "阶段大奖" : "日常抽奖"}</span>
+        <span>${d.kind === "stage" ? "大奖" : "小奖"}</span>
         <strong>抽中 ¥${Number(d.drawn || 0)}</strong>
         <em>${Number(d.paid) < Number(d.drawn) ? `本周已达上限，实发 ¥${Number(d.paid || 0)}` : `已到账 ¥${Number(d.paid || 0)}`}</em>
         <button class="btn btn-soft btn-sm" data-summer-action="reward-clear-result" type="button">收起结果</button>
@@ -1462,6 +1462,78 @@
       importedCount: todayImportedCount(),
       claims,
     };
+  }
+
+  function renderRewardProgressGuide(state, eco, sharedReward) {
+    const stats = rewardStats(state);
+    const energy = Number(eco.energy || 0);
+    const dailyNeed = Math.max(0, ECON.qualifyNodes - energy);
+    const stageDays = (Array.isArray(sharedReward.qualDays) ? sharedReward.qualDays.length : 0) % ECON.stagePerDays;
+    const stageNeed = Math.max(0, ECON.stagePerDays - stageDays);
+    const dailyTickets = Number(sharedReward.dailyTickets || 0);
+    const stageTickets = Number(sharedReward.stageTickets || 0);
+    const dailyDone = Math.min(energy, ECON.qualifyNodes);
+    const dailyStatus = dailyTickets > 0
+      ? `现在 ${dailyDone}/${ECON.qualifyNodes}，已可抽小奖`
+      : dailyNeed === 0
+        ? `现在 ${dailyDone}/${ECON.qualifyNodes}，已得到小奖券`
+        : `现在 ${dailyDone}/${ECON.qualifyNodes}，还差 ${dailyNeed} 个视频任务`;
+    const stageStatus = stageTickets > 0
+      ? `现在 ${stageDays}/${ECON.stagePerDays}，已可抽大奖`
+      : `现在 ${stageDays}/${ECON.stagePerDays}，还差 ${stageNeed} 个达标日`;
+    const dailyPct = Math.min(100, Math.round((Math.min(energy, ECON.qualifyNodes) / ECON.qualifyNodes) * 100));
+    const stagePct = Math.min(100, Math.round((stageDays / ECON.stagePerDays) * 100));
+    const currentTask = stats.currentTask;
+    const currentInfo = currentTask ? taskState(state, currentTask.id) : {};
+    const examplesReady = currentTask ? taskExamples(state, currentTask.id).length > 0 : false;
+    const hasPractice = currentTask ? getPracticeItems(currentTask).length > 0 : false;
+    const stepItems = currentTask ? [
+      { label: "开始这节课 / 看视频", done: Boolean(currentInfo.startedAt || currentInfo.lastFocusedAt || currentInfo.watched) },
+      { label: hasPractice ? "进入练题区或收集例题" : "收集视频例题", done: Boolean(examplesReady || hasPractice || currentInfo.practicingAt) },
+      { label: "粘回学习记录", done: Boolean(currentInfo.completed) },
+      { label: "保存本节收尾", done: taskReadyToAdvance(currentTask, state) },
+    ] : [];
+    const nextStep = stepItems.find((item) => !item.done);
+    const currentTitle = currentTask ? currentTask.title : "今天的任务";
+
+    return `
+      <div class="summer-reward-guide" aria-label="奖励进度说明">
+        <div class="summer-reward-goal">
+          <div>
+            <strong>日常小奖</strong>
+            <span>今天完成 2 个视频任务 = 1 张小奖券<br>${dailyStatus}</span>
+          </div>
+          <b>${Math.min(energy, ECON.qualifyNodes)}/${ECON.qualifyNodes}</b>
+          <div class="summer-reward-mini-track"><i style="width:${dailyPct}%"></i></div>
+        </div>
+        <div class="summer-reward-goal stage">
+          <div>
+            <strong>大奖</strong>
+            <span>攒够 5 个达标日 = 1 张大奖券<br>达标日：当天完成 2 个视频任务<br>${stageStatus}</span>
+          </div>
+          <b>${stageDays}/${ECON.stagePerDays}</b>
+          <div class="summer-reward-mini-track"><i style="width:${stagePct}%"></i></div>
+        </div>
+        <div class="summer-reward-rule">
+          <span class="material-symbols-outlined">info</span>
+          <p>什么算完成 1 个视频任务？看课 → 做题/截图 → 粘回学习记录 → 写本节收尾。</p>
+        </div>
+        ${currentTask ? `
+          <div class="summer-reward-node">
+            <small>当前视频任务</small>
+            <strong>${escapeHtml(currentTitle)}</strong>
+            <span>${nextStep ? `下一步：${escapeHtml(nextStep.label)}` : "这个视频任务已完成"}</span>
+            <div class="summer-reward-node-steps">
+              ${stepItems.map((item, index) => `
+                <span class="${item.done ? "done" : ""}" title="${escapeHtml(item.label)}">
+                  ${item.done ? "✓" : index + 1}
+                </span>
+              `).join("")}
+            </div>
+          </div>
+        ` : ""}
+      </div>
+    `;
   }
 
   function availableRewardClaims(state) {
@@ -1574,7 +1646,7 @@
     `;
   }
 
-  function renderSummerRewardFloat() {
+  function renderSummerRewardFloat(state = readState()) {
     const eco = syncEconomy();
     const r = readSharedReward();
     const collapsed = Boolean(r.collapsed);
@@ -1610,6 +1682,7 @@
     // 图标环 = 今日能量（每天回填，做满 4 个节点填满）；正文彩条 = 阶段进度（攒向下一次大奖）
     const energyAngle = Math.min(360, Math.round((energy / 4) * 360));
     const stagePct = Math.round((daysInStage / ECON.stagePerDays) * 100);
+    const progressGuide = renderRewardProgressGuide(state, eco, r);
     const iconGlyph = drawRunning ? "casino" : canDraw ? "cake" : "savings";
     const iconClass = drawRunning ? "" : canDraw ? "summer-reward-glyph-cake" : "summer-reward-glyph-savings";
     const headTitle = draw
@@ -1624,20 +1697,21 @@
           </span>
           <div>
             <strong>${collapsed ? collapsedTitle : headTitle}</strong>
-            ${collapsed ? "" : `<span>今日 ${energy} 个节点 · ¥${earnedToday}/${ECON.dailyCap}</span>`}
+            ${collapsed ? "" : `<span>今日 ${energy} 个视频任务 · ¥${earnedToday}/${ECON.dailyCap}</span>`}
           </div>
           <span class="summer-reward-arrow material-symbols-outlined">${collapsed ? "keyboard_arrow_up" : "keyboard_arrow_down"}</span>
         </div>
         ${collapsed ? "" : `
           <div class="summer-reward-body">
+            ${progressGuide}
             <div class="summer-reward-track"><div class="summer-reward-fill" style="width:${stagePct}%"></div></div>
             <div class="summer-reward-stats">
-              <span>阶段进度 ${daysInStage}/${ECON.stagePerDays} 达标日</span>
+              <span>大奖进度 ${daysInStage}/${ECON.stagePerDays} 达标日</span>
               <span>本周 ¥${weekEarned}/${ECON.weekCap}</span>
             </div>
             ${draw ? renderEconBoard(draw) : (last ? `
               <div class="summer-reward-result ${Number(last.drawn) >= 50 ? "big" : "coin"}">
-                <span>${last.kind === "stage" ? "阶段大奖" : "日常抽奖"}</span>
+                <span>${last.kind === "stage" ? "大奖" : "小奖"}</span>
                 <strong>抽中 ¥${Number(last.drawn || 0)}</strong>
                 <em>${Number(last.paid) < Number(last.drawn) ? `本周已达上限，实发 ¥${Number(last.paid || 0)}` : `已到账 ¥${Number(last.paid || 0)}`}</em>
               </div>
@@ -1645,18 +1719,18 @@
             ${draw ? "" : (canDraw
               ? `<div class="summer-reward-draw-row">
                   ${daily > 0 ? `<button class="summer-reward-draw daily" data-summer-action="reward-draw-daily" type="button" ${dailyDrawable ? "" : "disabled"}>
-                    <span class="material-symbols-outlined">toll</span>抽小奖<small>日常券 ${daily}</small>
+                    <span class="material-symbols-outlined">toll</span>抽小奖<small>小奖券 ${daily}</small>
                   </button>` : ""}
                   ${stageT > 0 ? `<button class="summer-reward-draw stage" data-summer-action="reward-draw-stage" type="button" ${stageDrawable ? "" : "disabled"}>
-                    <span class="material-symbols-outlined">redeem</span>抽大奖<small>阶段券 ${stageT}</small>
+                    <span class="material-symbols-outlined">redeem</span>抽大奖<small>大奖券 ${stageT}</small>
                   </button>` : ""}
                 </div>
                 ${capped
                   ? `<p class="summer-reward-claim summer-reward-capnote">${weekLeft <= 0
                       ? `🎉 本周奖金已拿满 ¥${ECON.weekCap}，券先留着、周一自动可用；这周继续做题只涨勋章和达标日，不亏。`
-                      : `今天日常奖金已达上限 ¥${ECON.dailyCap}，日常券留到明天；阶段大奖不受日限、仍能抽。`}</p>`
+                      : `今天日常奖金已达上限 ¥${ECON.dailyCap}，小奖券留到明天；大奖不受日限、仍能抽。`}</p>`
                   : `<p class="summer-reward-claim">3 颗骰子点数相加就是走几格，越多越刺激</p>`}`
-              : `<p class="summer-reward-claim">今天做满 2 个节点得日常抽奖券；攒 5 个达标日解锁阶段大奖。</p>`)}
+              : `<p class="summer-reward-claim">今天完成 2 个视频任务得 1 张小奖券；攒 5 个达标日得 1 张大奖券。</p>`)}
           </div>
         `}
       </aside>
@@ -3446,7 +3520,7 @@
     const state = readState();
     const claims = availableRewardClaims(state);
     if (!claims.length) {
-      window.MochiApp?.toast?.("今天的能量还没充满，先把当前节点做完");
+      window.MochiApp?.toast?.("今天的能量还没充满，先完成当前视频任务");
       return;
     }
     const reward = rewardState(state);
