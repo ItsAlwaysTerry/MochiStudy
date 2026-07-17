@@ -1114,6 +1114,23 @@
   function econTierSmall(energy) {
     return energy >= 4 ? ECON.dailySmall[4] : energy >= 3 ? ECON.dailySmall[3] : energy >= 2 ? ECON.dailySmall[2] : 0;
   }
+  // 历史上所有"当天跨三科完成节点数 ≥ 达标门槛"的日期（用于回填之前没同步进能量经济的达标日）
+  function qualifyingDatesFromHistory() {
+    const byDate = {};
+    Object.values(STATE_KEYS).forEach((key) => {
+      try {
+        const st = JSON.parse(localStorage.getItem(key) || "null");
+        const tasks = st && st.tasks && typeof st.tasks === "object" ? st.tasks : {};
+        Object.values(tasks).forEach((info) => {
+          if (info && info.completed) {
+            const d = String(info.completedAt || "").slice(0, 10);
+            if (d) byDate[d] = (byDate[d] || 0) + 1;
+          }
+        });
+      } catch { /* 单科损坏跳过 */ }
+    });
+    return Object.keys(byDate).filter((d) => byDate[d] >= ECON.qualifyNodes);
+  }
   // 幂等：每次渲染/导入后调用，把今日小奖补齐、达标日/连续/阶段/券结算好；预算硬上限兜底
   function syncEconomy() {
     const r = readSharedReward();
@@ -1129,6 +1146,22 @@
     let lastQualDate = r.lastQualDate || "";
     let dailyTickets = Number(r.dailyTickets || 0);
     let stageTickets = Number(r.stageTickets || 0);
+    // 回填历史达标日：把之前"完成了但没同步进经济"的达标日补进来（幂等，只补没在 qualDays 里的）。
+    // 每个补进来的达标日补 1 张日常券，达标日总数每满 5 天补 1 张阶段券；只补券+进度，不追发过去的现金，避免搞乱预算。
+    const already = new Set(qualDays);
+    const backfillDays = qualifyingDatesFromHistory().filter((d) => d !== today && !already.has(d));
+    if (backfillDays.length) {
+      backfillDays.forEach((d) => qualDays.push(d));
+      qualDays.sort();
+      dailyTickets += backfillDays.length;
+      const stagesNow = Math.floor(qualDays.length / ECON.stagePerDays);
+      if (stagesNow > stages) { stageTickets += stagesNow - stages; stages = stagesNow; }
+      // 基于回填后的 qualDays 重算连续 streak 和最近达标日，让显示和后续连续加成正确
+      let s = qualDays.length ? 1 : 0;
+      for (let i = qualDays.length - 1; i > 0; i--) { if (qualDays[i - 1] === econYesterday(qualDays[i])) s++; else break; }
+      streak = s;
+      lastQualDate = qualDays[qualDays.length - 1] || lastQualDate;
+    }
     const pay = (amt, skipDaily) => {
       let p = amt;
       if (!skipDaily) p = Math.min(p, Math.max(0, ECON.dailyCap - paidToday));
