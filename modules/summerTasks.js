@@ -4533,6 +4533,35 @@
         stages: Number(r.stages || 0),
       };
     },
+    // 调试用：诊断"历史节点为什么没同步进能量经济"——逐科统计任务数/已完成数/completedAt缺失数/
+    // 已识别的历史达标日，方便判断是"数据本来就没有"还是"数据有但字段不匹配同步不上"。
+    debugDiagnoseHistory: () => {
+      const perSubject = {};
+      Object.entries(STATE_KEYS).forEach(([subject, key]) => {
+        let taskCount = 0, completedCount = 0, missingCompletedAt = 0;
+        const sample = [];
+        try {
+          const st = JSON.parse(localStorage.getItem(key) || "null");
+          const tasks = st && st.tasks && typeof st.tasks === "object" ? st.tasks : {};
+          Object.entries(tasks).forEach(([taskId, info]) => {
+            taskCount += 1;
+            if (info && info.completed) {
+              completedCount += 1;
+              const d = String(info.completedAt || "").slice(0, 10);
+              if (!d) missingCompletedAt += 1;
+              if (sample.length < 5) sample.push({ taskId, completedAt: info.completedAt || "(无)" });
+            }
+          });
+        } catch (e) { sample.push({ error: String(e) }); }
+        perSubject[subject] = { key, taskCount, completedCount, missingCompletedAt, sample };
+      });
+      const r = readSharedReward();
+      return {
+        perSubject,
+        qualifyingDatesFound: qualifyingDatesFromHistory(),
+        sharedReward: { qualDays: r.qualDays, dailyTickets: r.dailyTickets, stageTickets: r.stageTickets, stages: r.stages },
+      };
+    },
     debugGrantTickets: (d = 1, s = 1) => {
       const r = readSharedReward();
       writeSharedReward({ dailyTickets: Number(r.dailyTickets || 0) + d, stageTickets: Number(r.stageTickets || 0) + s });

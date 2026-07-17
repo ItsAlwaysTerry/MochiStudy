@@ -61,7 +61,7 @@
 
   const GAME_CONFIG = loadGameConfig();
   // Keep this in sync with index.html asset ?v= cache-bust suffix when shipping UI changes.
-  const BUILD_ID = "build-20260716u";
+  const BUILD_ID = "build-20260717e";
 
   function loadAdminConfig() {
     return GAME_CONFIG;
@@ -5671,6 +5671,7 @@ ${record.originalQuestion || "暂无原题描述。"}
               <button data-action="debug-add-summer-tickets" type="button">+暑假券</button>
               <button data-action="debug-reset-summer-reward" type="button">重置奖励</button>
               <button data-action="debug-reset-achievements" type="button">清勋章</button>
+              <button data-action="debug-diagnose-reward-history" type="button">诊断历史同步</button>
             </div>
           </div>
           <div class="debug-float-row debug-total-row debug-sample-row">
@@ -5858,6 +5859,22 @@ ${record.originalQuestion || "暂无原题描述。"}
         window.MochiSummerTasks?.debugResetReward?.();
         debugRefreshFarm();
         toast("已重置暑假奖励：清空预算/券/历史，撞上限后可重新测抽奖");
+        return;
+      }
+      if (name === "debug-diagnose-reward-history") {
+        const diag = window.MochiSummerTasks?.debugDiagnoseHistory?.();
+        if (!diag) { toast("诊断失败：MochiSummerTasks 未加载"); return; }
+        const lines = [`BUILD ${BUILD_ID}`, ""];
+        Object.entries(diag.perSubject).forEach(([subject, s]) => {
+          lines.push(`【${subject}】key=${s.key} 任务总数=${s.taskCount} 已完成=${s.completedCount} 缺completedAt=${s.missingCompletedAt}`);
+          s.sample.forEach((item) => lines.push(`  ${item.taskId || "?"} → ${item.completedAt || item.error || ""}`));
+        });
+        lines.push("", `识别到的历史达标日：${diag.qualifyingDatesFound.join(", ") || "(无)"}`);
+        lines.push(`summer_reward.qualDays：${(diag.sharedReward.qualDays || []).join(", ") || "(无)"}`);
+        lines.push(`日常券=${diag.sharedReward.dailyTickets || 0} 阶段券=${diag.sharedReward.stageTickets || 0} 阶段数=${diag.sharedReward.stages || 0}`);
+        const text = lines.join("\n");
+        copyTextToClipboard(text);
+        alert(text);
         return;
       }
       if (name === "debug-reset-achievements") {
