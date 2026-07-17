@@ -805,6 +805,11 @@
     return Boolean(info.reflectionDone);
   }
 
+  function taskRewardCompletedAt(info) {
+    if (!taskReflectionDone(info)) return "";
+    return String(info.rewardCompletedAt || info.completedAt || "");
+  }
+
   function taskReadyToAdvance(task, state) {
     return taskReflectionDone(taskState(state, task.id));
   }
@@ -1041,14 +1046,14 @@
   }
 
   // ===== 统一奖励经济（跨三科、独立 key、预算受控）=====
-  // 数值来自 docs/review-batch/reward-economy-design.md 第十一节（2万周模拟锁定的变体C）。
+  // 奖池与预算来自 reward-economy-design；日常门槛按 2026-07-17 奖励门槛设计调整。
   const SHARED_REWARD_KEY = "summer_reward";
   const ECON = {
-    dailySmall: { 2: 3, 3: 5, 4: 8 },                 // 今日节点数 → 确定性小奖
+    dailySmall: { 3: 5, 4: 8 },                       // 今日完整任务数 → 当天累计自动小额奖励
     dailyPool: [{ a: 2, w: 45 }, { a: 5, w: 35 }, { a: 10, w: 15 }, { a: 20, w: 5 }],
     stageFixed: 15,
     stagePool: [{ a: 20, w: 52 }, { a: 50, w: 33 }, { a: 100, w: 15 }],
-    qualifyNodes: 2,                                   // 达标日门槛（今日能量≥此值）
+    qualifyNodes: 3,                                   // 达标日门槛（今日能量≥此值）
     stagePerDays: 5,                                   // 每 5 个达标日 = 1 阶段
     dailyCap: 40, weekCap: 150,                        // 硬预算上限
   };
@@ -1103,16 +1108,16 @@
         const st = JSON.parse(localStorage.getItem(key) || "null");
         const tasks = st && st.tasks && typeof st.tasks === "object" ? st.tasks : {};
         Object.values(tasks).forEach((info) => {
-          // 计"当天真做了活"的节点：completed(已导入记录) 且 completedAt 是今天；
-          // 不强求 reflectionDone（收尾可能隔天补，不该因此不算今天的能量）
-          if (info && info.completed && String(info.completedAt || "").slice(0, 10) === today) count += 1;
+          if (taskRewardCompletedAt(info).slice(0, 10) === today) count += 1;
         });
       } catch { /* 单科损坏跳过 */ }
     });
     return count;
   }
   function econTierSmall(energy) {
-    return energy >= 4 ? ECON.dailySmall[4] : energy >= 3 ? ECON.dailySmall[3] : energy >= 2 ? ECON.dailySmall[2] : 0;
+    return Object.entries(ECON.dailySmall)
+      .sort((a, b) => Number(a[0]) - Number(b[0]))
+      .reduce((amount, [tasks, reward]) => energy >= Number(tasks) ? Number(reward) : amount, 0);
   }
   // 历史上所有"当天跨三科完成节点数 ≥ 达标门槛"的日期（用于回填之前没同步进能量经济的达标日）
   function qualifyingDatesFromHistory() {
@@ -1122,10 +1127,8 @@
         const st = JSON.parse(localStorage.getItem(key) || "null");
         const tasks = st && st.tasks && typeof st.tasks === "object" ? st.tasks : {};
         Object.values(tasks).forEach((info) => {
-          if (info && info.completed) {
-            const d = String(info.completedAt || "").slice(0, 10);
-            if (d) byDate[d] = (byDate[d] || 0) + 1;
-          }
+          const d = taskRewardCompletedAt(info).slice(0, 10);
+          if (d) byDate[d] = (byDate[d] || 0) + 1;
         });
       } catch { /* 单科损坏跳过 */ }
     });
@@ -1468,13 +1471,14 @@
     const stats = rewardStats(state);
     const energy = Number(eco.energy || 0);
     const dailyNeed = Math.max(0, ECON.qualifyNodes - energy);
-    const stageDays = (Array.isArray(sharedReward.qualDays) ? sharedReward.qualDays.length : 0) % ECON.stagePerDays;
+    const qualDays = Array.isArray(sharedReward.qualDays) ? sharedReward.qualDays : [];
+    const stageDays = qualDays.length % ECON.stagePerDays;
     const stageNeed = Math.max(0, ECON.stagePerDays - stageDays);
-    const dailyTickets = Number(sharedReward.dailyTickets || 0);
     const stageTickets = Number(sharedReward.stageTickets || 0);
     const dailyDone = Math.min(energy, ECON.qualifyNodes);
-    const dailyStatus = dailyTickets > 0
-      ? `现在 ${dailyDone}/${ECON.qualifyNodes}，已可抽小奖`
+    const qualifiedToday = qualDays.includes(todayIso());
+    const dailyStatus = qualifiedToday
+      ? `现在 ${dailyDone}/${ECON.qualifyNodes}，今天的小奖券已获得`
       : dailyNeed === 0
         ? `现在 ${dailyDone}/${ECON.qualifyNodes}，已得到小奖券`
         : `现在 ${dailyDone}/${ECON.qualifyNodes}，还差 ${dailyNeed} 个视频任务`;
@@ -1501,7 +1505,7 @@
         <div class="summer-reward-goal">
           <div>
             <strong>日常小奖</strong>
-            <span>今天完成 2 个视频任务 = 1 张小奖券<br>${dailyStatus}</span>
+            <span>今天完成 ${ECON.qualifyNodes} 个视频任务 = 1 张小奖券<br>${dailyStatus}</span>
           </div>
           <b>${Math.min(energy, ECON.qualifyNodes)}/${ECON.qualifyNodes}</b>
           <div class="summer-reward-mini-track"><i style="width:${dailyPct}%"></i></div>
@@ -1509,7 +1513,7 @@
         <div class="summer-reward-goal stage">
           <div>
             <strong>大奖</strong>
-            <span>攒够 5 个达标日 = 1 张大奖券<br>达标日：当天完成 2 个视频任务<br>${stageStatus}</span>
+            <span>攒够 ${ECON.stagePerDays} 个达标日 = 1 张大奖券<br>达标日：当天完成 ${ECON.qualifyNodes} 个视频任务<br>${stageStatus}</span>
           </div>
           <b>${stageDays}/${ECON.stagePerDays}</b>
           <div class="summer-reward-mini-track"><i style="width:${stagePct}%"></i></div>
@@ -1730,7 +1734,7 @@
                       ? `🎉 本周奖金已拿满 ¥${ECON.weekCap}，券先留着、周一自动可用；这周继续做题只涨勋章和达标日，不亏。`
                       : `今天日常奖金已达上限 ¥${ECON.dailyCap}，小奖券留到明天；大奖不受日限、仍能抽。`}</p>`
                   : `<p class="summer-reward-claim">3 颗骰子点数相加就是走几格，越多越刺激</p>`}`
-              : `<p class="summer-reward-claim">今天完成 2 个视频任务得 1 张小奖券；攒 5 个达标日得 1 张大奖券。</p>`)}
+              : `<p class="summer-reward-claim">今天完成 ${ECON.qualifyNodes} 个视频任务得 1 张小奖券；攒 ${ECON.stagePerDays} 个达标日得 1 张大奖券。</p>`)}
           </div>
         `}
       </aside>
@@ -4033,11 +4037,17 @@
     };
     const state = readState();
     const current = taskState(state, task.id);
+    const originalCompletionDate = String(current.completedAt || "").slice(0, 10);
+    const sharedQualDays = readSharedReward().qualDays;
+    const legacyAlreadyQualified = originalCompletionDate
+      && Array.isArray(sharedQualDays)
+      && sharedQualDays.includes(originalCompletionDate);
     state.tasks[task.id] = {
       ...current,
       watched: true,
       completed: true,
       completedAt: current.completedAt || now,
+      rewardCompletedAt: current.rewardCompletedAt || (legacyAlreadyQualified ? current.completedAt : now),
       reflectionRequired: true,
       reflectionDone: true,
       reflection,
