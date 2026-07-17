@@ -546,18 +546,13 @@
     `;
   }
 
-  function renderHomeStatusArea(state, farmLv, nextLv, harvestPct, hasRecords) {
-    const drawers = [];
-
-    // 农场 + 本周趋势
+  function renderMiniFarmCard(state, farmLv, nextLv, harvestPct) {
     const [m, p, c] = SUBJECTS.map((s) => state.plots[s]?.recordCount || 0);
     const weekTotal = calcWeekTotal();
-    drawers.push(statusDrawer({
-      icon: "yard",
-      digest: `农场 Lv.${farmLv.level} · 数${m}物${p}化${c}${weekTotal ? ` · 本周${weekTotal}张` : ""}`,
-      body: `
+    return `
+      <section class="card mini-farm-card">
         <div class="mini-farm-header">
-          <span class="farm-level-badge">Lv.${farmLv.level} ${farmLv.name}</span>
+          <span class="farm-level-badge">农场 Lv.${farmLv.level} · 数${m}物${p}化${c}</span>
           <span class="farm-xp-hint">${nextLv ? `还需 ${nextLv.minHarvests - state.totalHarvests} 次收获` : "已达最高等级"}</span>
         </div>
         <div class="mini-farm-row">
@@ -566,9 +561,14 @@
         <div class="mini-farm-xp-track">
           <div class="mini-farm-xp-fill" style="width:${harvestPct}%"></div>
         </div>
+        ${weekTotal ? `<p class="mini-farm-week-hint">本周新增 ${weekTotal} 张卡片</p>` : ""}
         ${renderWeekTrend()}
-      `,
-    }));
+      </section>
+    `;
+  }
+
+  function renderHomeStatusArea(hasRecords) {
+    const drawers = [];
 
     // 今日复习（有复习进行中时自动展开，方便就地粘回）
     if (hasRecords) {
@@ -625,6 +625,7 @@
           ${!hasRecords && holiday ? renderAiGuideCard(true) : ""}
         </div>
         <div class="home-right-stack">
+          ${renderMiniFarmCard(state, farmLv, nextLv, harvestPct)}
           ${holiday
             ? `
               <section class="card import-card home-import-card">
@@ -653,7 +654,7 @@
           <div class="home-focus-panel">
             ${window.MochiPet?.renderTimer?.(true) || ""}
           </div>
-          ${renderHomeStatusArea(state, farmLv, nextLv, harvestPct, hasRecords)}
+          ${renderHomeStatusArea(hasRecords)}
           ${hasRecords ? renderAiGuideCard(false) : ""}
         </div>
       </div>
