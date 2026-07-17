@@ -61,7 +61,7 @@
 
   const GAME_CONFIG = loadGameConfig();
   // Keep this in sync with index.html asset ?v= cache-bust suffix when shipping UI changes.
-  const BUILD_ID = "build-20260717e";
+  const BUILD_ID = "build-20260717g";
 
   function loadAdminConfig() {
     return GAME_CONFIG;
@@ -5671,7 +5671,13 @@ ${record.originalQuestion || "暂无原题描述。"}
               <button data-action="debug-add-summer-tickets" type="button">+暑假券</button>
               <button data-action="debug-reset-summer-reward" type="button">重置奖励</button>
               <button data-action="debug-reset-achievements" type="button">清勋章</button>
-              <button data-action="debug-diagnose-reward-history" type="button">诊断历史同步</button>
+            </div>
+          </div>
+          <div class="debug-float-row debug-total-row">
+            <span>历史同步</span>
+            <strong>诊断</strong>
+            <div class="debug-float-actions">
+              <button data-action="debug-diagnose-reward-history" type="button">点这里查看诊断结果</button>
             </div>
           </div>
           <div class="debug-float-row debug-total-row debug-sample-row">
