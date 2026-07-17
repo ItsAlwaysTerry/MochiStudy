@@ -3303,6 +3303,52 @@
     `;
   }
 
+  function bindRescuePanel(panel) {
+    if (!panel) return;
+    panel.querySelectorAll("[data-summer-action]").forEach((el) => {
+      el.addEventListener("click", handleAction);
+    });
+    panel.querySelectorAll("[data-support-note]").forEach((el) => {
+      el.addEventListener("blur", handleSupportNote);
+    });
+  }
+
+  function findTaskSupportElement(taskId, trigger) {
+    const selector = `[data-task-support="${escapeSelectorAttr(taskId)}"]`;
+    const scope = trigger?.closest?.(".summer-route-step, .summer-task");
+    return scope?.querySelector?.(selector) || document.querySelector(selector);
+  }
+
+  function updateRescuePanelInPlace(task, trigger) {
+    const details = findTaskSupportElement(task.id, trigger);
+    const body = details?.querySelector?.(".summer-task-support-body");
+    if (!details || !body) return false;
+    const current = trigger?.closest?.(".summer-rescue-panel") || body.querySelector(".summer-rescue-panel");
+    const html = renderTaskRescuePanel(task, taskState(readState(), task.id)).trim();
+    const status = details.querySelector("summary small");
+    if (!html) {
+      current?.remove?.();
+      if (status) status.textContent = "继续原任务";
+      details.open = false;
+      return true;
+    }
+    const template = document.createElement("template");
+    template.innerHTML = html;
+    const next = template.content.firstElementChild;
+    if (!next) return false;
+    if (current) current.replaceWith(next);
+    else body.prepend(next);
+    if (status) status.textContent = "正在补基础";
+    details.open = true;
+    bindRescuePanel(next);
+    return true;
+  }
+
+  function refreshSupportView(trigger) {
+    trigger?.blur?.();
+    refreshHome({ preserveScroll: true, lockScroll: true });
+  }
+
   function bind(container) {
     container.querySelectorAll("[data-summer-action]").forEach((el) => {
       el.addEventListener("click", handleAction);
@@ -3508,41 +3554,37 @@
     }
     if (!task) return;
     if (action === "support-open") {
-      const anchor = taskAnchorOptions(task.id, event.currentTarget);
       updateTaskSupport(task.id, {
         status: "active",
         openedAt: taskSupport(taskState(readState(), task.id))?.openedAt || new Date().toISOString(),
       });
       updateTask(task.id, { activeStep: 0 });
-      refreshHome(anchor);
+      if (!updateRescuePanelInPlace(task, event.currentTarget)) refreshSupportView(event.currentTarget);
       return;
     }
     if (action === "support-reason") {
       const reason = event.currentTarget.dataset.supportReason || "";
       if (!SUPPORT_REASONS.has(reason)) return;
-      const anchor = taskAnchorOptions(task.id, event.currentTarget);
       updateTaskSupport(task.id, { status: "active", reason });
-      refreshHome(anchor);
+      if (!updateRescuePanelInPlace(task, event.currentTarget)) refreshSupportView(event.currentTarget);
       return;
     }
     if (action === "support-attempt") {
       const attempt = event.currentTarget.dataset.supportAttempt || "";
       if (attempt !== "book" && attempt !== "basic-video") return;
-      const anchor = taskAnchorOptions(task.id, event.currentTarget);
       const support = taskSupport(taskState(readState(), task.id));
       const attempted = new Set(support?.attempted || []);
       if (attempted.has(attempt)) attempted.delete(attempt);
       else attempted.add(attempt);
       updateTaskSupport(task.id, { status: "active", attempted: Array.from(attempted) });
-      refreshHome(anchor);
+      if (!updateRescuePanelInPlace(task, event.currentTarget)) refreshSupportView(event.currentTarget);
       return;
     }
     if (action === "support-resolved") {
-      const anchor = taskAnchorOptions(task.id, event.currentTarget);
       const now = new Date().toISOString();
       updateTaskSupport(task.id, { status: "resolved", resolvedAt: now, deferredAt: "" });
       updateTask(task.id, { activeStep: 0 });
-      refreshHome(anchor);
+      if (!updateRescuePanelInPlace(task, event.currentTarget)) refreshSupportView(event.currentTarget);
       window.MochiApp?.toast?.("已回到原任务；真正完成视频、练习和收尾后才计入奖励");
       return;
     }
@@ -3575,7 +3617,7 @@
       const day = taskRouteDay(task);
       if (day && Number(state.activeRouteDay || 0) === day.day && routeDayCanAdvance(day, state)) state.activeRouteDay = 0;
       writeState(state);
-      refreshHome({ preserveScroll: true });
+      refreshSupportView(event.currentTarget);
       window.MochiApp?.toast?.(`已放入“待补基础”；${deferredDeadlineLabel(task)}，不算完成、不计奖励`);
       return;
     }
@@ -3599,7 +3641,7 @@
       state.pendingRouteDay = 0;
       state.pendingRouteTaskId = "";
       writeState(state);
-      refreshHome({ preserveScroll: true });
+      refreshSupportView(event.currentTarget);
       window.MochiApp?.toast?.("已回到原任务，先补最小基础，再继续主线");
       return;
     }
@@ -5002,7 +5044,9 @@
       return;
     }
     if (options.preserveScroll) {
-      requestAnimationFrame(() => window.scrollTo(scrollX, scrollY));
+      const restoreScroll = () => window.scrollTo(scrollX, scrollY);
+      if (options.lockScroll) restoreScroll();
+      requestAnimationFrame(restoreScroll);
     }
   }
 
