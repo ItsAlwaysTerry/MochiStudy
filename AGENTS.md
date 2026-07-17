@@ -732,3 +732,10 @@ v34 之后的改动：
 - **农场渲染接入**：`modules/farm.js` 的 `cropSpriteStyle()` 改为读取猫咪植物精灵表，不改 `farm_state`、`recordCount`、成长阈值或收获逻辑；0 条记录时也显示休眠小种子，仍通过 `0/15` 表示未开始。
 - **迷你农场可读性**：放大 `.mini-plot-sprite`，去掉旧星露谷素材专用的 `mix-blend-mode: screen`，保留 `image-rendering: pixelated`，让成熟态猫咪花在首页右栏更清楚。
 - **缓存版本号**：`index.html` 静态资源版本号更新为 `20260716m`。
+
+### V5.32 迷你农场图片区放大（build `20260716n`）
+
+- **去掉套娃黑框**：`.mini-plot` 不再作为深色卡片背景，只负责纵向排版；深色区域集中到真正承载植物的 `.mini-plot-sprite`。
+- **植物显示区域放大**：`.mini-plot-sprite` 从 58px 放大到 80px，`.mini-crop-sprite` 同步放大到 `scale(0.63)`，让猫咪植物成为三格农场的视觉主体。
+- **文字移到图片框外**：科目名和 `recordCount/harvestTarget` 改为深色文字显示在图片方块下方，不再占用植物画面区域。
+- **缓存版本号**：`index.html` 静态资源版本号更新为 `20260716n`。
