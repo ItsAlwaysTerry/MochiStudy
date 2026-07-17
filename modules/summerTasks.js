@@ -1254,13 +1254,16 @@
     trigger?.blur?.();
     const dieEl = document.querySelectorAll("[data-econ-die]")[idx] || null;
     const final = Math.floor(Math.random() * 6) + 1;
-    let flick = 0;
+    // 减速旋转：帧间隔由快到慢，越接近停下越慢，像抽奖那样制造悬疑感
+    const spinDelays = [48, 55, 64, 75, 90, 110, 135, 166, 205, 252, 310];
+    let i = 0;
     const spin = () => {
-      flick += 1;
       if (dieEl) { dieEl.textContent = diceFace(Math.floor(Math.random() * 6) + 1); dieEl.classList.add("rolling"); }
-      playRewardTick(flick % 2 ? 540 : 640);
-      if (flick < 9) { econAnimTimer = setTimeout(spin, 70); return; }
+      playDiceSpin(i, spinDelays.length); // 摇骰子音效
+      i += 1;
+      if (i < spinDelays.length) { econAnimTimer = setTimeout(spin, spinDelays[i - 1]); return; }
       if (dieEl) { dieEl.textContent = diceFace(final); dieEl.classList.remove("rolling"); }
+      playDiceLand(); // 出骰子结果音效
       const cur = readSharedReward();
       const d = cur.draw;
       if (!d || d.phase !== "ready") { econAnimActive = false; return; }
@@ -1286,12 +1289,17 @@
     spin();
   }
   // 走格：点数和是几就走几格（可绕盘多圈），一格一格"噔噔噔"，最后落在中奖格
+  // 整体放慢，且最后几格越走越慢——越接近结果越慢，配合升高的走格音效制造悬疑感
   function econWalk(d, step, cursor) {
-    if (step >= Number(d.sum || 0)) { econFinishDraw(d); return; }
+    const total = Number(d.sum || 0);
+    if (step >= total) { econFinishDraw(d); return; }
     const next = (cursor + 1) % SUMMER_REWARD_BOARD_SIZE;
     setRewardCursor(next);
-    playRewardTick(700 + (step % SUMMER_REWARD_BOARD_SIZE) * 22);
-    econAnimTimer = setTimeout(() => econWalk(d, step + 1, next), 300);
+    const remaining = total - step - 1; // 走完这一步后还剩几格
+    playWalkTick(remaining); // 走格音效，越接近终点音调越高
+    let delay = 420;
+    if (remaining <= 4) delay = 470 + (5 - remaining) * 150; // 4→620,3→770,2→920,1→1070,0→1220（停在中奖格前稍作停顿）
+    econAnimTimer = setTimeout(() => econWalk(d, step + 1, next), delay);
   }
   // 抽奖盘面（3 骰子版）：ready=待摇 / walking=走格中 / result=定格
   function renderEconBoard(d) {
@@ -3604,6 +3612,50 @@
     } catch {
       // 音效只是反馈，失败不影响学习流程。
     }
+  }
+
+  // 抽奖音效用一个共享 AudioContext（摇骰子/走格会连发很多下，逐个 new 会撞浏览器上限）
+  let _econAudio = null;
+  function econAudio() {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return null;
+      if (!_econAudio) _econAudio = new AudioCtx();
+      if (_econAudio.state === "suspended") _econAudio.resume?.();
+      return _econAudio;
+    } catch { return null; }
+  }
+  function econBeep({ freq = 600, freq2 = null, type = "triangle", dur = 0.12, vol = 0.05 }) {
+    const ctx = econAudio();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, now);
+      if (freq2) osc.frequency.exponentialRampToValueAtTime(Math.max(40, freq2), now + dur * 0.9);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(vol, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + dur + 0.02);
+    } catch { /* 音效失败不影响流程 */ }
+  }
+  // 摇骰子：短促咔哒，越到后面音越低（配合减速）
+  function playDiceSpin(i, total) {
+    const base = 560 - Math.round((i / Math.max(1, total)) * 150);
+    econBeep({ freq: i % 2 ? base + 70 : base, type: "square", dur: 0.055, vol: 0.03 });
+  }
+  // 出骰子结果：一声"咚"落定（音高快速下滑）
+  function playDiceLand() {
+    econBeep({ freq: 470, freq2: 170, type: "triangle", dur: 0.22, vol: 0.11 });
+  }
+  // 走格：一格一响，越接近终点音越高（悬疑）
+  function playWalkTick(remaining) {
+    const freq = remaining <= 4 ? 660 + (5 - Math.max(0, remaining)) * 95 : 610;
+    econBeep({ freq, type: "triangle", dur: 0.09, vol: 0.05 });
   }
 
   function playRewardSound(tone = "coin") {
