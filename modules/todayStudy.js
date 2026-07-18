@@ -444,11 +444,8 @@
       const start = session.startMinute === null ? "未知" : timeFromMinutes(session.startMinute);
       const end = session.active ? "进行中" : (session.endMinute === null ? "未知" : timeFromMinutes(session.endMinute));
       const status = session.active ? "正在学" : session.completed === false ? "未完成" : "已完成";
-      const outcomeText = session.commitment
-        ? { done: " · 目标达成✓", partial: " · 部分完成◐", none: " · 没完成✕" }[session.commitment.outcome] || ""
-        : "";
       const goalText = session.microGoal ? ` · 目标：${session.microGoal}` : "";
-      const subtitle = `${formatMinutes(session.duration)} · ${status}${goalText}${outcomeText}`;
+      const subtitle = `${formatMinutes(session.duration)} · ${status}${goalText}`;
       drawSession(session, session.cards, `${start}-${end}`, subtitle, session.completed === false ? "#e07020" : "#4caf50");
     });
     if (data.unmatchedCards.length) {
@@ -646,14 +643,9 @@
 
   function commitmentBadge(commitment) {
     if (!commitment) return "";
-    const info = {
-      done: { cls: "kept", text: "✓ 目标达成" },
-      partial: { cls: "partial", text: "◐ 部分完成" },
-      none: { cls: "missed", text: "✕ 没完成" },
-    }[commitment.outcome] || { cls: "missed", text: "✕ 没完成" };
     const planned = commitment.plannedMins ? `计划${commitment.plannedMins}分` : "自由";
     const actual = commitment.actualMins ? `实际${commitment.actualMins}分` : "";
-    return `<span class="today-commit-badge ${info.cls}">${info.text}</span><span class="today-commit-plan">${planned}${actual ? ` · ${actual}` : ""}</span>`;
+    return `<span class="today-commit-plan">${planned}${actual ? ` · ${actual}` : ""}</span>`;
   }
 
   function renderSession(session) {

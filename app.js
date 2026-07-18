@@ -61,7 +61,7 @@
 
   const GAME_CONFIG = loadGameConfig();
   // Keep this in sync with index.html asset ?v= cache-bust suffix when shipping UI changes.
-  const BUILD_ID = "build-20260717t";
+  const BUILD_ID = "build-20260718a";
 
   function loadAdminConfig() {
     return GAME_CONFIG;
@@ -5024,10 +5024,8 @@ ${record.originalQuestion || "暂无原题描述。"}
         : round.count
           ? `<p class="focus-commitment-imported">这一轮你导入了 <b>${round.count}</b> 张卡片${round.subjectText ? `（${round.subjectText}）` : ""}</p>`
           : `<p class="focus-commitment-imported">这一轮还没导入卡片；如果问懂了题，可以顺手粘回 MOCHI-RECORD。</p>`;
-      // 有未反思的承诺 → 第一屏只有"填反思 + 选结果"，不给休息/结束的出口；
-      // 选了结果（reflectCommitment）后重渲染，c 变 null，才进入第二屏的休息/结束。
-      const lock = Boolean(c && !summer);
-      const lockAttr = lock ? "disabled" : "";
+      // 有未收尾的承诺 → 第一屏只做轻量收尾，选了状态后再进入休息出口。
+      const lockAttr = "";
       return `
         <div class="focus-overlay-inner">
           <p class="focus-overlay-goal">🎉 你专注了 ${actualMins} 分钟</p>
@@ -5044,16 +5042,16 @@ ${record.originalQuestion || "暂无原题描述。"}
             ` : c ? `
               <p class="focus-commitment-goal-label">你这一轮的目标：<b>${escapeHtml(c.goal)}</b></p>
               ${importedLine}
-              <label class="focus-reflect-label" for="commitment-reflect-note">这轮学了什么？</label>
+              <label class="focus-reflect-label" for="commitment-reflect-note">收尾一下（可选）</label>
               <div class="focus-reflect-tags" aria-label="本轮学习类型">
-                ${["问懂一道题", "看视频", "复习旧题", "整理笔记", "其他"].map((tag) => `<button type="button" data-action="reflect-tag" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`).join("")}
+                ${["问懂一题", "看了一段", "复习旧题", "整理笔记", "其他"].map((tag) => `<button type="button" data-action="reflect-tag" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`).join("")}
               </div>
-              <textarea id="commitment-reflect-note" class="focus-reflect-input" rows="2" placeholder="可选：例如，弄清楚了电场线方向和受力方向不是一回事。"></textarea>
-              <p class="focus-deciding-hint" id="reflect-lock-hint">选个结果就能休息；写一句以后回看更清楚。</p>
+              <textarea id="commitment-reflect-note" class="focus-reflect-input" rows="2" placeholder="想写就写一句：刚才最有用的一点 / 还卡在哪。"></textarea>
+              <p class="focus-deciding-hint" id="reflect-lock-hint">点一个收尾状态就能休息，文字不用硬写。</p>
               <div class="focus-commitment-reflect">
-                <button class="btn btn-soft" data-action="commitment-done" type="button" ${lockAttr}>✓ 搞定了</button>
-                <button class="btn btn-soft" data-action="commitment-partial" type="button" ${lockAttr}>◐ 部分完成</button>
-                <button class="btn btn-soft" data-action="commitment-none" type="button" ${lockAttr}>✕ 没完成</button>
+                <button class="btn btn-soft" data-action="commitment-done" type="button" ${lockAttr}>✓ 完成了</button>
+                <button class="btn btn-soft" data-action="commitment-partial" type="button" ${lockAttr}>◐ 先记一半</button>
+                <button class="btn btn-soft" data-action="commitment-none" type="button" ${lockAttr}>↺ 下次继续</button>
               </div>
             ` : `
               <p class="focus-deciding-rest">建议休息 ${restMins} 分钟</p>
@@ -5214,7 +5212,7 @@ ${record.originalQuestion || "暂无原题描述。"}
       const hint = overlay.querySelector("#reflect-lock-hint");
       const sync = () => {
         lockBtns.forEach((b) => { b.disabled = false; });
-        if (hint) hint.textContent = reflectInput.value.trim() ? "选一个这一轮的结果，再去休息" : "选个结果就能休息；写一句以后回看更清楚。";
+        if (hint) hint.textContent = reflectInput.value.trim() ? "写下来了，点一个状态就能休息。" : "点一个收尾状态就能休息，文字不用硬写。";
       };
       reflectInput.addEventListener("input", sync);
       sync();
