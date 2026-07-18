@@ -308,7 +308,7 @@ modules/
   calendar.js           — 学习日历（window.MochiCalendar）
   ai.js                 — AI 导入解析（window.MochiAI）
 skill/
-  gaokao私教.md         — 高考 AI 家教 Prompt（新题讲解流程）
+  gaokao私教.md         — 高考做题 AI 家教 Prompt（默认给骨架、卡住才拆细）
   gaokao复习私教.md     — 高考复习 AI Prompt（复习测验流程）
 docs/
   review-module.md      — 复习引擎设计说明

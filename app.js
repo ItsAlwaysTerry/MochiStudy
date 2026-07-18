@@ -61,7 +61,7 @@
 
   const GAME_CONFIG = loadGameConfig();
   // Keep this in sync with index.html asset ?v= cache-bust suffix when shipping UI changes.
-  const BUILD_ID = "build-20260717s";
+  const BUILD_ID = "build-20260717t";
 
   function loadAdminConfig() {
     return GAME_CONFIG;
@@ -3783,22 +3783,22 @@
         ${settingsGroup("ai", "auto_awesome", "AI", "AI 使用指南和 API 配置。", `
           <div class="settings-subsection card-sub">
             <h3>AI 使用指南</h3>
-            <p class="muted u-mt-1">四个 AI Prompt，分别用于做题（含拍整张卷排优先级啃卷子）、复习旧卡点、综合测验、从零重学一章。复制后粘贴到 AI（如 Gemini）的智能体设定里，即可激活对应的 AI 角色。</p>
+            <p class="muted u-mt-1">四个 AI Prompt，分别用于做题、复习旧卡点、综合测验、从零重学一章。复制后粘贴到 AI（如 Gemini）的智能体设定里，即可激活对应的 AI 角色。</p>
             <div class="ai-guide-prompts u-mt-6 u-stack-3">
               <details class="ai-prompt-entry">
                 <summary class="ai-prompt-summary">
                   <span class="ai-prompt-icon material-symbols-outlined">psychology</span>
                   <div class="ai-prompt-meta">
                     <strong>高中理科 AI 家教</strong>
-                    <span class="muted u-text-xs">做题就用这一个 · 发一道题直接做，或拍整张卷选「帮我排优先级」(排除已会→排序→逐题带) · 脚手架引导 → 总结套路 → 每题输出 MOCHI-RECORD</span>
+                    <span class="muted u-text-xs">做题就用这一个 · 发一道题（或几道）直接带你做 · 默认给骨架让你走、卡住才拆那一步 → 总结套路 → 每题输出 MOCHI-RECORD</span>
                   </div>
                   <button class="btn btn-soft btn-sm ai-prompt-copy-btn" data-action="copy-ai-prompt" data-prompt-path="./skill/gaokao私教.md" type="button">
                     <span class="material-symbols-outlined">content_copy</span>复制 Prompt
                   </button>
                 </summary>
                 <div class="ai-prompt-steps">
-                  <p><strong>使用方法：</strong>在 AI（如 Gemini）新建一个智能体（Gem）或对话，把 Prompt 粘进去，以后做题一直用它。发一道题就直接带你做；拍整张卷子时它会问你「想自己定顺序，还是我帮你排个优先级」——选排序它就读图列题、让你报掉已经会的、给剩下的题排序，再一道一道带。每搞定一道输出一条 MOCHI-RECORD，你复制粘进导入框，再做下一道。</p>
-                  <p class="muted u-text-xs u-mt-6px">两种用法一个智能体：① 自由做题（你说题号）② 啃卷子（拍整张卷→排除已会→排序→逐题带）· 都是做一道粘一条</p>
+                  <p><strong>使用方法：</strong>在 AI（如 Gemini）新建一个智能体（Gem）或对话，把 Prompt 粘进去，以后做题一直用它。发一道题（或一次发几道）它就一道一道带你做——默认先给你解题骨架让你自己走，你卡在哪一步它才拆那一步，你要是嫌碎了直接说「给骨架就行」它就更干脆。每搞定一道输出一条 MOCHI-RECORD，你复制粘进导入框，再做下一道。</p>
+                  <p class="muted u-text-xs u-mt-6px">核心：默认给骨架、你自己走，卡住才拆细，随时能让它调粗调细 · 做一道粘一条</p>
                 </div>
               </details>
               <details class="ai-prompt-entry">
