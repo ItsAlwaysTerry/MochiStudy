@@ -61,7 +61,7 @@
 
   const GAME_CONFIG = loadGameConfig();
   // Keep this in sync with index.html asset ?v= cache-bust suffix when shipping UI changes.
-  const BUILD_ID = "build-20260718a";
+  const BUILD_ID = "build-20260721a";
 
   function loadAdminConfig() {
     return GAME_CONFIG;
@@ -4090,7 +4090,7 @@ git reset --hard origin/main</pre>
           <div class="summer-reward-history-head">
             <div>
               <h3>暑假能量奖励</h3>
-              <p class="muted">完成暑假任务后，右下角能量浮窗抽到的奖励会记录在这里。</p>
+              <p class="muted">现金只来自右下角能量浮窗抽奖，抽到的奖励会记录在这里。</p>
             </div>
           </div>
           <div class="card-sub"><p class="muted u-empty-note">暂无暑假奖励记录</p></div>
@@ -4105,12 +4105,13 @@ git reset --hard origin/main</pre>
       const tone = drawn >= 50 ? "big" : "coin";
       const typeLabel = entry.kind === "stage" ? "阶段大奖" : "日常抽奖";
       const clamped = paid < drawn;
+      const limitLabel = entry.limit === "day" ? "今日小奖额度已满" : "本周额度已满";
       return `
         <div class="summer-reward-history-item ${summerRewardToneClass(tone)}">
           <div>
             <span class="summer-reward-history-date">${escapeHtml(entry.date || "")}</span>
             <strong>抽中 ¥${drawn}</strong>
-            <p>${typeLabel}${clamped ? ` · 本周达上限，实发 ¥${paid}` : ""}</p>
+            <p>${typeLabel}${clamped ? ` · ${limitLabel}，实发 ¥${paid}` : ""}</p>
           </div>
           <div class="summer-reward-history-prize">
             <span>实发</span>
@@ -4124,7 +4125,7 @@ git reset --hard origin/main</pre>
         <div class="summer-reward-history-head">
           <div>
             <h3>暑假能量奖励</h3>
-            <p class="muted">右下角能量浮窗抽奖记录，方便回看和对账。</p>
+            <p class="muted">现金只来自右下角能量浮窗抽奖，记录按实发金额对账。</p>
           </div>
           <div class="summer-reward-history-total">
             <span>累计</span>

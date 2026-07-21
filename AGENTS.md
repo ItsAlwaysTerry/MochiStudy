@@ -64,6 +64,7 @@ mochi_debug_tab               — 调试浮窗当前 Tab
 commitment_history            — 专注承诺历史，每轮一条 {id,date,goal,plannedMins,actualMins,outcome,ts}；最多 50 条；用于首页"说到做到"回看
 summer_task_state             — 暑假任务区状态，保存滚动任务队列中的 watched/completed/activeStep/studyNote/reflectionRequired/reflectionDone/reflection、卡住救援状态 tasks[].support、当前展开任务 activeTaskId、用户锁定为今日任务的 activeRouteDay、待关联视频任务 pendingTaskId、待关联路线学习单 pendingRouteDay、待关联路线视频/学习单 pendingRouteTaskId、28天路线详情 routeDetailDay、每日总复盘 routeDays[].dailyReflection、视频例题截图元信息 examples 和已关联学习记录 id；不改 study_log 字段。截图图片本体存在 IndexedDB `mochi_summer_examples`
 summer_reward_config          — 暑假奖励浮窗的隐藏奖项配置，字段 items: [{label, amount, weight, tone}]；学生端不展示概率，未设置时使用代码默认权重
+summer_reward                 — 暑假统一抽奖状态；V2 现金只来自抽奖，保存 rewardModelVersion、paidToday、dailyDrawPaid、weekPaid、达标日/阶段、大小奖券、最近 60 条真实抽奖历史和当前骰子盘面
 sidebar_expanded              — 桌面端侧边栏展开状态，"1" 为展开文字导航，默认收起为窄图标栏
 ```
 
@@ -850,3 +851,12 @@ v34 之后的改动：
 - **结果按钮去羞辱化**：“搞定了 / 部分完成 / 没完成”改为“完成了 / 先记一半 / 下次继续”，仍写入原有 `commitment_history.outcome`，不改 localStorage 结构。
 - **今日报告只保留客观数据**：学习时间轴不再展示“目标达成 / 部分完成 / 没完成”徽章，页面和导出长图只显示目标、计划分钟、实际分钟和学生备注，避免学生超时完成后仍被“部分完成”误导。
 - **缓存版本号**：`index.html` 静态资源版本号和 `BUILD_ID` 更新为 `20260718a`。
+
+### V5.48 暑假奖励改为仅抽奖现金 + 奖池预览（build `20260721a`）
+
+- **删除隐藏固定现金**：完成 3/4 个视频任务不再自动发 ¥5/¥8；每 5 个达标日不再固定发 ¥15。任务只负责发小奖券、大奖券和推进达标日/阶段，现金只来自抽奖。
+- **旧额度按真实抽奖重建**：`summer_reward` 升级为 `rewardModelVersion: 2`，首次运行时用 `history` 重算今日/本周真实抽奖金额，清除以前混入额度的固定奖励；券、达标日、阶段和抽奖记录不变。
+- **日限与周限分账**：新增 `dailyDrawPaidDate` / `dailyDrawPaid`；每日 ¥40 只限制小奖抽奖，大奖不占日限，小奖与大奖共同受每周 ¥150 限制。
+- **按钮直接预览奖池**：能量浮窗始终显示小奖 `¥2 / ¥5 / ¥10 / ¥20`、大奖 `¥20 / ¥50 / ¥100`；无券或封顶时按钮禁用但金额仍可见。
+- **到账与封顶文案纠正**：浮窗改显示“今日到账 ¥X”；裁剪结果区分今日小奖额度和本周额度；奖励记录明确现金只来自抽奖。
+- **缓存版本号**：`index.html` 静态资源版本号和 `BUILD_ID` 更新为 `20260721a`。
