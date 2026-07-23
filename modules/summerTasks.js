@@ -1231,7 +1231,7 @@
   // ===== 统一奖励经济（跨三科、独立 key、预算受控）=====
   // 现金只来自抽奖：任务负责发券和推进阶段，不再自动发固定现金。
   const SHARED_REWARD_KEY = "summer_reward";
-  const REWARD_MODEL_VERSION = 2;
+  const REWARD_MODEL_VERSION = 3;
   const ECON = {
     dailyPool: [{ a: 2, w: 45 }, { a: 5, w: 35 }, { a: 10, w: 15 }, { a: 20, w: 5 }],
     stagePool: [{ a: 20, w: 52 }, { a: 50, w: 33 }, { a: 100, w: 15 }],
@@ -1250,6 +1250,8 @@
       qualDays: [], stages: 0, streak: 0, lastQualDate: "",
       dailyTickets: 0, stageTickets: 0,
       history: [], lastPrize: null, draw: null,
+      totalEarned: 0, totalRedeemed: 0,
+      parentRedeemPin: "", redemptionHistory: [],
     };
   }
   function readSharedReward() {
@@ -1263,8 +1265,18 @@
     const next = { ...readSharedReward(), ...patch };
     next.history = Array.isArray(next.history) ? next.history.slice(0, 60) : [];
     next.qualDays = Array.isArray(next.qualDays) ? next.qualDays.slice(-400) : [];
+    next.totalEarned = rewardMoney(next.totalEarned);
+    next.totalRedeemed = rewardMoney(next.totalRedeemed);
+    next.parentRedeemPin = /^\d{4}$/.test(String(next.parentRedeemPin || "")) ? String(next.parentRedeemPin) : "";
+    next.redemptionHistory = Array.isArray(next.redemptionHistory)
+      ? next.redemptionHistory.filter((entry) => entry && typeof entry === "object")
+      : [];
     localStorage.setItem(SHARED_REWARD_KEY, JSON.stringify(next));
     return next;
+  }
+  function rewardMoney(value) {
+    const amount = Number(value);
+    return Number.isFinite(amount) ? Math.max(0, Math.floor(amount)) : 0;
   }
   function rewardEntryPaid(entry) {
     return Math.max(0, Number(entry?.paid ?? entry?.amount ?? entry?.drawn ?? 0) || 0);
@@ -1278,33 +1290,137 @@
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return "";
     try { return econWeekKey(date); } catch { return ""; }
   }
-  // V2 迁移：旧 paidToday/weekPaid 混入了自动 ¥5/¥8 与阶段固定 ¥15。
-  // 真实现金一律以抽奖 history 重建，券、达标日和阶段进度保持不变。
+  // V2：从真实抽奖 history 重建被旧固定奖励污染的日/周金额。
+  // V3：增加永久累计奖金和独立兑换账本；两步迁移均幂等。
   function ensureDrawOnlyRewardModel(reward = readSharedReward()) {
-    if (Number(reward.rewardModelVersion || 0) >= REWARD_MODEL_VERSION) return reward;
-    const history = rewardDrawHistory(reward);
-    const paidTodayDate = String(reward.paidTodayDate || "");
-    const weekKey = String(reward.weekKey || "");
-    const paidToday = paidTodayDate
-      ? history.filter((entry) => entry.date === paidTodayDate).reduce((sum, entry) => sum + rewardEntryPaid(entry), 0)
-      : 0;
-    const dailyDrawPaid = paidTodayDate
-      ? history.filter((entry) => entry.kind === "daily" && entry.date === paidTodayDate).reduce((sum, entry) => sum + rewardEntryPaid(entry), 0)
-      : 0;
-    const weekPaid = weekKey
-      ? history.filter((entry) => rewardEntryWeekKey(entry) === weekKey).reduce((sum, entry) => sum + rewardEntryPaid(entry), 0)
-      : 0;
-    return writeSharedReward({
-      rewardModelVersion: REWARD_MODEL_VERSION,
-      paidTodayDate,
-      paidToday,
-      dailyDrawPaidDate: paidTodayDate,
-      dailyDrawPaid,
-      weekKey,
-      weekPaid,
-      dailySmallDate: "",
-      dailySmallPaid: 0,
+    let next = reward;
+    if (Number(next.rewardModelVersion || 0) < 2) {
+      const history = rewardDrawHistory(next);
+      const paidTodayDate = String(next.paidTodayDate || "");
+      const weekKey = String(next.weekKey || "");
+      const paidToday = paidTodayDate
+        ? history.filter((entry) => entry.date === paidTodayDate).reduce((sum, entry) => sum + rewardEntryPaid(entry), 0)
+        : 0;
+      const dailyDrawPaid = paidTodayDate
+        ? history.filter((entry) => entry.kind === "daily" && entry.date === paidTodayDate).reduce((sum, entry) => sum + rewardEntryPaid(entry), 0)
+        : 0;
+      const weekPaid = weekKey
+        ? history.filter((entry) => rewardEntryWeekKey(entry) === weekKey).reduce((sum, entry) => sum + rewardEntryPaid(entry), 0)
+        : 0;
+      next = writeSharedReward({
+        rewardModelVersion: 2,
+        paidTodayDate,
+        paidToday,
+        dailyDrawPaidDate: paidTodayDate,
+        dailyDrawPaid,
+        weekKey,
+        weekPaid,
+        dailySmallDate: "",
+        dailySmallPaid: 0,
+      });
+    }
+    if (Number(next.rewardModelVersion || 0) < REWARD_MODEL_VERSION) {
+      next = writeSharedReward({
+        rewardModelVersion: REWARD_MODEL_VERSION,
+        totalEarned: rewardDrawHistory(next).reduce((sum, entry) => sum + rewardEntryPaid(entry), 0),
+        totalRedeemed: 0,
+        parentRedeemPin: "",
+        redemptionHistory: [],
+      });
+    }
+    return next;
+  }
+
+  function rewardWalletSnapshot(reward = ensureDrawOnlyRewardModel()) {
+    const totalEarned = rewardMoney(reward.totalEarned);
+    const totalRedeemed = rewardMoney(reward.totalRedeemed);
+    const draws = rewardDrawHistory(reward).map((entry, index) => ({
+      id: `draw_${Number(entry.ts || 0)}_${index}`,
+      type: "earn",
+      kind: entry.kind,
+      amount: rewardEntryPaid(entry),
+      drawn: rewardMoney(entry.drawn ?? entry.amount),
+      limit: String(entry.limit || ""),
+      date: String(entry.date || ""),
+      ts: Number(entry.ts || 0),
+    }));
+    const redemptions = (Array.isArray(reward.redemptionHistory) ? reward.redemptionHistory : []).map((entry) => ({
+      id: String(entry.id || ""),
+      type: "redeem",
+      amount: rewardMoney(entry.amount),
+      date: String(entry.date || ""),
+      ts: Number(entry.ts || 0),
+      revoked: Boolean(entry.revoked),
+      revokedAt: Number(entry.revokedAt || 0),
+    }));
+    return {
+      totalEarned,
+      totalRedeemed,
+      availableBalance: Math.max(0, totalEarned - totalRedeemed),
+      hasPin: /^\d{4}$/.test(String(reward.parentRedeemPin || "")),
+      ledger: [...draws, ...redemptions].sort((a, b) => b.ts - a.ts),
+    };
+  }
+
+  function setRewardRedeemPin(pin, confirmation, replace = false) {
+    const reward = ensureDrawOnlyRewardModel();
+    const value = String(pin || "");
+    if (!/^\d{4}$/.test(value)) return { ok: false, reason: "invalid-pin" };
+    if (value !== String(confirmation || "")) return { ok: false, reason: "pin-mismatch" };
+    if (reward.parentRedeemPin && !replace) return { ok: false, reason: "pin-exists" };
+    writeSharedReward({ parentRedeemPin: value });
+    return { ok: true, wallet: rewardWalletSnapshot() };
+  }
+
+  function verifyRewardRedeemPin(pin) {
+    const reward = ensureDrawOnlyRewardModel();
+    return /^\d{4}$/.test(String(reward.parentRedeemPin || ""))
+      && String(pin || "") === String(reward.parentRedeemPin);
+  }
+
+  function redeemRewardAmount(amount, pin, requestId = "") {
+    const reward = ensureDrawOnlyRewardModel();
+    if (!verifyRewardRedeemPin(pin)) return { ok: false, reason: "wrong-pin" };
+    const value = Number(amount);
+    if (!Number.isInteger(value) || value <= 0) return { ok: false, reason: "invalid-amount" };
+    const token = String(requestId || "");
+    const redemptions = Array.isArray(reward.redemptionHistory) ? reward.redemptionHistory.slice() : [];
+    const duplicate = token ? redemptions.find((entry) => entry?.requestId === token) : null;
+    if (duplicate) return { ok: true, duplicate: true, entry: duplicate, wallet: rewardWalletSnapshot(reward) };
+    const availableBalance = Math.max(0, rewardMoney(reward.totalEarned) - rewardMoney(reward.totalRedeemed));
+    if (value > availableBalance) return { ok: false, reason: "insufficient-balance", availableBalance };
+    const now = Date.now();
+    const entry = {
+      id: `redeem_${now}_${Math.random().toString(36).slice(2, 7)}`,
+      requestId: token || `redeem_request_${now}`,
+      amount: value,
+      date: todayIso(),
+      ts: now,
+      revoked: false,
+      revokedAt: 0,
+    };
+    const next = writeSharedReward({
+      totalRedeemed: rewardMoney(reward.totalRedeemed) + value,
+      redemptionHistory: [entry, ...redemptions],
     });
+    return { ok: true, entry, wallet: rewardWalletSnapshot(next) };
+  }
+
+  function revokeRewardRedemption(id, pin) {
+    const reward = ensureDrawOnlyRewardModel();
+    if (!verifyRewardRedeemPin(pin)) return { ok: false, reason: "wrong-pin" };
+    const redemptions = Array.isArray(reward.redemptionHistory) ? reward.redemptionHistory.slice() : [];
+    const index = redemptions.findIndex((entry) => String(entry?.id || "") === String(id || ""));
+    if (index < 0) return { ok: false, reason: "not-found" };
+    if (redemptions[index].revoked) return { ok: false, reason: "already-revoked" };
+    const amount = rewardMoney(redemptions[index].amount);
+    if (amount <= 0) return { ok: false, reason: "invalid-amount" };
+    redemptions[index] = { ...redemptions[index], revoked: true, revokedAt: Date.now() };
+    const next = writeSharedReward({
+      totalRedeemed: Math.max(0, rewardMoney(reward.totalRedeemed) - amount),
+      redemptionHistory: redemptions,
+    });
+    return { ok: true, entry: redemptions[index], wallet: rewardWalletSnapshot(next) };
   }
   function econWeekKey(dateStr) {
     const d = new Date(`${dateStr}T12:00:00`);
@@ -1431,6 +1547,7 @@
       paidTodayDate: today, paidToday,
       dailyDrawPaidDate: today, dailyDrawPaid,
       weekKey: wk, weekPaid,
+      totalEarned: rewardMoney(r.totalEarned) + paid,
       dailyTickets: kind === "daily" ? Math.max(0, r.dailyTickets - 1) : r.dailyTickets,
       stageTickets: kind === "stage" ? Math.max(0, r.stageTickets - 1) : r.stageTickets,
       history: [entry, ...(Array.isArray(r.history) ? r.history : [])].slice(0, 60),
@@ -5171,6 +5288,11 @@
     renderRouteEntry,
     getTasks: () => TASKS.slice(),
     getRewardHistory: () => ensureDrawOnlyRewardModel().history,
+    getRewardWallet: () => rewardWalletSnapshot(),
+    setRewardRedeemPin,
+    verifyRewardRedeemPin,
+    redeemRewardAmount,
+    revokeRewardRedemption,
     // 独立于路由/渲染路径调用：回填历史达标日 + 发券。之前只在首页"今日能量"浮窗
     // 渲染时才作为副作用调用，导致学生若不在首页刷新页面，同步（含历史回填）永远不会触发。
     // app.js 的 init() 会在每次打开页面时无条件调一次，不再依赖用户停在哪个路由。

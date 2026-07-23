@@ -61,7 +61,7 @@
 
   const GAME_CONFIG = loadGameConfig();
   // Keep this in sync with index.html asset ?v= cache-bust suffix when shipping UI changes.
-  const BUILD_ID = "build-20260721a";
+  const BUILD_ID = "build-20260722a";
 
   function loadAdminConfig() {
     return GAME_CONFIG;
@@ -107,6 +107,8 @@
   const view = document.getElementById("view");
   const modalRoot = document.getElementById("modal-root");
   const toastRoot = document.getElementById("toast-root");
+  let rewardHistoryExpanded = false;
+  let rewardRedeemFlow = null;
   const STUDY_LOG_KEY = "study_log";
   const HOLIDAYS_KEY = "school_holidays";
   const HOLIDAY_MODE_KEY = "holiday_mode_override";
@@ -3991,10 +3993,12 @@ git reset --hard origin/main</pre>
       <div class="achievements-page">
         <div class="page-head">
           <div>
-            <h2>勋章收藏</h2>
-            <p>做题、专注、坚持都会不断解锁勋章，越攒越多——纯收藏展示，奖金走首页能量浮窗。</p>
+            <h2>奖励与勋章</h2>
+            <p>先看抽奖奖金和兑换记录，再回顾一路收集到的勋章。</p>
           </div>
         </div>
+
+        ${renderSummerRewardWallet()}
 
         <section class="card">
           <div class="badge-summary" aria-label="勋章统计">
@@ -4038,7 +4042,6 @@ git reset --hard origin/main</pre>
         </section>
 
         ${renderSummerAchievements()}
-        ${renderSummerRewardHistory()}
       </div>
     `;
   }
@@ -4075,70 +4078,246 @@ git reset --hard origin/main</pre>
       </section>`;
   }
 
-  function getSummerRewardHistory() {
-    const fromModule = window.MochiSummerTasks?.getRewardHistory?.();
-    if (Array.isArray(fromModule)) return fromModule;
-    const summerState = readJson("summer_task_state", {});
-    return Array.isArray(summerState?.reward?.history) ? summerState.reward.history.slice(0, 50) : [];
+  function getSummerRewardWallet() {
+    const wallet = window.MochiSummerTasks?.getRewardWallet?.();
+    if (wallet && typeof wallet === "object") return wallet;
+    const history = window.MochiSummerTasks?.getRewardHistory?.() || [];
+    const totalEarned = history.reduce((sum, entry) => sum + Number(entry?.paid ?? entry?.amount ?? 0), 0);
+    return { totalEarned, totalRedeemed: 0, availableBalance: totalEarned, hasPin: false, ledger: [] };
   }
 
-  function renderSummerRewardHistory() {
-    const history = getSummerRewardHistory();
-    if (history.length === 0) {
+  function rewardLedgerTime(entry) {
+    const ts = Number(entry?.ts || 0);
+    if (!ts) return String(entry?.date || "");
+    const date = new Date(ts);
+    const day = String(entry?.date || date.toISOString().slice(0, 10));
+    return `${day} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+  }
+
+  function renderRewardLedgerItem(entry) {
+    if (entry.type === "redeem") {
+      const revoked = Boolean(entry.revoked);
       return `
-        <section class="card summer-reward-history-card">
-          <div class="summer-reward-history-head">
-            <div>
-              <h3>暑假能量奖励</h3>
-              <p class="muted">现金只来自右下角能量浮窗抽奖，抽到的奖励会记录在这里。</p>
-            </div>
-          </div>
-          <div class="card-sub"><p class="muted u-empty-note">暂无暑假奖励记录</p></div>
-        </section>
-      `;
-    }
-    // 累计按"实发(paid)"算，方便和家长对账；历史条目新格式 {kind,drawn,paid,date,ts}
-    const totalAmount = history.reduce((sum, entry) => sum + Number(entry.paid ?? entry.amount ?? 0), 0);
-    const rows = history.map((entry) => {
-      const drawn = Number(entry.drawn ?? entry.amount ?? 0);
-      const paid = Number(entry.paid ?? drawn);
-      const tone = drawn >= 50 ? "big" : "coin";
-      const typeLabel = entry.kind === "stage" ? "阶段大奖" : "日常抽奖";
-      const clamped = paid < drawn;
-      const limitLabel = entry.limit === "day" ? "今日小奖额度已满" : "本周额度已满";
-      return `
-        <div class="summer-reward-history-item ${summerRewardToneClass(tone)}">
+        <div class="summer-reward-history-item reward-ledger-redeem ${revoked ? "is-revoked" : ""}">
           <div>
-            <span class="summer-reward-history-date">${escapeHtml(entry.date || "")}</span>
-            <strong>抽中 ¥${drawn}</strong>
-            <p>${typeLabel}${clamped ? ` · ${limitLabel}，实发 ¥${paid}` : ""}</p>
+            <span class="summer-reward-history-date">${escapeHtml(rewardLedgerTime(entry))}</span>
+            <strong>家长兑换 −¥${Number(entry.amount || 0)}</strong>
+            <p>${revoked ? "这笔记录已撤销，余额已经恢复" : "家长已通过红包、转账或现金完成兑换"}</p>
           </div>
           <div class="summer-reward-history-prize">
-            <span>实发</span>
-            <strong>${paid > 0 ? `${paid} 元` : "继续攒"}</strong>
+            <span>${revoked ? "状态" : "支出"}</span>
+            <strong>${revoked ? "已撤销" : `−${Number(entry.amount || 0)} 元`}</strong>
+            ${revoked ? "" : `<button class="reward-ledger-revoke" data-action="reward-redeem-revoke" data-redemption-id="${escapeHtml(entry.id || "")}" type="button">撤销</button>`}
+          </div>
+        </div>`;
+    }
+    const drawn = Number(entry.drawn ?? entry.amount ?? 0);
+    const paid = Number(entry.amount || 0);
+    const typeLabel = entry.kind === "stage" ? "阶段大奖" : "日常小奖";
+    const clamped = paid < drawn;
+    const limitLabel = entry.limit === "day" ? "今日小奖额度" : "本周额度";
+    return `
+      <div class="summer-reward-history-item ${summerRewardToneClass(drawn >= 50 ? "big" : "coin")}">
+        <div>
+          <span class="summer-reward-history-date">${escapeHtml(rewardLedgerTime(entry))}</span>
+          <strong>抽奖获得 +¥${paid}</strong>
+          <p>${typeLabel}${clamped ? ` · 抽中 ¥${drawn}，受${limitLabel}限制实发 ¥${paid}` : ""}</p>
+        </div>
+        <div class="summer-reward-history-prize">
+          <span>收入</span>
+          <strong>+${paid} 元</strong>
+        </div>
+      </div>`;
+  }
+
+  function renderSummerRewardWallet() {
+    const wallet = getSummerRewardWallet();
+    const ledger = Array.isArray(wallet.ledger) ? wallet.ledger : [];
+    const visible = rewardHistoryExpanded ? ledger : ledger.slice(0, 5);
+    const rows = visible.length
+      ? visible.map(renderRewardLedgerItem).join("")
+      : `<p class="muted u-empty-note">暂无奖金记录，完成任务获得抽奖券后再来试试。</p>`;
+    return `
+      <section class="card summer-reward-wallet-card">
+        <div class="summer-reward-wallet-head">
+          <div>
+            <h3>暑假奖金账户</h3>
+            <p class="muted">现金只来自抽奖；网站负责记账，实际奖金由家长线下兑换。</p>
+          </div>
+          <span class="material-symbols-outlined summer-reward-wallet-icon">account_balance_wallet</span>
+        </div>
+        <div class="summer-reward-wallet-stats" aria-label="奖金账户统计">
+          <div class="summer-reward-wallet-stat is-balance">
+            <span>可兑换</span>
+            <strong>¥${Number(wallet.availableBalance || 0)}</strong>
+          </div>
+          <div class="summer-reward-wallet-stat">
+            <span>累计获得</span>
+            <strong>¥${Number(wallet.totalEarned || 0)}</strong>
+          </div>
+          <div class="summer-reward-wallet-stat">
+            <span>已兑换</span>
+            <strong>¥${Number(wallet.totalRedeemed || 0)}</strong>
           </div>
         </div>
-      `;
-    }).join("");
-    return `
-      <section class="card summer-reward-history-card">
-        <div class="summer-reward-history-head">
-          <div>
-            <h3>暑假能量奖励</h3>
-            <p class="muted">现金只来自右下角能量浮窗抽奖，记录按实发金额对账。</p>
-          </div>
-          <div class="summer-reward-history-total">
-            <span>累计</span>
-            <strong>${totalAmount} 元</strong>
-          </div>
+        <button class="btn btn-primary summer-reward-redeem-btn" data-action="open-reward-redeem" type="button" ${Number(wallet.availableBalance || 0) > 0 ? "" : "disabled"}>
+          <span class="material-symbols-outlined">payments</span>
+          ${Number(wallet.availableBalance || 0) > 0 ? "家长兑换奖金" : "暂无可兑换奖金"}
+        </button>
+        <div class="summer-reward-wallet-ledger-head">
+          <div><strong>最近奖金记录</strong><span>抽奖和兑换都在这里对账</span></div>
+          ${ledger.length > 5 ? `<button class="btn btn-ghost btn-sm" data-action="toggle-reward-history" type="button">${rewardHistoryExpanded ? "收起" : `查看全部 ${ledger.length} 笔`}</button>` : ""}
         </div>
         <div class="summer-reward-history-list card-sub">${rows}</div>
-      </section>
-    `;
+      </section>`;
   }
 
   function summerRewardToneClass(value) {
     return ["plain", "coin", "big", "jackpot"].includes(value) ? value : "coin";
+  }
+
+  function rewardModalHead(title, description) {
+    return `
+      <div class="modal-head reward-redeem-modal-head">
+        <div><h2>${escapeHtml(title)}</h2><p class="muted">${escapeHtml(description)}</p></div>
+        <button class="icon-btn" data-action="close-modal" type="button" aria-label="关闭"><span class="material-symbols-outlined">close</span></button>
+      </div>`;
+  }
+
+  function rewardFormError(message = "") {
+    const error = modalRoot.querySelector("[data-reward-form-error]");
+    if (!error) return;
+    error.textContent = message;
+    error.hidden = !message;
+  }
+
+  function rewardErrorMessage(result) {
+    const messages = {
+      "invalid-pin": "请输入 4 位数字兑换码。",
+      "pin-mismatch": "两次输入不一致，请重新输入。",
+      "pin-exists": "兑换码已经设置，请先验证。",
+      "wrong-pin": "兑换码不正确，请再试一次。",
+      "invalid-amount": "请输入大于 0 的整数金额。",
+      "insufficient-balance": `最多只能兑换 ¥${Number(result?.availableBalance || 0)}。`,
+      "not-found": "没有找到这笔兑换记录。",
+      "already-revoked": "这笔兑换已经撤销过了。",
+    };
+    return messages[result?.reason] || "操作没有完成，请重试。";
+  }
+
+  function openRewardRedeemModal() {
+    const wallet = getSummerRewardWallet();
+    if (Number(wallet.availableBalance || 0) <= 0) {
+      toast("目前没有可兑换的奖金");
+      return;
+    }
+    rewardRedeemFlow = {
+      requestId: `redeem_request_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      pin: "",
+      resetting: false,
+    };
+    if (wallet.hasPin) showRewardPinVerifyModal();
+    else showRewardPinSetupModal(false);
+  }
+
+  function showRewardPinSetupModal(replacing = false) {
+    modal(`
+      ${rewardModalHead(replacing ? "重新设置家长兑换码" : "设置家长兑换码", "兑换码只用于防误触，不是支付密码。")}
+      <form id="reward-pin-setup-form" class="form-grid reward-redeem-form" autocomplete="off">
+        <div class="reward-redeem-notice"><span class="material-symbols-outlined">info</span><p>以后家长在普通页面输入这 4 位数字，就能记录奖金兑换，不需要进入管理员后台。</p></div>
+        <div class="field"><label for="reward-pin-new">输入 4 位数字</label><input id="reward-pin-new" name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required autocomplete="off" /></div>
+        <div class="field"><label for="reward-pin-confirm">再输入一次</label><input id="reward-pin-confirm" name="confirmation" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required autocomplete="off" /></div>
+        <p class="reward-form-error" data-reward-form-error hidden></p>
+        <button class="btn btn-primary" type="submit">保存兑换码，继续</button>
+      </form>`);
+    modalRoot.querySelector("#reward-pin-new")?.focus();
+  }
+
+  function showRewardPinVerifyModal() {
+    modal(`
+      ${rewardModalHead("家长兑换奖金", "输入家长兑换码后选择本次兑换金额。")}
+      <form id="reward-pin-verify-form" class="form-grid reward-redeem-form" autocomplete="off">
+        <div class="reward-balance-callout"><span>当前可兑换</span><strong>¥${Number(getSummerRewardWallet().availableBalance || 0)}</strong></div>
+        <div class="field"><label for="reward-pin-verify">4 位家长兑换码</label><input id="reward-pin-verify" name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required autocomplete="off" /></div>
+        <p class="reward-form-error" data-reward-form-error hidden></p>
+        <button class="btn btn-primary" type="submit">验证并继续</button>
+        <button class="reward-forgot-pin" data-action="reward-forgot-pin" type="button">忘记兑换码</button>
+      </form>`);
+    modalRoot.querySelector("#reward-pin-verify")?.focus();
+  }
+
+  function showRewardPinResetConfirmModal() {
+    modal(`
+      ${rewardModalHead("重设家长兑换码", "不需要旧兑换码，但旧码会立即失效。")}
+      <div class="form-grid reward-redeem-form">
+        <div class="reward-redeem-warning"><span class="material-symbols-outlined">warning</span><p>网站只负责记账，不会自动转钱。确认后可以重新设置 4 位兑换码，奖金和历史记录都不会改变。</p></div>
+        <button class="btn btn-danger" data-action="reward-reset-pin-confirm" type="button">确认重设兑换码</button>
+        <button class="btn btn-ghost" data-action="reward-back-pin-verify" type="button">返回输入兑换码</button>
+      </div>`);
+  }
+
+  function showRewardAmountModal() {
+    const wallet = getSummerRewardWallet();
+    const available = Number(wallet.availableBalance || 0);
+    if (available <= 0) {
+      closeModal();
+      toast("目前没有可兑换的奖金");
+      return;
+    }
+    modal(`
+      ${rewardModalHead("选择兑换金额", "可以一次全部兑换，也可以只兑换一部分。")}
+      <form id="reward-redeem-amount-form" class="form-grid reward-redeem-form">
+        <input type="hidden" name="fullAmount" value="${available}" />
+        <div class="reward-balance-callout"><span>当前可兑换</span><strong>¥${available}</strong></div>
+        <label class="reward-amount-option is-selected">
+          <input type="radio" name="mode" value="all" checked />
+          <span><strong>全部兑换</strong><small>本次兑换 ¥${available}</small></span>
+        </label>
+        <label class="reward-amount-option">
+          <input type="radio" name="mode" value="partial" />
+          <span><strong>部分兑换</strong><small>输入这次实际给孩子的金额</small></span>
+        </label>
+        <div class="field reward-partial-field" hidden><label for="reward-redeem-partial">部分兑换金额（整数元）</label><input id="reward-redeem-partial" name="amount" type="number" inputmode="numeric" min="1" max="${available}" step="1" placeholder="最多 ${available} 元" /></div>
+        <div class="reward-redeem-notice"><span class="material-symbols-outlined">payments</span><p>请先通过微信、支付宝或现金把奖金给孩子，再在这里记账。</p></div>
+        <p class="reward-form-error" data-reward-form-error hidden></p>
+        <button class="btn btn-primary reward-redeem-confirm" type="submit">已给孩子 ¥${available}，记为已兑换</button>
+      </form>`);
+    const form = modalRoot.querySelector("#reward-redeem-amount-form");
+    const sync = () => {
+      const partial = form?.elements.mode?.value === "partial";
+      const field = form?.querySelector(".reward-partial-field");
+      const input = form?.elements.amount;
+      const button = form?.querySelector(".reward-redeem-confirm");
+      form?.querySelectorAll(".reward-amount-option").forEach((option) => option.classList.toggle("is-selected", option.querySelector("input")?.checked));
+      if (field) field.hidden = !partial;
+      if (input) input.disabled = !partial;
+      const amount = partial ? Number(input?.value || 0) : available;
+      if (button) {
+        button.textContent = amount > 0 ? `已给孩子 ¥${amount}，记为已兑换` : "请输入兑换金额";
+        button.disabled = !Number.isInteger(amount) || amount <= 0 || amount > available;
+      }
+    };
+    form?.addEventListener("input", sync);
+    form?.addEventListener("change", sync);
+    sync();
+  }
+
+  function showRewardRevokeModal(redemptionId) {
+    const entry = getSummerRewardWallet().ledger?.find((item) => item.type === "redeem" && item.id === redemptionId);
+    if (!entry || entry.revoked) {
+      toast("这笔兑换无法撤销");
+      return;
+    }
+    rewardRedeemFlow = { mode: "revoke", redemptionId, pin: "" };
+    modal(`
+      ${rewardModalHead("撤销兑换记录", "只更正网站账本，不会撤回家长已经完成的转账。")}
+      <form id="reward-redeem-revoke-form" class="form-grid reward-redeem-form" autocomplete="off">
+        <div class="reward-redeem-warning"><span class="material-symbols-outlined">undo</span><p>将撤销 ${escapeHtml(rewardLedgerTime(entry))} 的 ¥${Number(entry.amount || 0)} 兑换记录，奖金余额会恢复。</p></div>
+        <div class="field"><label for="reward-revoke-pin">输入 4 位家长兑换码确认</label><input id="reward-revoke-pin" name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required autocomplete="off" /></div>
+        <p class="reward-form-error" data-reward-form-error hidden></p>
+        <button class="btn btn-danger" type="submit">确认撤销这笔记录</button>
+      </form>`);
+    modalRoot.querySelector("#reward-revoke-pin")?.focus();
   }
 
   function renderLotteryHistory() {
@@ -4205,6 +4384,7 @@ git reset --hard origin/main</pre>
   function closeModal() {
     modalRoot.hidden = true;
     modalRoot.innerHTML = "";
+    rewardRedeemFlow = null;
   }
 
   function toast(message) {
@@ -5802,6 +5982,32 @@ ${record.originalQuestion || "暂无原题描述。"}
     const action = event.target.closest("[data-action]");
     if (action) {
       const name = action.dataset.action;
+      if (name === "open-reward-redeem") {
+        openRewardRedeemModal();
+        return;
+      }
+      if (name === "toggle-reward-history") {
+        rewardHistoryExpanded = !rewardHistoryExpanded;
+        if (currentRoute() === "achievements") renderAchievements(view);
+        return;
+      }
+      if (name === "reward-forgot-pin") {
+        showRewardPinResetConfirmModal();
+        return;
+      }
+      if (name === "reward-reset-pin-confirm") {
+        rewardRedeemFlow = { ...(rewardRedeemFlow || {}), resetting: true };
+        showRewardPinSetupModal(true);
+        return;
+      }
+      if (name === "reward-back-pin-verify") {
+        showRewardPinVerifyModal();
+        return;
+      }
+      if (name === "reward-redeem-revoke") {
+        showRewardRevokeModal(action.dataset.redemptionId || "");
+        return;
+      }
       if (name === "parse-record") parsePastedRecord();
       if (name === "toggle-sidebar") {
         toggleSidebar();
@@ -5983,6 +6189,60 @@ ${record.originalQuestion || "暂无原题描述。"}
   }
 
   function handleSubmit(event) {
+    if (event.target.id === "reward-pin-setup-form") {
+      event.preventDefault();
+      const form = Object.fromEntries(new FormData(event.target));
+      const result = window.MochiSummerTasks?.setRewardRedeemPin?.(form.pin, form.confirmation, Boolean(rewardRedeemFlow?.resetting));
+      if (!result?.ok) {
+        rewardFormError(rewardErrorMessage(result));
+        return;
+      }
+      rewardRedeemFlow = { ...(rewardRedeemFlow || {}), pin: String(form.pin || ""), resetting: false };
+      showRewardAmountModal();
+      return;
+    }
+    if (event.target.id === "reward-pin-verify-form") {
+      event.preventDefault();
+      const pin = String(new FormData(event.target).get("pin") || "");
+      if (!window.MochiSummerTasks?.verifyRewardRedeemPin?.(pin)) {
+        rewardFormError("兑换码不正确，请再试一次。");
+        return;
+      }
+      rewardRedeemFlow = { ...(rewardRedeemFlow || {}), pin };
+      showRewardAmountModal();
+      return;
+    }
+    if (event.target.id === "reward-redeem-amount-form") {
+      event.preventDefault();
+      const form = new FormData(event.target);
+      const amount = form.get("mode") === "partial" ? Number(form.get("amount")) : Number(form.get("fullAmount") || 0);
+      const button = event.target.querySelector("button[type='submit']");
+      if (button) button.disabled = true;
+      const result = window.MochiSummerTasks?.redeemRewardAmount?.(amount, rewardRedeemFlow?.pin || "", rewardRedeemFlow?.requestId || "");
+      if (!result?.ok) {
+        if (button) button.disabled = false;
+        rewardFormError(rewardErrorMessage(result));
+        return;
+      }
+      closeModal();
+      if (currentRoute() === "achievements") renderAchievements(view);
+      toast(result.duplicate ? "这笔兑换已经记录过了" : `已记录兑换 ¥${amount}`);
+      return;
+    }
+    if (event.target.id === "reward-redeem-revoke-form") {
+      event.preventDefault();
+      const pin = String(new FormData(event.target).get("pin") || "");
+      const result = window.MochiSummerTasks?.revokeRewardRedemption?.(rewardRedeemFlow?.redemptionId || "", pin);
+      if (!result?.ok) {
+        rewardFormError(rewardErrorMessage(result));
+        return;
+      }
+      const amount = Number(result.entry?.amount || 0);
+      closeModal();
+      if (currentRoute() === "achievements") renderAchievements(view);
+      toast(`已撤销 ¥${amount} 的兑换记录，余额已恢复`);
+      return;
+    }
     if (event.target.id === "api-form") {
       event.preventDefault();
       window.MochiAI.saveConfig(Object.fromEntries(new FormData(event.target)));

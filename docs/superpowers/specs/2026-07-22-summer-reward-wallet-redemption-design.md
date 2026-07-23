@@ -118,6 +118,7 @@
   redemptionHistory: [
     {
       id: "redeem_<timestamp>_<suffix>",
+      requestId: "redeem_request_<timestamp>_<suffix>",
       amount: 20,
       date: "YYYY-MM-DD",
       ts: 0,
@@ -134,6 +135,7 @@
 - `totalRedeemed`：所有未撤销兑换金额的累计。
 - `parentRedeemPin`：本机 4 位防误触码。它不是安全认证凭证。
 - `redemptionHistory`：兑换流水。兑换频率低，不主动截断；撤销通过状态字段保留审计痕迹。
+- `requestId`：一次兑换弹窗的幂等标识；重复提交同一标识时返回原结果，不重复累计。
 
 可兑换余额不单独持久化，统一由 `max(0, totalEarned - totalRedeemed)` 计算，避免三个金额互相矛盾。
 

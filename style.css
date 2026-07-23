@@ -3768,46 +3768,105 @@ body.sidebar-expanded .side-nav .nav-item:hover {
   white-space: nowrap;
 }
 
-.summer-reward-history-card {
+.summer-reward-wallet-card {
   display: grid;
-  gap: 12px;
+  gap: 16px;
+  border-color: color-mix(in srgb, var(--gold) 28%, var(--line));
+  background: linear-gradient(145deg, color-mix(in srgb, var(--surface) 88%, #fff1c9), var(--surface));
 }
 
-.summer-honor-card {
-  display: grid;
-  gap: var(--sp-3);
-}
-
-.summer-reward-history-head {
+.summer-reward-wallet-head,
+.summer-reward-wallet-ledger-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 14px;
 }
 
-.summer-reward-history-head h3 {
+.summer-reward-wallet-head h3 {
   margin: 0 0 4px;
+  font-size: var(--fs-xl);
 }
 
-.summer-reward-history-total {
+.summer-reward-wallet-head p,
+.summer-reward-wallet-ledger-head span {
+  margin: 0;
+}
+
+.summer-reward-wallet-icon {
   display: grid;
-  justify-items: end;
-  min-width: 86px;
-  padding: 8px 10px;
-  border-radius: 12px;
-  background: rgba(255, 225, 120, 0.26);
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--gold) 20%, var(--surface));
+  color: #9b5a12;
+  font-size: 26px;
 }
 
-.summer-reward-history-total span {
+.summer-reward-wallet-stats {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr 1fr;
+  gap: 10px;
+}
+
+.summer-reward-wallet-stat {
+  display: grid;
+  align-content: center;
+  min-height: 86px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+}
+
+.summer-reward-wallet-stat span {
   color: var(--text-tertiary);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 800;
 }
 
-.summer-reward-history-total strong {
-  color: #8a4f13;
-  font-size: 18px;
+.summer-reward-wallet-stat strong {
+  margin-top: 4px;
+  color: var(--ink);
+  font-size: var(--fs-xl);
   font-weight: 1000;
+}
+
+.summer-reward-wallet-stat.is-balance {
+  border-color: color-mix(in srgb, var(--gold) 35%, var(--line));
+  background: color-mix(in srgb, var(--gold) 18%, var(--surface));
+}
+
+.summer-reward-wallet-stat.is-balance strong {
+  color: #9b580f;
+  font-size: clamp(27px, 4vw, 36px);
+}
+
+.summer-reward-redeem-btn {
+  width: 100%;
+  min-height: 48px;
+}
+
+.summer-reward-wallet-ledger-head {
+  align-items: center;
+  padding-top: 2px;
+}
+
+.summer-reward-wallet-ledger-head > div {
+  display: grid;
+  gap: 2px;
+}
+
+.summer-reward-wallet-ledger-head span {
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+}
+
+.summer-honor-card {
+  display: grid;
+  gap: var(--sp-3);
 }
 
 .summer-reward-history-list {
@@ -3874,6 +3933,168 @@ body.sidebar-expanded .side-nav .nav-item:hover {
 .summer-reward-history-prize strong {
   color: #a2601d;
   font-size: 15px;
+}
+
+.reward-ledger-redeem {
+  border-color: color-mix(in srgb, var(--good) 20%, var(--line));
+  background: color-mix(in srgb, var(--good) 6%, var(--surface));
+}
+
+.reward-ledger-redeem .summer-reward-history-prize strong {
+  color: color-mix(in srgb, var(--good) 75%, #18362b);
+}
+
+.reward-ledger-revoke,
+.reward-forgot-pin {
+  padding: 3px 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.reward-ledger-revoke {
+  margin-top: 3px;
+}
+
+.summer-reward-history-item.is-revoked {
+  opacity: 0.62;
+  background: var(--surface-dim);
+}
+
+.summer-reward-history-item.is-revoked > div:first-child strong,
+.summer-reward-history-item.is-revoked .summer-reward-history-prize strong {
+  text-decoration: line-through;
+}
+
+.modal:has(.reward-redeem-modal-head) {
+  width: min(480px, 100%);
+}
+
+.reward-redeem-modal-head h2 {
+  margin: 0 0 5px;
+  font-size: var(--fs-xl);
+}
+
+.reward-redeem-modal-head p {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.reward-redeem-form {
+  gap: 14px;
+}
+
+.reward-redeem-form input[inputmode="numeric"] {
+  min-height: 50px;
+  font-size: var(--fs-lg);
+  font-weight: 800;
+}
+
+.reward-redeem-form input[pattern="[0-9]{4}"] {
+  letter-spacing: 0.45em;
+  text-align: center;
+}
+
+.reward-redeem-notice,
+.reward-redeem-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--primary-tint) 75%, var(--surface));
+  color: var(--ink-2);
+}
+
+.reward-redeem-warning {
+  background: color-mix(in srgb, var(--bad) 9%, var(--surface));
+}
+
+.reward-redeem-notice .material-symbols-outlined,
+.reward-redeem-warning .material-symbols-outlined {
+  flex: 0 0 auto;
+  color: var(--primary);
+}
+
+.reward-redeem-warning .material-symbols-outlined {
+  color: var(--bad);
+}
+
+.reward-redeem-notice p,
+.reward-redeem-warning p {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+}
+
+.reward-balance-callout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--gold) 18%, var(--surface));
+}
+
+.reward-balance-callout span {
+  color: var(--text-secondary);
+  font-weight: 800;
+}
+
+.reward-balance-callout strong {
+  color: #9b580f;
+  font-size: 26px;
+  font-weight: 1000;
+}
+
+.reward-amount-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.reward-amount-option.is-selected {
+  border-color: color-mix(in srgb, var(--primary) 42%, var(--line));
+  background: var(--primary-tint);
+}
+
+.reward-amount-option input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+}
+
+.reward-amount-option span {
+  display: grid;
+  gap: 2px;
+}
+
+.reward-amount-option small {
+  color: var(--text-secondary);
+}
+
+.reward-form-error {
+  margin: 0;
+  padding: 9px 11px;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--bad) 9%, var(--surface));
+  color: var(--bad);
+  font-size: var(--fs-sm);
+  font-weight: 800;
+}
+
+.reward-forgot-pin {
+  justify-self: center;
 }
 
 .badge-summary {
@@ -8302,6 +8523,37 @@ body.focus-mode #view {
 .timeline-badge {
     width: 54px;
     height: 54px;
+  }
+}
+
+@media (max-width: 640px) {
+  .summer-reward-wallet-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .summer-reward-wallet-stat.is-balance {
+    grid-column: 1 / -1;
+  }
+
+  .summer-reward-wallet-ledger-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .summer-reward-wallet-ledger-head .btn {
+    width: 100%;
+  }
+
+  .summer-reward-history-item {
+    align-items: start;
+  }
+
+  .modal-root {
+    padding: 14px;
+  }
+
+  .modal:has(.reward-redeem-modal-head) {
+    padding: 20px;
   }
 }
 
